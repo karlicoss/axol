@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+
+cd "$(dirname "$0")"
+./run pkm_res --json 'pkm' 'tag:personal-knowledge-management' 'tag:personal_knowledge_management' 'tag:pkm'

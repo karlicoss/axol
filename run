@@ -1,19 +1,27 @@
 #!/bin/bash
-set -eu
+set -eux
 cd "$(dirname "$0")"
 
 REPO="$1"; shift
 
-OUT="$(/L/Dropbox/coding/spinboard/run "$@")"
+
+
+function assert_clean {
+    if git rev-parse HEAD >/dev/null 2>/dev/null; then
+        git diff-index --quiet HEAD --
+    else
+        >&2 echo 'empty repo!'
+    fi
+}
 
 cd "$REPO"
 
-function assert_clean {
-    git diff-index --quiet HEAD --
-}
-
+git init --quiet
 assert_clean
+
+OUT="$(/L/Dropbox/coding/spinboard/run "$@")"
 echo "$OUT" > "content.json"
+
 git add content.json
 git commit -m 'updated content' --allow-empty
 assert_clean
