@@ -1,0 +1,19 @@
+#!/bin/bash
+set -eu
+cd "$(dirname "$0")"
+
+REPO="$1"; shift
+
+OUT="$(/L/Dropbox/coding/spinboard/run "$@")"
+
+cd "$REPO"
+
+function assert_clean {
+    git diff-index --quiet HEAD --
+}
+
+assert_clean
+echo "$OUT" > "content.json"
+git add content.json
+git commit -m 'updated content' --allow-empty
+assert_clean
