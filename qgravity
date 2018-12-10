@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+
+cd "$(dirname "$0")"
+./run qgravity_res --json 'quantum gravity' 'tag:quantum-gravity' 'tag:quantum_gravity'

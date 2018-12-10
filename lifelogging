@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -eux
 
 cd "$(dirname "$0")"
 ./run lifelogging_res --json 'lifelogging' 'tag:lifelogging'

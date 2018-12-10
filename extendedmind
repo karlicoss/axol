@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+
+cd "$(dirname "$0")"
+./run extendedmind_res --json 'pkm' 'extended mind' 'tag:extended-mind' 'tag:extended_mind'
