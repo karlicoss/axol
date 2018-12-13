@@ -2,26 +2,4 @@
 set -eux
 cd "$(dirname "$0")"
 
-REPO="$1"; shift
-
-
-
-function assert_clean {
-    if git rev-parse HEAD >/dev/null 2>/dev/null; then
-        git diff --exit-code
-    else
-        >&2 echo 'empty repo!'
-    fi
-}
-
-cd "$REPO"
-
-git init --quiet
-assert_clean
-
-OUT="$(/L/Dropbox/coding/spinboard/run "$@")"
-echo "$OUT" > "content.json"
-
-git add content.json
-git commit -m 'updated content' --allow-empty
-assert_clean
+PYTHONPATH=/L/Dropbox/coding/spinboard ./run.py
