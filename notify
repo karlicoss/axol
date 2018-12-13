@@ -113,7 +113,10 @@ def get_user_stats(jsons):
     }
 
 # TODO html mode??
-def get_digest(repo: str, count=300):
+def get_digest(repo: str, count=None):
+    if count is None:
+        count = 100
+
     rh = RepoHandle(repo)
     jsons = rh.get_all_versions()
     ustats = get_user_stats(jsons)
@@ -173,7 +176,7 @@ def send(subject: str, body: str, html=False):
     )
 
 def handle_one(repo: str, html=False):
-    digest = get_digest(repo, count=300)
+    digest = get_digest(repo)
     if len(digest) == 0:
         digest = "INITIAL!!!!"
     res = send(
