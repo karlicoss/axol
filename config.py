@@ -33,7 +33,7 @@ class Pinboard:
 
 P = Pinboard
 
-
+# TODO warn if we got less than expected?
 def make_pinboard() -> Iterator[Pinboard]:
     yield P('arbtt', [
         'arbtt',
@@ -73,7 +73,25 @@ def make_pinboard() -> Iterator[Pinboard]:
         qs, *pintag(qs),
     ])
 
+    yield P('ted chiang', [
+        *pintag('tedchiang'),
+        'ted chiang',
+    ])
+
+    yield P('argonov', [
+        'виктор аргонов',
+    ])
+
+    yield P('spaced repetition', [
+        'spaced repetition',
+    ])
+
+    yield P('scott alexander', [
+        *pintag('scottalexander'),
+    ])
+
 pinboard = list(make_pinboard())
 
+# TODO crap! it's also very useful to just concatenate the words in tag...
 
 del P
