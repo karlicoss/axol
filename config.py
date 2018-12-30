@@ -8,11 +8,21 @@ def pintag(query: str) -> List[str]:
     })
 
 
+def pinboard_quote(s: str):
+    # shit, single quotes do not work right with pinboard..
+    if s.startswith("'"):
+        return s
+    return f'"{s}"'
+
+
 # TODO protocol?..
 class Pinboard:
-    def __init__(self, name: str, queries: List[str]):
+    def __init__(self, name: str, queries: List[str], quote=True):
         self.name = name
-        self.queries = queries
+        if quote:
+            self.queries = list(map(pinboard_quote, queries))
+        else:
+            self.queries = queries
     # TODO how to make it unique and fs safe??
 
     def __repr__(self):

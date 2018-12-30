@@ -100,6 +100,7 @@ tags: {tagss}
     return BB
 
 
+# TODO hmm. instead percentile would be more accurate?...
 def get_user_stats(jsons):
     cc = Collector()
     for jj in jsons:
