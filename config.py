@@ -33,6 +33,28 @@ class Query(Protocol):
     @property
     def repo_name(self): str = ...
 
+class GithubQ(Query):
+    @property
+    def searcher(self):
+        from tentacle import Tentacle # type: ignore
+        return Tentacle
+
+    def __init__(self, qname: str, *queries: List[str], quote=True):
+        if len(queries) == 1 and isinstance(queries[0], list):
+            queries = queries[0] # TODO ugh.
+        self.qname = qname
+        if quote:
+            self.queries = list(map(pinboard_quote, queries))
+        else:
+            self.queries = queries
+    # TODO how to make it unique and fs safe??
+
+    @property
+    def repo_name(self) -> str:
+        return f'github_{slugify(self.qname)}'
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 # TODO protocol?..
 class PinboardQ(Query):

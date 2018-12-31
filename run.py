@@ -12,6 +12,7 @@ from typing import Union
 from kython.logging import setup_logzero
 
 from config import slugify, queries
+from jsonify import to_json, from_json
 
 def get_logger():
     return logging.getLogger('info-crawler')
@@ -75,24 +76,9 @@ class RepoHandle:
         self._git('commit', '-m', f'updated content ({before} -> {len(jj)} entries)', '--allow-empty').check_returncode()
         self.assert_clean()
 
-# def process_pinboard():
-#     import spinboard # type: ignore
-#     setup_logzero(spinboard.get_logger(), level=logging.DEBUG)
-#     for p in pinboard:
-#         # TODO make sure names are unique??
-#         # dname = slugify_in(p.name, dir=RP)
-#         # TODO create dir there as well??
-#         try:
-#             logger.info('spinboard: getting %s', p.queries)
-#             results = spinboard.Spinboard().search_all(p.queries)
-#             jsons = [r.json for r in results]
+# TODO make sure names are unique??
+# TODO create dir there as well??
 
-#             rh = RepoHandle.create(p.repo_name)
-#             rh.commit(jsons)
-#         except Exception as e:
-#             reg_error(e)
-
-# TODO looks very similar to pinboard...
 def process_all(dry=False):
     ok = True
     def reg_error(err):
@@ -114,7 +100,7 @@ def process_all(dry=False):
                 continue
 
             results = searcher.search_all(qs)
-            jsons = [r.json for r in results]
+            jsons = [to_json(r) for r in results]
 
             rh = RepoHandle.create(q.repo_name)
             rh.commit(jsons)
