@@ -58,10 +58,18 @@ class RepoHandle:
     def commit(self, jj):
         self._git('init', '--quiet').check_returncode()
         self.assert_clean()
-        with self.path.joinpath('content.json').open('w') as fo:
+
+        cpath = self.path.joinpath('content.json')
+        before = None
+        if cpath.exists():
+            with cpath.open('r') as fo:
+                jb = json.load(fo)
+                before = len(jb)
+
+        with cpath.open('w') as fo:
             json.dump(jj, fo, ensure_ascii=False, indent=1, sort_keys=True)
         self._git('add', 'content.json')
-        self._git('commit', '-m', f'updated content ({len(jj)} entries now)', '--allow-empty').check_returncode()
+        self._git('commit', '-m', f'updated content ({before} -> {len(jj)} entries)', '--allow-empty').check_returncode()
         self.assert_clean()
 
 ok = True
