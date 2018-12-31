@@ -111,12 +111,14 @@ def qall(qname: str, *args, pintags=None) -> Iterator[Query]:
 
     yield RedditQ(qname, *args)
     yield PinboardQ(qname, *args, *pintags)
+    yield GithubQ(qname, *args)
 
 
 # TODO warn if we got less than expected?
 def make_queries() -> Iterator[Query]:
     P = PinboardQ
     R = RedditQ
+    G = GithubQ
 
     yield from qall('arbtt', 'arbtt')
 
@@ -142,6 +144,23 @@ def make_queries() -> Iterator[Query]:
     ) #TODO maybe True by default??
 
     pkm = 'personal knowledge management'
+    yield R(
+        'pkm',
+        'pkm', pkm
+    )
+    yield P(
+        'pkm',
+        'pkm', *pintag('pkm'),
+        pkm  , *pintag(pkm),
+    )
+    yield G(
+        'pkm',
+        'pkm NOT pokemon',
+        f'"{pkm}"',
+        quote=False,
+    )
+
+    return
     yield from qall(
         'pkm',
         pkm, 'pkm',
@@ -162,6 +181,7 @@ def make_queries() -> Iterator[Query]:
         pintags=True, # TODO if query is empty, imply from name??
     )
 
+    # TODO probably, no github?
     tc = 'ted chiang'
     yield from qall(
         tc,
@@ -188,5 +208,6 @@ def make_queries() -> Iterator[Query]:
     )
     del P
     del R
+    del G
 
 queries = make_queries()
