@@ -5,11 +5,14 @@ def pintag(query: str) -> List[str]:
     return list({
         f'tag:{query.replace(" ", "-")}',
         f'tag:{query.replace(" ", "_")}',
+# TODO crap! it's also very useful to just concatenate the words in tag...
     })
 
 
 def pinboard_quote(s: str):
     # shit, single quotes do not work right with pinboard..
+    if s.startswith('tag:'):
+        return s
     if s.startswith("'"):
         return s
     return f'"{s}"'
@@ -91,7 +94,5 @@ def make_pinboard() -> Iterator[Pinboard]:
     ])
 
 pinboard = list(make_pinboard())
-
-# TODO crap! it's also very useful to just concatenate the words in tag...
 
 del P
