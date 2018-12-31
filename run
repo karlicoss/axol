@@ -2,4 +2,4 @@
 set -eux
 cd "$(dirname "$0")"
 
-PYTHONPATH=/L/Dropbox/coding/spinboard ./run.py
+PYTHONPATH=/L/Dropbox/coding/spinboard:/L/Dropbox/coding/reach:$PYTHONPATH ./run.py "$@"

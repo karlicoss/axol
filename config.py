@@ -1,4 +1,14 @@
-from typing import List, Iterator
+from kython import flatten
+
+import re
+from typing import List, Iterator, NamedTuple, Type, Any
+from typing_extensions import Protocol
+
+# TODO move somewhere more appropriate
+def slugify(s: str):
+    s = s.strip().replace(' ', '_')
+    return re.sub(r'(?u)[^-\w.]', '', s)
+
 
 def pintag(query: str) -> List[str]:
     # https://pinboard.in/howto/#tags
@@ -17,10 +27,23 @@ def pinboard_quote(s: str):
         return s
     return f'"{s}"'
 
+class Query(Protocol):
+    searcher: Type[Any]
+    queries: List[str]
+    @property
+    def repo_name(self): str = ...
+
 
 # TODO protocol?..
-class Pinboard:
-    def __init__(self, name: str, queries: List[str], quote=True):
+class PinboardQ(Query):
+    @property
+    def searcher(self):
+        from spinboard import Spinboard # type: ignore
+        return Spinboard
+
+    def __init__(self, name: str, *queries: List[str], quote=True):
+        if len(queries) == 1 and isinstance(queries[0], list):
+            queries = queries[0] # TODO ugh.
         self.name = name
         if quote:
             self.queries = list(map(pinboard_quote, queries))
@@ -28,71 +51,120 @@ class Pinboard:
             self.queries = queries
     # TODO how to make it unique and fs safe??
 
+    @property
+    def repo_name(self) -> str:
+        # TODO 'pinboard' prefix? slugify??
+        return self.name
+
     def __repr__(self):
         return str(self.__dict__)
 
 
+class RedditQ(Query):
+    @property
+    def searcher(self):
+        from reach import Reach # type: ignore
+        return Reach
 
+    def __init__(self, qname: str, *queries: List[str]) -> None:
+        if len(queries) == 1 and isinstance(queries[0], list):
+            queries = queries[0] # TODO ugh.
+        self.qname = qname
+        self.queries = list(map(pinboard_quote, queries))
 
-P = Pinboard
+    @property
+    def repo_name(self) -> str:
+        return f'reddit_' + slugify(self.qname)
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+# true for pintags means generating from queries
+def qall(qname: str, *args, pintags=None) -> Iterator[Query]:
+    if pintags is None:
+        pintags = []
+    if pintags is True:
+        pintags = flatten([pintag(q) for q in args])
+    pintags = list(sorted(set(pintags)))
+
+    yield RedditQ(qname, *args)
+    yield PinboardQ(qname, *args, *pintags)
+
 
 # TODO warn if we got less than expected?
-def make_pinboard() -> Iterator[Pinboard]:
-    yield P('arbtt', [
-        'arbtt',
-    ])
+def make_queries() -> Iterator[Query]:
+    P = PinboardQ
+    R = RedditQ
+
+    yield from qall('arbtt', 'arbtt')
 
     emind = 'extended mind'
-    yield P('extended mind', [
+    yield from qall(
         emind,
-        *pintag(emind),
-    ])
+        emind,
+        pintags=True,
+    )
 
     ll = 'lifelogging'
-    yield P('lifelogging', [
-        ll, *pintag(ll),
-    ])
+    yield from qall(
+        ll,
+        ll,
+        pintags=True,
+    )
 
     openbci = 'openbci'
-    yield P('openbci', [
-        openbci, *pintag(openbci),
-    ])
+    yield from qall(
+        openbci,
+        openbci,
+        pintags=True,
+    ) #TODO maybe True by default??
 
     pkm = 'personal knowledge management'
-    yield P('pkm', [
-        'pkm', *pintag('pkm'),
-        pkm, *pintag(pkm),
-    ])
+    yield from qall(
+        'pkm',
+        pkm, 'pkm',
+        pintags=True
+    )
 
     qg = 'quantum gravity'
-    yield P('quantum gravity', [
-        qg, *pintag(qg),
-    ])
+    yield from qall(
+        qg,
+        qg,
+        pintags=True,
+    )
 
-    # TODO warn about duplicate?
-    qs = 'quantifield self'
-    yield P('quantified self', [
-        'quantified-self',
-        qs, *pintag(qs),
-    ])
+    qs = 'quantified self'
+    yield from qall(
+        qs,
+        qs, 'quantified-self',
+        pintags=True, # TODO if query is empty, imply from name??
+    )
 
-    yield P('ted chiang', [
-        *pintag('tedchiang'),
-        'ted chiang',
-    ])
+    tc = 'ted chiang'
+    yield from qall(
+        tc,
+        tc,
+        pintags=pintag('tedchiang'),
+    )
 
-    yield P('argonov', [
+    yield from qall(
+        'argonov',
         'виктор аргонов',
-    ])
+    )
 
-    yield P('spaced repetition', [
-        'spaced repetition',
-    ])
+    sr = 'spaced repetition'
+    yield from qall(
+        sr,
+        sr,
+    )
 
-    yield P('scott alexander', [
-        *pintag('scottalexander'),
-    ])
+    sa = 'scott alexander'
+    yield from qall(
+        sa,
+        sa,
+        pintags=pintag('scottalexander')
+    )
+    del P
+    del R
 
-pinboard = list(make_pinboard())
-
-del P
+queries = make_queries()

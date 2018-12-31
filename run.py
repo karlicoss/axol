@@ -11,7 +11,7 @@ from typing import Union
 
 from kython.logging import setup_logzero
 
-from config import pinboard
+from config import slugify, queries
 
 def get_logger():
     return logging.getLogger('info-crawler')
@@ -19,10 +19,6 @@ def get_logger():
 
 logger = get_logger()
 setup_logzero(logger, level=logging.INFO)
-
-def slugify(s: str):
-    s = s.strip().replace(' ', '_')
-    return re.sub(r'(?u)[^-\w.]', '', s)
 
 Pathish = Union[str, Path]
 
@@ -42,6 +38,13 @@ RP = Path('outputs')
 class RepoHandle:
     def __init__(self, path: Path) -> None:
         self.path = path
+
+    @classmethod
+    def create(cls, name: str):
+        dname = slugify(name)
+        rpath = RP.joinpath(dname)
+        rpath.mkdir(exist_ok=True)
+        return RepoHandle(rpath)
 
     def assert_clean(self):
         if self._git('rev-parse', 'HEAD', stderr=DEVNULL).returncode == 0:
@@ -72,29 +75,61 @@ class RepoHandle:
         self._git('commit', '-m', f'updated content ({before} -> {len(jj)} entries)', '--allow-empty').check_returncode()
         self.assert_clean()
 
-ok = True
+# def process_pinboard():
+#     import spinboard # type: ignore
+#     setup_logzero(spinboard.get_logger(), level=logging.DEBUG)
+#     for p in pinboard:
+#         # TODO make sure names are unique??
+#         # dname = slugify_in(p.name, dir=RP)
+#         # TODO create dir there as well??
+#         try:
+#             logger.info('spinboard: getting %s', p.queries)
+#             results = spinboard.Spinboard().search_all(p.queries)
+#             jsons = [r.json for r in results]
 
-for p in pinboard:
-    # TODO make sure names are unique??
-    # dname = slugify_in(p.name, dir=RP)
-    dname = slugify(p.name)
-    rpath = RP.joinpath(dname)
-    rpath.mkdir(exist_ok=True)
-    rh = RepoHandle(rpath)
-    try:
-        import spinboard
-        setup_logzero(spinboard.get_logger(), level=logging.DEBUG)
-        logger.info('spinboard: getting %s', p.queries)
-        results = spinboard.Spinboard().search_all(p.queries)
-        jsons = [r.json for r in results]
-        rh.commit(jsons)
-    except Exception as e:
-        logger.error('error while retreiving spinboard')
-        logger.exception(e)
+#             rh = RepoHandle.create(p.repo_name)
+#             rh.commit(jsons)
+#         except Exception as e:
+#             reg_error(e)
+
+# TODO looks very similar to pinboard...
+def process_all(dry=False):
+    ok = True
+    def reg_error(err):
+        logger.error('error while retreiving stuff')
+        if isinstance(err, Exception):
+            logger.exception(err)
+        else:
+            logger.error(err)
         ok = False
 
+    for q in queries:
+        try:
+            logger.info('crawler: processing %s', q)
+            searcher = q.searcher()
+            qs = q.queries
 
+            if dry:
+                logger.info(f'dry run! would have searched for {qs} via {searcher}')
+                continue
 
+            results = searcher.search_all(qs)
+            jsons = [r.json for r in results]
 
-if not ok:
-    sys.exit(1)
+            rh = RepoHandle.create(q.repo_name)
+            rh.commit(jsons)
+        except Exception as e:
+            reg_error(e)
+
+    if not ok:
+        sys.exit(1)
+
+def main():
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('--dry', action='store_true')
+    args = p.parse_args()
+    process_all(args.dry)
+
+if __name__ == '__main__':
+    main()
