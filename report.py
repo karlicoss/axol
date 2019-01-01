@@ -293,7 +293,7 @@ def send(subject: str, body: str, html=False):
 def fdate(d: datetime) -> str:
     return d.strftime('%a %d %b %Y %H:%M')
 
-def handle_one(repo: str, html=False, email=True):
+def handle_one(repo: str, html=False, email=True, rendered: Path = None):
     digest = get_digest(repo)
     if email:
         raise RuntimeError('email is currenlty broken')
@@ -366,7 +366,7 @@ a:active {
             #     p('Lorem ipsum..')
 
         # print(doc)
-        with open(join('rendered', name + '.html'), 'w') as fo:
+        with rendered.joinpath(name + '.html').open('w') as fo:
             fo.write(str(doc))
 
 
@@ -389,6 +389,7 @@ def main():
     # tos = args.to
     repos: List[Path] = []
     OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
+    RENDERED = Path(__file__).parent.joinpath('rendered').resolve()
     if args.repo is not None:
         repos = [OUTPUTS.joinpath(args.repo)]
     else:
@@ -397,7 +398,7 @@ def main():
     for repo in repos:
         try:
             logger.info("Processing %s", repo)
-            handle_one(str(repo), html=args.html, email=args.email)
+            handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED)
         except Exception as e:
             logger.exception(e)
             ok = False
