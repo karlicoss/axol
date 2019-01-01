@@ -1,5 +1,0 @@
-#!/bin/bash
-set -ex
-cd "$(dirname "$0")"
-
-PYTHONPATH=/L/coding/tentacle:/L/coding/spinboard:/L/coding/reach:$PYTHONPATH ./run.py "$@"

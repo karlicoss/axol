@@ -8,9 +8,8 @@ def setup_paths():
         '/L/coding/reach',
     ])
 
-# TODO name after some lizard?
 def get_logger():
-    return logging.getLogger('info-crawler')
+    return logging.getLogger('axol')
 
 # TODO kython??
 class classproperty(object):

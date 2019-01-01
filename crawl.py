@@ -11,12 +11,11 @@ from typing import Union
 
 from kython.logging import setup_logzero
 
+from common import get_logger, setup_paths
+setup_paths()
+
 from config import slugify, queries
 from jsonify import to_json, from_json
-
-def get_logger():
-    return logging.getLogger('info-crawler')
-
 
 logger = get_logger()
 setup_logzero(logger, level=logging.INFO)
