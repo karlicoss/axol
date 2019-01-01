@@ -39,14 +39,14 @@ class GithubQ(Query):
         from tentacle import Tentacle # type: ignore
         return Tentacle
 
-    def __init__(self, qname: str, *queries: List[str], quote=True):
+    def __init__(self, qname: str, *queries: str, quote=True):
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
         self.qname = qname
         if quote:
             self.queries = list(map(pinboard_quote, queries))
         else:
-            self.queries = queries
+            self.queries = list(queries)
     # TODO how to make it unique and fs safe??
 
     @property
@@ -63,14 +63,14 @@ class PinboardQ(Query):
         from spinboard import Spinboard # type: ignore
         return Spinboard
 
-    def __init__(self, name: str, *queries: List[str], quote=True):
+    def __init__(self, name: str, *queries: str, quote=True):
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
         self.name = name
         if quote:
             self.queries = list(map(pinboard_quote, queries))
         else:
-            self.queries = queries
+            self.queries = list(queries)
     # TODO how to make it unique and fs safe??
 
     @property
@@ -88,7 +88,7 @@ class RedditQ(Query):
         from reach import Reach # type: ignore
         return Reach
 
-    def __init__(self, qname: str, *queries: List[str]) -> None:
+    def __init__(self, qname: str, *queries: str) -> None:
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
         self.qname = qname
