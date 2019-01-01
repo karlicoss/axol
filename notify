@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 import argparse
+from datetime import datetime
 from json import loads
 from itertools import islice
 from subprocess import check_call, check_output
-from typing import List, Tuple, Dict, Type
+from typing import List, Tuple, Dict, Type, Union
 import logging
 import sys
 from pathlib import Path
-from os.path import basename
+from os.path import basename, join
 from collections import Counter
 
 from common import get_logger, setup_paths
 setup_paths()
 from jsonify import from_json
+
+import dominate # type: ignore
+from dominate import tags as T # type: ignore
 
 from kython.logging import setup_logzero
 
@@ -27,13 +31,16 @@ class RepoHandle:
             'git', f'--git-dir={self.repo}/.git', *args
         ])
 
-    def get_revisions(self) -> List[Tuple[str, str]]:
+    def get_revisions(self) -> List[Tuple[str, datetime]]:
         ss = list(reversed(self.check_output(
             'log',
             '--pretty=format:%h %ad',
             '--no-patch',
         ).decode('utf8').splitlines()))
-        return [(l.split()[0], ' '.join(l.split()[1:])) for l in ss]
+        def pdate(l):
+            ds = ' '.join(l.split()[1:])
+            return datetime.strptime(ds, '%a %b %d %H:%M:%S %Y %z')
+        return [(l.split()[0], pdate(l)) for l in ss]
 
     def get_content(self, rev: str) -> str:
         return self.check_output(
@@ -91,17 +98,78 @@ def tabulate(text: str):
 # TODO need some sort of starting_from??
 # TODO I guess just use datetime?
 
-def format_thing(r, ustats=None):
-    us = '' if ustats is None else f'({ustats[r.user]:.3f})'
-    tagss = ' '.join([f"<a href='https://pinboard.in/u:{r.user}/t:{t}'>{t}</a>" for t in r.tags])
-    BB = f"""----------
-{r.title}  {r.link}
-{tabulate(r.description)}
-tags: {tagss}
-{r.when.strftime("%Y-%m-%d %H:%M")} by {r.user} {us} {r.blink}
-----------
-"""
-    return BB
+
+# TODO kython??
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+    def __get__(self, obj, owner):
+        return self.f(owner)
+
+Htmlish = Union[str, T.dom_tag]
+
+# TODO use Genetic[T]??
+
+class AbsTrait:
+    Target: Type = NotImplemented
+
+    # TODO this belongs to parent class??
+    _impl: Dict[Type, Type['FormatTrait']] = {}
+
+    @classmethod
+    def reg(cls, tr: Type['FormatTrait']):
+        cls._impl[tr.Target] = tr # TODO check for existence?
+
+
+    @classmethod
+    def for_(cls, f):
+        if not isinstance(f, type):
+            f = type(f)
+        return cls._impl[f]
+
+
+class FormatTrait(AbsTrait):
+    # TODO go through registered classes and dispatch
+    # TODO not sure about extras...
+    # TODO first arg for format is this??
+    @classmethod
+    def format(self, obj, *args, **kwargs) -> Htmlish:
+        raise NotImplementedError
+
+# todo gen method, pull from trait??
+def format_result(res, *args, **kwargs) -> Htmlish:
+    return FormatTrait.for_(res).format(res, *args, **kwargs)
+
+# TODO not sure if should inherit from trait... it's more of an impl..
+class SpinboardFormat(FormatTrait):
+    @classproperty
+    def Target(cls):
+        from spinboard import Result # type: ignore
+        return Result
+
+    # TODO default formatter?
+    # TODO Self ?? maybe it should be metaclass or something?
+    @classmethod
+    def format(self, obj, ustats=None) -> Htmlish:
+        # TODO would be nice to have spinboard imported here for type checking..
+        res = T.div(cls='pinboard')
+        # TODO br?
+        res.add(T.a(obj.title, href=obj.link))
+        # TODO do not underline
+        res.add(T.br())
+        if obj.description is not None:
+            res.add(obj.description)
+            res.add(T.br())
+        res.add('tags: ')
+        for t in obj.tags:
+            res.add(T.a(t, href=f'https://pinboard.in/u:{obj.user}/t:{t}'))
+        res.add(T.br())
+        # TODO userstats
+        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.blink, cls='permalink'))
+        return res
+
+# TODO better name??
+FormatTrait.reg(SpinboardFormat)
 
 # TODO maybe, move to jsonify?..
 def get_result_type(repo: str) -> Type:
@@ -130,12 +198,24 @@ def get_user_stats(jsons, rtype=None):
         u: v / total for u, v in cnt.items()
     }
 
+class Changes:
+    def __init__(self) -> None:
+        self.changes: Dict[datetime, List[str]] = {}
+    # method to format everything?
+
+    def add(self, rev: datetime, items):
+        self.changes[rev] = items
+
+    def __len__(self):
+        return sum(len(x) for x in self.changes.values())
+
 # TODO html mode??
-def get_digest(repo: str, count=None):
+def get_digest(repo: str, count=None) -> Changes:
     rtype = get_result_type(repo)
 
     if count is None:
-        count = 100
+        count = 100 # TODO fixme! maybe append if count is trimmed?
+        # TODO maybe, instead of email just check the html occasionnally? email takes quite a bit of time
 
     rh = RepoHandle(repo)
     jsons = rh.get_all_versions()
@@ -145,6 +225,8 @@ def get_digest(repo: str, count=None):
 
     all_added = []
     cc = Collector()
+    changes = Changes()
+    # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
     for jj in jsons[1:]:
         rev, dd, j = jj
         items = list(map(lambda x: from_json(rtype, x), j))
@@ -154,11 +236,11 @@ def get_digest(repo: str, count=None):
         # if first:
         if len(added) == 0:
             continue
-        all_added.append(f"++++{dd} rev {rev}+++++")
-        all_added.extend([format_thing(x, ustats=ustats) for x in sorted(added, key=lambda e: e.when)]) # , reverse=True))
+        formatted = [format_result(x, ustats=ustats) for x in sorted(added, key=lambda e: e.when)]
+        # not sure if should keep revision here at all..
+        changes.add(dd, formatted)
         # TODO link to user
         # TODO user weight?? count is fine I suppose...
-        all_added.append(f"++++{dd} rev {rev}+++++")
         # TODO added date
 #        if len(added) > 0:
 #            for r in sorted(added, key=lambda r: r.uid):
@@ -167,10 +249,9 @@ def get_digest(repo: str, count=None):
 #                # TODO highlight interesting users
 #                # TODO how to track which ones were already notified??
 #                # TODO I guess keep latest revision in a state??
-#                print(BB)
 
     latest = islice(reversed(all_added), 0, count)
-    return '\n'.join(latest)
+    return changes
 
 # TODO search is a bit of flaky: initially I was getting
 # so like exact opposites
@@ -201,14 +282,83 @@ def handle_one(repo: str, html=False, email=True):
     if len(digest) == 0:
         digest = "INITIAL!!!!"
     if email:
-        res = send(
-            subject=basename(repo),
-            body=digest,
-            html=html,
-        )
-        res.raise_for_status()
+        raise RuntimeError('email is currenlty broken')
+        # res = send(
+        #     subject=basename(repo),
+        #     body=digest,
+        #     html=html,
+        # )
+        # res.raise_for_status()
     else:
         print("Skipping email!")
+
+        def fdate(d: datetime) -> str:
+            return d.strftime('%a %d %b %Y %H:%M')
+        NOW = datetime.now()
+
+        name = basename(repo)
+        doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
+
+        STYLE = """
+
+.item {
+    margin-top:    10px;
+    margin-bottom: 10px;
+}
+
+.permalink {
+    color: gray;
+}
+
+.day-changes-inner {
+    margin-left: 15px;
+}
+
+a:link {
+  text-decoration: none;
+}
+
+a:visited {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:active {
+  text-decoration: underline;
+}
+        """
+
+        with doc.head:
+            T.style(STYLE)
+            # T.link(rel='stylesheet', href='style.css')
+            # script(type='text/javascript', src='script.js')
+            pass
+
+        # TODO email that as well?
+        with doc:
+            for d, items in sorted(digest.changes.items(), reverse=True):
+                with T.div(cls='day-changes') as dc:
+                    dc.add(T.div(T.b(fdate(d))))
+                    # TODO tab?
+                    with T.div(cls='day-changes-inner') as dci:
+                        for i in items:
+                            # TODO append raw?
+                            dci.add(T.div(i, cls='item'))
+            # with div(id='header').add(ol()):
+            #     for i in ['home', 'about', 'contact']:
+            #         li(a(i.title(), href='/%s.html' % i))
+
+            # with div():
+            #     attr(cls='body')
+            #     p('Lorem ipsum..')
+
+        # print(doc)
+        with open(join('rendered', name + '.html'), 'w') as fo:
+            fo.write(str(doc))
+
 
 
 # TODO for starters, just send last few days digest..
@@ -216,6 +366,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('repo', nargs='?')
     parser.add_argument('--no-email', action='store_false', dest='email')
+    parser.add_argument('--no-html', action='store_false', dest='html')
     args = parser.parse_args()
 
     logger = get_logger()
@@ -236,7 +387,7 @@ def main():
     for repo in repos:
         try:
             logger.info("Processing %s", repo)
-            handle_one(str(repo), html=True, email=args.email)
+            handle_one(str(repo), html=args.html, email=args.email)
         except Exception as e:
             logger.exception(e)
             ok = False
@@ -254,3 +405,5 @@ if __name__ == '__main__':
 
 # basically a thing that knows how to fetch items with timestsamps
 # and notify of new ones..
+
+# TODO need to plot some nice dashboard..
