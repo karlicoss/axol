@@ -11,3 +11,10 @@ def setup_paths():
 # TODO name after some lizard?
 def get_logger():
     return logging.getLogger('info-crawler')
+
+# TODO kython??
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+    def __get__(self, obj, owner):
+        return self.f(owner)

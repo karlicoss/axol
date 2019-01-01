@@ -11,7 +11,7 @@ from pathlib import Path
 from os.path import basename, join
 from collections import Counter
 
-from common import get_logger, setup_paths
+from common import get_logger, setup_paths, classproperty
 setup_paths()
 from jsonify import from_json
 
@@ -20,12 +20,6 @@ from dominate import tags as T # type: ignore
 
 from kython.logging import setup_logzero
 
-# TODO kython??
-class classproperty(object):
-    def __init__(self, f):
-        self.f = f
-    def __get__(self, obj, owner):
-        return self.f(owner)
 
 
 class RepoHandle:

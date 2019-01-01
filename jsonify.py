@@ -1,11 +1,37 @@
 # knows how to jsonify each specific query?
 # this is a bit nicer -- kinda like mixins but dynamic.. so the code doesn't have to interleave with fetchers
 from datetime import datetime
-from kython.kjson import ToFromJson
-
 from typing import Any, Dict, Type
 
+from kython.kjson import ToFromJson
+
+from common import classproperty
+from trait import AbsTrait, pull
+
 Json = Any
+
+# class JsonTrait(AbsTrait):
+#     _impls = {}
+
+#     @classmethod
+#     def to_json(trait, obj) -> Json:
+#         raise NotImplementedError
+
+#     # @classmethod
+#     # def from_json(trait, jj: Json):
+#     #     raise NotImplementedError
+# # from_json = # TODO ugh.. sometimes might require manual dispatching??
+
+# class SpinboardJson(JsonTrait):
+#     # TODO rename Target to Self?
+#     @classproperty
+#     def Target(trait):
+#         from spinboard import Result # type: ignore
+#         return Result
+
+
+# to_json = pull(JsonTrait.to_json)
+
 
 class Jsoner:
     def __init__(self) -> None:
