@@ -4,7 +4,7 @@ from datetime import datetime
 from json import loads
 from itertools import islice
 from subprocess import check_call, check_output
-from typing import List, Tuple, Dict, Type, Union
+from typing import List, Tuple, Dict, Type, Union, Any
 import logging
 import sys
 from pathlib import Path
@@ -20,7 +20,13 @@ from dominate import tags as T # type: ignore
 
 from kython.logging import setup_logzero
 
-OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
+# TODO kython??
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+    def __get__(self, obj, owner):
+        return self.f(owner)
+
 
 class RepoHandle:
     def __init__(self, repo: str):
@@ -78,7 +84,7 @@ def diffference(before, after):
 
 class Collector:
     def __init__(self):
-        self.items = {}
+        self.items: Dict[str, Any] = {}
 
     def register(self, batch):
         added = []
@@ -90,21 +96,9 @@ class Collector:
                 self.items[i.uid] = i
         return added
 
-def tabulate(text: str):
-    if text is None:
-        return "   "
-    return '\n'.join('   ' + t for t in text.splitlines())
-
 # TODO need some sort of starting_from??
 # TODO I guess just use datetime?
 
-
-# TODO kython??
-class classproperty(object):
-    def __init__(self, f):
-        self.f = f
-    def __get__(self, obj, owner):
-        return self.f(owner)
 
 Htmlish = Union[str, T.dom_tag]
 
@@ -140,6 +134,14 @@ class FormatTrait(AbsTrait):
 def format_result(res, *args, **kwargs) -> Htmlish:
     return FormatTrait.for_(res).format(res, *args, **kwargs)
 
+
+def isempty(s) -> bool:
+    if s is None:
+        return True
+    if len(s.strip()) == 0:
+        return True
+    return False
+
 # TODO not sure if should inherit from trait... it's more of an impl..
 class SpinboardFormat(FormatTrait):
     @classproperty
@@ -150,26 +152,61 @@ class SpinboardFormat(FormatTrait):
     # TODO default formatter?
     # TODO Self ?? maybe it should be metaclass or something?
     @classmethod
-    def format(self, obj, ustats=None) -> Htmlish:
+    def format(trait, obj, *args, **kwargs) -> Htmlish:
         # TODO would be nice to have spinboard imported here for type checking..
         res = T.div(cls='pinboard')
-        # TODO br?
         res.add(T.a(obj.title, href=obj.link))
-        # TODO do not underline
         res.add(T.br())
-        if obj.description is not None:
+        if not isempty(obj.description):
             res.add(obj.description)
             res.add(T.br())
         res.add('tags: ')
         for t in obj.tags:
             res.add(T.a(t, href=f'https://pinboard.in/u:{obj.user}/t:{t}'))
         res.add(T.br())
-        # TODO userstats
         res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.blink, cls='permalink'))
+        # TODO userstats
         return res
-
-# TODO better name??
+# TODO better name for reg
 FormatTrait.reg(SpinboardFormat)
+
+class ReachFormat(FormatTrait):
+    @classproperty
+    def Target(cls):
+        from reach import Result # type: ignore
+        return Result
+
+    @classmethod
+    def format(trait, obj, *args, **kwargs) -> Htmlish:
+        res = T.div(cls='reddit')
+        res.add(T.a(obj.title, href=obj.link))
+        res.add(T.br())
+        if not isempty(obj.description):
+            res.add(obj.description)
+            res.add(T.br())
+        # TODO user and subreddit and misc?
+        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', cls='permalink')) # TODO link..
+        return res
+FormatTrait.reg(ReachFormat)
+
+class TentacleTrait(FormatTrait):
+    @classproperty
+    def Target(cls):
+        from tentacle import Result # type: ignore
+        return Result
+
+    # TODO mm. maybe permalink is a part of trait?
+    @classmethod
+    def format(trait, obj, *args, **kwargs) -> Htmlish:
+        res = T.div(cls='github')
+        res.add(T.a(obj.title, href=obj.link))
+        res.add(T.br())
+        if not isempty(obj.description):
+            res.add(obj.description)
+            res.add(T.br())
+        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', cls='permalink')) # TODO link..
+        return res
+FormatTrait.reg(TentacleTrait)
 
 # TODO maybe, move to jsonify?..
 def get_result_type(repo: str) -> Type:
@@ -213,21 +250,22 @@ class Changes:
 def get_digest(repo: str, count=None) -> Changes:
     rtype = get_result_type(repo)
 
-    if count is None:
-        count = 100 # TODO fixme! maybe append if count is trimmed?
+    count = None
+    # if count is None:
+    #     count = 100 # TODO fixme! maybe append if count is trimmed?
         # TODO maybe, instead of email just check the html occasionnally? email takes quite a bit of time
 
     rh = RepoHandle(repo)
     jsons = rh.get_all_versions()
-    ustats = get_user_stats(jsons, rtype=rtype)
+    # ustats = get_user_stats(jsons, rtype=rtype)
+    ustats = None
 
     # TODO shit. should have stored metadata in repository?... for now guess from filename..
 
-    all_added = []
     cc = Collector()
     changes = Changes()
     # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
-    for jj in jsons[1:]:
+    for jj in jsons:
         rev, dd, j = jj
         items = list(map(lambda x: from_json(rtype, x), j))
         added = cc.register(items)
@@ -236,7 +274,7 @@ def get_digest(repo: str, count=None) -> Changes:
         # if first:
         if len(added) == 0:
             continue
-        formatted = [format_result(x, ustats=ustats) for x in sorted(added, key=lambda e: e.when)]
+        formatted = [format_result(x, ustats=ustats) for x in sorted(added, key=lambda e: e.when, reverse=True)]
         # not sure if should keep revision here at all..
         changes.add(dd, formatted)
         # TODO link to user
@@ -250,7 +288,6 @@ def get_digest(repo: str, count=None) -> Changes:
 #                # TODO how to track which ones were already notified??
 #                # TODO I guess keep latest revision in a state??
 
-    latest = islice(reversed(all_added), 0, count)
     return changes
 
 # TODO search is a bit of flaky: initially I was getting
@@ -277,10 +314,11 @@ def send(subject: str, body: str, html=False):
         }
     )
 
+def fdate(d: datetime) -> str:
+    return d.strftime('%a %d %b %Y %H:%M')
+
 def handle_one(repo: str, html=False, email=True):
     digest = get_digest(repo)
-    if len(digest) == 0:
-        digest = "INITIAL!!!!"
     if email:
         raise RuntimeError('email is currenlty broken')
         # res = send(
@@ -290,10 +328,6 @@ def handle_one(repo: str, html=False, email=True):
         # )
         # res.raise_for_status()
     else:
-        print("Skipping email!")
-
-        def fdate(d: datetime) -> str:
-            return d.strftime('%a %d %b %Y %H:%M')
         NOW = datetime.now()
 
         name = basename(repo)
@@ -377,8 +411,8 @@ def main():
     # froms = getattr(args, 'from')
     # TODO utc timestamp??
     # tos = args.to
-    # TODO strptime?
-    repos = []
+    repos: List[Path] = []
+    OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
     if args.repo is not None:
         repos = [OUTPUTS.joinpath(args.repo)]
     else:
