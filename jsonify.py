@@ -3,14 +3,14 @@
 from datetime import datetime
 from kython.kjson import ToFromJson
 
-from typing import Any
+from typing import Any, Dict, Type
 
 Json = Any
 
 class Jsoner:
-    def __init__(self):
-        self.to_json_f = {}
-        self.from_json_f = {}
+    def __init__(self) -> None:
+        self.to_json_f: Dict[Type, Any] = {}
+        self.from_json_f: Dict[Type, Any] = {}
 
     def to_json(self, obj) -> Json:
         return self.to_json_f[type(obj)](obj)

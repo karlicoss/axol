@@ -3,16 +3,20 @@ import argparse
 from json import loads
 from itertools import islice
 from subprocess import check_call, check_output
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Type
+import logging
+import sys
 from pathlib import Path
 from os.path import basename
 from collections import Counter
 
-OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
+from common import get_logger, setup_paths
+setup_paths()
+from jsonify import from_json
 
-import sys
-sys.path.append('/L/coding/spinboard')
-from spinboard.common import Result
+from kython.logging import setup_logzero
+
+OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
 
 class RepoHandle:
     def __init__(self, repo: str):
@@ -99,13 +103,26 @@ tags: {tagss}
 """
     return BB
 
+# TODO maybe, move to jsonify?..
+def get_result_type(repo: str) -> Type:
+    name = basename(repo)
+    if name.startswith('reddit'):
+        from reach import Result # type: ignore
+        return Result
+    elif name.startswith('github'):
+        from tentacle import Result # type: ignore
+        return Result
+    else:
+        from spinboard import Result # type: ignore
+        return Result
+
 
 # TODO hmm. instead percentile would be more accurate?...
-def get_user_stats(jsons):
+def get_user_stats(jsons, rtype=None):
     cc = Collector()
     for jj in jsons:
         rev, dd, j = jj
-        items = list(map(Result.from_json, j))
+        items = list(map(lambda x: from_json(rtype, x), j))
         cc.register(items)
     cnt = Counter([i.user for i in cc.items.values()])
     total = max(sum(cnt.values()), 1)
@@ -115,19 +132,22 @@ def get_user_stats(jsons):
 
 # TODO html mode??
 def get_digest(repo: str, count=None):
+    rtype = get_result_type(repo)
+
     if count is None:
         count = 100
 
     rh = RepoHandle(repo)
     jsons = rh.get_all_versions()
-    ustats = get_user_stats(jsons)
+    ustats = get_user_stats(jsons, rtype=rtype)
 
+    # TODO shit. should have stored metadata in repository?... for now guess from filename..
 
     all_added = []
     cc = Collector()
     for jj in jsons[1:]:
         rev, dd, j = jj
-        items = list(map(Result.from_json, j))
+        items = list(map(lambda x: from_json(rtype, x), j))
         added = cc.register(items)
         #print(f'revision {rev}: total {len(cc.items)}')
         #print(f'added {len(added)}')
@@ -176,23 +196,30 @@ def send(subject: str, body: str, html=False):
         }
     )
 
-def handle_one(repo: str, html=False):
+def handle_one(repo: str, html=False, email=True):
     digest = get_digest(repo)
     if len(digest) == 0:
         digest = "INITIAL!!!!"
-    res = send(
-        subject=basename(repo),
-        body=digest,
-        html=html,
-    )
-    res.raise_for_status()
+    if email:
+        res = send(
+            subject=basename(repo),
+            body=digest,
+            html=html,
+        )
+        res.raise_for_status()
+    else:
+        print("Skipping email!")
 
 
 # TODO for starters, just send last few days digest..
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('repo', nargs='?')
+    parser.add_argument('--no-email', action='store_false', dest='email')
     args = parser.parse_args()
+
+    logger = get_logger()
+    setup_logzero(logger, level=logging.DEBUG)
 
     # parser.add_argument('--from', default=None)
     # parser.add_argument('--to', default=None)
@@ -208,11 +235,10 @@ def main():
     ok = True
     for repo in repos:
         try:
-            print(f"Processing {repo}")
-            handle_one(str(repo), html=True)
+            logger.info("Processing %s", repo)
+            handle_one(str(repo), html=True, email=args.email)
         except Exception as e:
-            print(f"error while processing {repo}")
-            print(e)
+            logger.exception(e)
             ok = False
 
     if not ok:
