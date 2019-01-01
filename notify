@@ -99,40 +99,22 @@ class Collector:
 # TODO need some sort of starting_from??
 # TODO I guess just use datetime?
 
+from trait import AbsTrait, pull
 
 Htmlish = Union[str, T.dom_tag]
 
 # TODO use Genetic[T]??
 
-class AbsTrait:
-    Target: Type = NotImplemented
-
-    # TODO this belongs to parent class??
-    _impl: Dict[Type, Type['FormatTrait']] = {}
-
-    @classmethod
-    def reg(cls, tr: Type['FormatTrait']):
-        cls._impl[tr.Target] = tr # TODO check for existence?
-
-
-    @classmethod
-    def for_(cls, f):
-        if not isinstance(f, type):
-            f = type(f)
-        return cls._impl[f]
-
-
 class FormatTrait(AbsTrait):
+    _impls = {}
+
     # TODO go through registered classes and dispatch
     # TODO not sure about extras...
     # TODO first arg for format is this??
     @classmethod
-    def format(self, obj, *args, **kwargs) -> Htmlish:
+    def format(trait, obj, *args, **kwargs) -> Htmlish:
         raise NotImplementedError
-
-# todo gen method, pull from trait??
-def format_result(res, *args, **kwargs) -> Htmlish:
-    return FormatTrait.for_(res).format(res, *args, **kwargs)
+format_result = pull(FormatTrait.format)
 
 
 def isempty(s) -> bool:
