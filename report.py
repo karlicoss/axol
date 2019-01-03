@@ -19,6 +19,7 @@ from jsonify import from_json
 import dominate # type: ignore
 from dominate import tags as T # type: ignore
 
+from kython import flatten
 from kython.logging import setup_logzero
 
 
@@ -118,12 +119,27 @@ def isempty(s) -> bool:
         return True
     return False
 
+# def fdate(d: datetime) -> str:
+#     return d.strftime("%Y-%m-%d %H:%M")
+
+def fdate(d: datetime) -> str:
+    return d.strftime('%a %d %b %Y %H:%M')
+
 # TODO not sure if should inherit from trait... it's more of an impl..
 class SpinboardFormat(FormatTrait):
     @classproperty
     def Target(cls):
         from spinboard import Result # type: ignore
         return Result
+
+    @staticmethod
+    def plink(user=None, tag=None) -> str:
+        ll = f'https://pinboard.in'
+        if user is not None:
+            ll += f'/u:{user}'
+        if tag is not None:
+            ll += f'/t:{tag}'
+        return ll
 
     # TODO default formatter?
     # TODO Self ?? maybe it should be metaclass or something?
@@ -138,9 +154,9 @@ class SpinboardFormat(FormatTrait):
             res.add(T.br())
         res.add('tags: ')
         for t in obj.tags:
-            res.add(T.a(t, href=f'https://pinboard.in/u:{obj.user}/t:{t}'))
+            res.add(T.a(t, href=SpinboardFormat.plink(user=obj.user, tag=t)))
         res.add(T.br())
-        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.blink, cls='permalink'))
+        res.add(T.a(f'{fdate(obj.when)} by {obj.user}', href=obj.blink, cls='permalink'))
         # TODO userstats
         return res
 # TODO better name for reg
@@ -250,7 +266,7 @@ def get_digest(repo: str, count=None) -> Changes:
         # if first:
         if len(added) == 0:
             continue
-        formatted = [format_result(x, ustats=ustats) for x in sorted(added, key=lambda e: e.when, reverse=True)]
+        formatted = list(sorted(added, key=lambda e: e.when, reverse=True))
         # not sure if should keep revision here at all..
         changes.add(dd, formatted)
         # TODO link to user
@@ -290,26 +306,7 @@ def send(subject: str, body: str, html=False):
         }
     )
 
-def fdate(d: datetime) -> str:
-    return d.strftime('%a %d %b %Y %H:%M')
-
-def handle_one(repo: str, html=False, email=True, rendered: Path = None):
-    digest = get_digest(repo)
-    if email:
-        raise RuntimeError('email is currenlty broken')
-        # res = send(
-        #     subject=basename(repo),
-        #     body=digest,
-        #     html=html,
-        # )
-        # res.raise_for_status()
-    else:
-        NOW = datetime.now()
-
-        name = basename(repo)
-        doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
-
-        STYLE = """
+STYLE = """
 
 .item {
     margin-top:    10px;
@@ -339,13 +336,123 @@ a:hover {
 a:active {
   text-decoration: underline;
 }
-        """
+"""
+
+from kython import group_by_key
+from kython.url import normalise
+from functools import lru_cache
+from collections import Counter
+
+def vote(l):
+    data = Counter(l)
+    return data.most_common()[0][0]
+
+class Cumulative:
+    def __init__(self, items: List) -> None:
+        self.items = items
+
+    # TODO mabye cached_property?
+    @property # type: ignore
+    @lru_cache()
+    def nlink(self) -> str:
+        return normalise(self.items[0].link) # TODO not sure if useful..
+
+    @property # type: ignore
+    @lru_cache()
+    def link(self) -> str:
+        return vote(i.link for i in self.items)
+
+    @property # type: ignore
+    @lru_cache()
+    def when(self) -> str:
+        return min(x.when for x in self.items)
+
+    # TODO shit, each of them is gonna require something individual??
+    @property # type: ignore
+    @lru_cache()
+    def tags(self) -> List[str]:
+        tt = {x for x in sum((i.tags for i in self.items), [])}
+        return list(sorted(tt))
+
+    @property # type: ignore
+    @lru_cache()
+    def description(self) -> str:
+        return vote(i.description for i in self.items)
+
+    @property # type: ignore
+    @lru_cache()
+    def title(self) -> str:
+        return vote(i.title for i in self.items)
+
+    @property # type: ignore
+    @lru_cache()
+    def users(self) -> List[str]:
+        uu = {x.user for x in self.items}
+        return list(sorted(uu))
+
+    def format(self):
+        # TODO also display total count??
+        res = T.div(cls='pinboard')
+        res.add(T.a(self.title, href=self.link))
+        res.add(T.br())
+        if not isempty(self.description):
+            res.add(self.description)
+            res.add(T.br())
+        res.add('tags: ')
+        for t in self.tags:
+            res.add(T.a(t, href=SpinboardFormat.plink(tag=t)))
+        res.add(T.br())
+        pl = T.div(f'{fdate(self.when)} by', cls='permalink')
+        fusers = [T.a(u, href=SpinboardFormat.plink(user=u)) for u in self.users]
+        for f in fusers:
+            pl.add(T.span(f))
+        res.add(pl)
+        return res
+
+def render_summary(repo, rendered: Path = None):
+    digest = get_digest(repo)
+    NOW = datetime.now()
+    name = basename(repo)
+
+    everything = flatten([ch for ch in digest.changes.values()])
+
+    before = len(everything)
+
+
+    grouped = group_by_key(everything, key=lambda x: normalise(x.link))
+    print(f'before: {before}, after: {len(grouped)}')
+
+    cumulatives = list(map(Cumulative, grouped.values()))
+    cumulatives = list(sorted(cumulatives, key=lambda c: c.when, reverse=True))
+
+    doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
+    with doc.head:
+        T.style(STYLE)
+    with doc:
+        for cc in cumulatives:
+            doc.add(T.div(cc.format(), cls='item'))
+
+    with rendered.joinpath(name + '.html').open('w') as fo:
+        fo.write(str(doc))
+
+def handle_one(repo: str, html=False, email=True, rendered: Path = None):
+    digest = get_digest(repo)
+    if email:
+        raise RuntimeError('email is currenlty broken')
+        # res = send(
+        #     subject=basename(repo),
+        #     body=digest,
+        #     html=html,
+        # )
+        # res.raise_for_status()
+    else:
+        NOW = datetime.now()
+
+        name = basename(repo)
+        doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
 
         with doc.head:
             T.style(STYLE)
-            # T.link(rel='stylesheet', href='style.css')
-            # script(type='text/javascript', src='script.js')
-            pass
 
         # TODO email that as well?
         with doc:
@@ -355,8 +462,9 @@ a:active {
                     # TODO tab?
                     with T.div(cls='day-changes-inner') as dci:
                         for i in items:
+                            fi = format_result(i)
                             # TODO append raw?
-                            dci.add(T.div(i, cls='item'))
+                            dci.add(T.div(fi, cls='item'))
             # with div(id='header').add(ol()):
             #     for i in ['home', 'about', 'contact']:
             #         li(a(i.title(), href='/%s.html' % i))
@@ -375,6 +483,7 @@ a:active {
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('repo', nargs='?')
+    parser.add_argument('--summary', action='store_true')
     parser.add_argument('--no-email', action='store_false', dest='email')
     parser.add_argument('--no-html', action='store_false', dest='html')
     args = parser.parse_args()
@@ -388,7 +497,6 @@ def main():
     # TODO utc timestamp??
     # tos = args.to
     repos: List[Path] = []
-    RENDERED = Path(__file__).parent.joinpath('rendered').resolve()
     if args.repo is not None:
         repos = [OUTPUTS.joinpath(args.repo)]
     else:
@@ -397,7 +505,12 @@ def main():
     for repo in repos:
         try:
             logger.info("Processing %s", repo)
-            handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED)
+            if args.summary:
+                SUMMARY = Path(__file__).parent.joinpath('summary').resolve()
+                render_summary(str(repo), rendered=SUMMARY)
+            else:
+                RENDERED = Path(__file__).parent.joinpath('rendered').resolve()
+                handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED)
         except Exception as e:
             logger.exception(e)
             ok = False
