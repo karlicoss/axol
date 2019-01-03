@@ -14,11 +14,16 @@ from kython.logging import setup_logzero
 from common import get_logger, setup_paths
 setup_paths()
 
-from config import slugify, queries
+from config import slugify, queries, OUTPUTS
 from jsonify import to_json, from_json
 
 logger = get_logger()
-setup_logzero(logger, level=logging.INFO)
+
+
+def setup_logging():
+    setup_logzero(logger, level=logging.INFO)
+    # TODO spinboard? etc
+setup_logging()
 
 Pathish = Union[str, Path]
 
@@ -32,9 +37,6 @@ def slugify_in(path: str, dir: Pathish):
             return res
         path = path + '_'
 
-RP = Path('outputs')
-
-
 class RepoHandle:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -42,7 +44,7 @@ class RepoHandle:
     @classmethod
     def create(cls, name: str):
         dname = slugify(name)
-        rpath = RP.joinpath(dname)
+        rpath = OUTPUTS.joinpath(dname)
         rpath.mkdir(exist_ok=True)
         return RepoHandle(rpath)
 
@@ -81,6 +83,7 @@ class RepoHandle:
 def process_all(dry=False):
     ok = True
     def reg_error(err):
+        nonlocal ok
         logger.error('error while retreiving stuff')
         if isinstance(err, Exception):
             logger.exception(err)
@@ -107,6 +110,7 @@ def process_all(dry=False):
             reg_error(e)
 
     if not ok:
+        logger.error("Had errors during processing!")
         sys.exit(1)
 
 def main():

@@ -13,13 +13,13 @@ from collections import Counter
 
 from common import get_logger, setup_paths, classproperty
 setup_paths()
+from config import OUTPUTS
 from jsonify import from_json
 
 import dominate # type: ignore
 from dominate import tags as T # type: ignore
 
 from kython.logging import setup_logzero
-
 
 
 class RepoHandle:
@@ -388,7 +388,6 @@ def main():
     # TODO utc timestamp??
     # tos = args.to
     repos: List[Path] = []
-    OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
     RENDERED = Path(__file__).parent.joinpath('rendered').resolve()
     if args.repo is not None:
         repos = [OUTPUTS.joinpath(args.repo)]

@@ -1,8 +1,13 @@
-from kython import flatten
-
+from pathlib import Path
 import re
 from typing import List, Iterator, NamedTuple, Type, Any
 from typing_extensions import Protocol
+
+from kython import flatten
+
+OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
+
+assert OUTPUTS.exists()
 
 # TODO move somewhere more appropriate
 def slugify(s: str):
@@ -158,13 +163,6 @@ def make_queries() -> Iterator[Query]:
         'pkm NOT pokemon',
         f'"{pkm}"',
         quote=False,
-    )
-
-    return
-    yield from qall(
-        'pkm',
-        pkm, 'pkm',
-        pintags=True
     )
 
     qg = 'quantum gravity'
