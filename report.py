@@ -117,15 +117,6 @@ class FormatTrait(AbsTrait):
     # def format(trait, cobj)
 format_result = pull(FormatTrait.format)
 
-class CumulativeTrait(AbsTrait):
-    _impls = {}
-
-    @classmethod
-    def format(trait, obj, *args, **kwargs) -> Htmlish:
-        raise NotImplementedError
-
-format_cumulative = pull(CumulativeTrait.format)
-
 def isempty(s) -> bool:
     if s is None:
         return True
@@ -139,13 +130,27 @@ def isempty(s) -> bool:
 def fdate(d: datetime) -> str:
     return d.strftime('%a %d %b %Y %H:%M')
 
-# TODO not sure if should inherit from trait... it's more of an impl..
-class SpinboardFormat(FormatTrait):
+# TODO move target separately?
+class ForSpinboard:
     @classproperty
     def Target(cls):
         from spinboard import Result # type: ignore
         return Result
 
+class ForReach:
+    @classproperty
+    def Target(cls):
+        from reach import Result # type: ignore
+        return Result
+
+class ForTentacle:
+    @classproperty
+    def Target(cls):
+        from tentacle import Result # type: ignore
+        return Result
+
+# TODO not sure if should inherit from trait... it's more of an impl..
+class SpinboardFormat(ForSpinboard, FormatTrait):
     @staticmethod
     def plink(user=None, tag=None) -> str:
         ll = f'https://pinboard.in'
@@ -176,12 +181,7 @@ class SpinboardFormat(FormatTrait):
 # TODO better name for reg
 FormatTrait.reg(SpinboardFormat)
 
-class ReachFormat(FormatTrait):
-    @classproperty
-    def Target(cls):
-        from reach import Result # type: ignore
-        return Result
-
+class ReachFormat(ForReach, FormatTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
@@ -195,12 +195,7 @@ class ReachFormat(FormatTrait):
         return res
 FormatTrait.reg(ReachFormat)
 
-class TentacleTrait(FormatTrait):
-    @classproperty
-    def Target(cls):
-        from tentacle import Result # type: ignore
-        return Result
-
+class TentacleTrait(ForTentacle, FormatTrait):
     # TODO mm. maybe permalink is a part of trait?
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
@@ -378,9 +373,11 @@ def invkey(kk):
             return 0
     return cmp_to_key(icmp)
 
-class CumulativeBase:
+class CumulativeBase(AbsTrait):
+    _impls = {}
+
     def __init__(self, items: List) -> None:
-        self.FTrait = SpinboardFormat # TODO
+        self.FTrait = FormatTrait.for_(self.Target)
         self.items = items
 
     # TODO mabye cached_property?
@@ -407,7 +404,7 @@ class CumulativeBase:
     def sortkey(cls):
         raise NotImplementedError
 
-class SpinboardCumulative(CumulativeBase):
+class SpinboardCumulative(ForSpinboard, CumulativeBase):
     @classproperty
     def cumkey(cls):
         return lambda x: normalise(x.link)
@@ -457,13 +454,38 @@ class SpinboardCumulative(CumulativeBase):
             pl.add(T.span(f))
         res.add(pl)
         return res
+CumulativeBase.reg(SpinboardCumulative)
+
+class TentacleCumulative(ForTentacle, CumulativeBase):
+    @classproperty
+    def cumkey(cls):
+        return lambda x: id(x)
+
+    @classproperty
+    def sortkey(cls):
+        return lambda c: c.stars
+
+    @property
+    @lru_cache()
+    def stars(self) -> int:
+        # TODO vote for method??
+        return vote(i.stars for i in self.items)
+
+    def format(self):
+        assert len(self.items) == 1
+        return self.FTrait.format(self.items[0])
+CumulativeBase.reg(TentacleCumulative)
+
 
 def render_summary(repo, rendered: Path = None):
+    rtype = get_result_type(repo) # TODO ??
+    # ODO just get trait for type??
+
+    Cumulative = CumulativeBase.for_(rtype)
+
     digest = get_digest(repo)
     NOW = datetime.now()
     name = basename(repo)
-
-    Cumulative = SpinboardCumulative
 
     everything = flatten([ch for ch in digest.changes.values()])
 
