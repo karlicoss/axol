@@ -100,6 +100,7 @@ Htmlish = Union[str, T.dom_tag]
 
 # TODO use Genetic[T]??
 
+# TODO hmm. maybe calling base class method pulls automatically??
 class FormatTrait(AbsTrait):
     _impls = {}
 
@@ -109,8 +110,21 @@ class FormatTrait(AbsTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         raise NotImplementedError
+
+
+    # TODO crap. does it have to be a separate trait??
+    # @classmethod
+    # def format(trait, cobj)
 format_result = pull(FormatTrait.format)
 
+class CumulativeTrait(AbsTrait):
+    _impls = {}
+
+    @classmethod
+    def format(trait, obj, *args, **kwargs) -> Htmlish:
+        raise NotImplementedError
+
+format_cumulative = pull(CumulativeTrait.format)
 
 def isempty(s) -> bool:
     if s is None:
@@ -191,13 +205,15 @@ class TentacleTrait(FormatTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='github')
-        res.add(T.a(obj.title, href=obj.link))
+        res.add(T.span(obj.title))
+        res.add(T.span(f'{obj.stars}★'))
         res.add(T.br())
         if not isempty(obj.description):
             res.add(obj.description)
             res.add(T.br())
-        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', cls='permalink')) # TODO link..
+        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.link, cls='permalink'))
         return res
+        # TODO indicate how often is user showing up?
 FormatTrait.reg(TentacleTrait)
 
 # TODO maybe, move to jsonify?..
@@ -347,8 +363,24 @@ def vote(l):
     data = Counter(l)
     return data.most_common()[0][0]
 
-class Cumulative:
+# TODO kython??
+# TODO tests next to function kinda like rust
+def invkey(kk):
+    from functools import cmp_to_key
+    def icmp(a, b):
+        ka = kk(a)
+        kb = kk(b)
+        if ka < kb:
+            return 1
+        elif ka > kb:
+            return 1
+        else:
+            return 0
+    return cmp_to_key(icmp)
+
+class CumulativeBase:
     def __init__(self, items: List) -> None:
+        self.FTrait = SpinboardFormat # TODO
         self.items = items
 
     # TODO mabye cached_property?
@@ -366,6 +398,23 @@ class Cumulative:
     @lru_cache()
     def when(self) -> str:
         return min(x.when for x in self.items)
+
+    @classproperty
+    def cumkey(cls):
+        raise NotImplementedError
+
+    @classproperty
+    def sortkey(cls):
+        raise NotImplementedError
+
+class SpinboardCumulative(CumulativeBase):
+    @classproperty
+    def cumkey(cls):
+        return lambda x: normalise(x.link)
+
+    @classproperty
+    def sortkey(cls):
+        return invkey(lambda c: c.when)
 
     # TODO shit, each of them is gonna require something individual??
     @property # type: ignore
@@ -400,10 +449,10 @@ class Cumulative:
             res.add(T.br())
         res.add('tags: ')
         for t in self.tags:
-            res.add(T.a(t, href=SpinboardFormat.plink(tag=t)))
+            res.add(T.a(t, href=self.FTrait.plink(tag=t)))
         res.add(T.br())
         pl = T.div(f'{fdate(self.when)} by', cls='permalink')
-        fusers = [T.a(u, href=SpinboardFormat.plink(user=u)) for u in self.users]
+        fusers = [T.a(u, href=self.FTrait.plink(user=u)) for u in self.users]
         for f in fusers:
             pl.add(T.span(f))
         res.add(pl)
@@ -414,16 +463,20 @@ def render_summary(repo, rendered: Path = None):
     NOW = datetime.now()
     name = basename(repo)
 
+    Cumulative = SpinboardCumulative
+
     everything = flatten([ch for ch in digest.changes.values()])
 
     before = len(everything)
 
 
-    grouped = group_by_key(everything, key=lambda x: normalise(x.link))
+    # TODO group key is unique.. should I make it object id??
+    grouped = group_by_key(everything, key=Cumulative.cumkey)
     print(f'before: {before}, after: {len(grouped)}')
 
+    # TODO sort key for summary??
     cumulatives = list(map(Cumulative, grouped.values()))
-    cumulatives = list(sorted(cumulatives, key=lambda c: c.when, reverse=True))
+    cumulatives = list(sorted(cumulatives, key=Cumulative.sortkey))
 
     doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
     with doc.head:

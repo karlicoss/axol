@@ -159,8 +159,8 @@ def make_queries() -> Iterator[Query]:
         pkm  , *pintag(pkm),
     )
     yield G(
-        'pkm',
-        'pkm NOT pokemon',
+        'pkm', # TODO shit. that's a bit messed up...
+        'pkm NOT pokemon', # TODO NOT pkm
         f'"{pkm}"',
         quote=False,
     )
