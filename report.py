@@ -185,7 +185,8 @@ class ReachFormat(ForReach, FormatTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
-        res.add(T.a(obj.title, href=obj.link))
+        ll = f'https://reddit.com{obj.link}'
+        res.add(T.a(obj.title, href=ll))
         res.add(T.br())
         if not isempty(obj.description):
             res.add(obj.description)
@@ -476,6 +477,19 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
         return self.FTrait.format(self.items[0])
 CumulativeBase.reg(TentacleCumulative)
 
+class ReachCumulative(ForReach, CumulativeBase):
+    @classproperty
+    def cumkey(cls):
+        return lambda x: id(x)
+
+    @classproperty
+    def sortkey(cls):
+        return invkey(lambda c: c.when) # TODO ups/downs??
+
+    def format(self):
+        assert len(self.items) == 1
+        return self.FTrait.format(self.items[0])
+CumulativeBase.reg(ReachCumulative)
 
 def render_summary(repo, rendered: Path = None):
     rtype = get_result_type(repo) # TODO ??
