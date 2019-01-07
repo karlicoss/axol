@@ -189,8 +189,12 @@ class ReachFormat(ForReach, FormatTrait):
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
         ll = reddit(obj.link)
+
+        ud = f'{obj.ups}⇅{obj.downs}'
         res.add(T.a(obj.title, href=ll))
+        res.add(T.span(ud))
         res.add(T.br())
+
         if not isempty(obj.description):
             res.add(obj.description)
             res.add(T.br())
@@ -493,17 +497,33 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
 CumulativeBase.reg(TentacleCumulative)
 
 class ReachCumulative(ForReach, CumulativeBase):
+    @property
+    @lru_cache()
+    def the(self):
+        assert len(self.items) == 1
+        return self.items[0]
+
+    @property
+    @lru_cache()
+    def ups(self):
+        return self.the.ups
+
+    @property
+    @lru_cache()
+    def downs(self):
+        return self.the.downs
+
     @classproperty
     def cumkey(cls):
         return lambda x: id(x)
 
     @classproperty
     def sortkey(cls):
-        return invkey(lambda c: c.when) # TODO ups/downs??
+        invwhen = invkey(lambda c: c.when)
+        return lambda c: (c.ups + c.downs, invwhen(c))
 
     def format(self):
-        assert len(self.items) == 1
-        return self.FTrait.format(self.items[0])
+        return self.FTrait.format(self.the)
 CumulativeBase.reg(ReachCumulative)
 
 def render_summary(repo, rendered: Path = None):
@@ -521,11 +541,9 @@ def render_summary(repo, rendered: Path = None):
     before = len(everything)
 
 
-    # TODO group key is unique.. should I make it object id??
     grouped = group_by_key(everything, key=Cumulative.cumkey)
     print(f'before: {before}, after: {len(grouped)}')
 
-    # TODO sort key for summary??
     cumulatives = list(map(Cumulative, grouped.values()))
     cumulatives = list(sorted(cumulatives, key=Cumulative.sortkey))
 
