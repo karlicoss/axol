@@ -333,6 +333,14 @@ STYLE = """
     margin-left: 15px;
 }
 
+.user {
+    color: #035E7B;
+}
+
+.tag {
+    color: #97130F;
+}
+
 a:link {
   text-decoration: none;
 }
@@ -448,10 +456,10 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
             res.add(T.br())
         res.add('tags: ')
         for t in self.tags:
-            res.add(T.a(t, href=self.FTrait.plink(tag=t)))
+            res.add(T.a(t, href=self.FTrait.plink(tag=t), cls='tag'))
         res.add(T.br())
         pl = T.div(f'{fdate(self.when)} by', cls='permalink')
-        fusers = [T.a(u, href=self.FTrait.plink(user=u)) for u in self.users]
+        fusers = [T.a(u, href=self.FTrait.plink(user=u), cls='user') for u in self.users]
         for f in fusers:
             pl.add(T.span(f))
         res.add(pl)
