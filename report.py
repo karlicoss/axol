@@ -374,6 +374,7 @@ def invkey(kk):
             return 0
     return cmp_to_key(icmp)
 
+
 class CumulativeBase(AbsTrait):
     _impls = {}
 
@@ -464,7 +465,8 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
 
     @classproperty
     def sortkey(cls):
-        return lambda c: c.stars
+        rev_when = invkey(lambda c: c.when)
+        return lambda c: (c.stars, rev_when(c))
 
     @property
     @lru_cache()
