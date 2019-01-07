@@ -181,18 +181,23 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
 # TODO better name for reg
 FormatTrait.reg(SpinboardFormat)
 
+def reddit(s):
+    return f'https://reddit.com{s}'
+
 class ReachFormat(ForReach, FormatTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
-        ll = f'https://reddit.com{obj.link}'
+        ll = reddit(obj.link)
         res.add(T.a(obj.title, href=ll))
         res.add(T.br())
         if not isempty(obj.description):
             res.add(obj.description)
             res.add(T.br())
-        # TODO user and subreddit and misc?
-        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', cls='permalink')) # TODO link..
+        subreddit_link = reddit('/r/' + obj.subreddit)
+        res.add(T.div(T.a(obj.subreddit, href=subreddit_link, cls='subreddit')))
+        user_link = reddit('/u/' + obj.user)
+        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink')); res.add(' by '); res.add(T.a(obj.user, href=user_link, cls='user'))
         return res
 FormatTrait.reg(ReachFormat)
 
@@ -201,7 +206,7 @@ class TentacleTrait(ForTentacle, FormatTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='github')
-        res.add(T.span(obj.title))
+        res.add(T.a(obj.title, href=obj.link))
         res.add(T.span(f'{obj.stars}★'))
         res.add(T.br())
         if not isempty(obj.description):
@@ -337,7 +342,7 @@ STYLE = """
     color: #035E7B;
 }
 
-.tag {
+.tag, .subreddit {
     color: #97130F;
 }
 
