@@ -165,6 +165,11 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         ll = cls.plink(tag=tag, user=user)
         return T.a(tag, href=ll, cls='tag')
 
+    @classmethod
+    def user_link(cls, user: str):
+        ll = cls.plink(user=user)
+        return T.a(user, href=ll, cls='user')
+
     # TODO default formatter?
     # TODO Self ?? maybe it should be metaclass or something?
     @classmethod
@@ -180,7 +185,9 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         for t in obj.tags:
             res.add(trait.tag_link(tag=t, user=obj.user))
         res.add(T.br())
-        res.add(T.a(f'{fdate(obj.when)} by {obj.user}', href=obj.blink, cls='permalink'))
+        res.add(T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink'))
+        res.add(' by')
+        res.add(trait.user_link(user=obj.user))
         # TODO userstats
         return res
 # TODO better name for reg
@@ -357,7 +364,8 @@ STYLE = """
 }
 
 .tag, .subreddit {
-    color: #97130F;
+    color: darkgreen;
+    /* color: #97130F; */
 }
 
 a:link {
@@ -504,7 +512,7 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
             res.add(self.FTrait.tag_link(tag=t))
         res.add(T.br())
         pl = T.div(f'{fdate(self.when)} by', cls='permalink')
-        fusers = [T.a(u, href=self.FTrait.plink(user=u), cls='user') for u in self.users]
+        fusers = [self.FTrait.user_link(user=u) for u in self.users]
         for f in fusers:
             pl.add(T.span(f))
         res.add(pl)
@@ -513,9 +521,17 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
     @classmethod
     def sources_summary(cls, items):
         res = T.div()
+        res.add(T.div(T.b('Tag summary:')))
         for src, cnt in cls.sources_stats(items, key=lambda i: i.tags):
             x = T.div()
             x.add(cls.FTrait.tag_link(tag=src))
+            x.add(f': {cnt}')
+            res.add(x)
+        # TODO dunno, it takes quite a bit of space... but cutting off those with 1 would be too annoying?
+        res.add(T.div(T.b('User summary:')))
+        for src, cnt in cls.sources_stats(items, key=lambda i: i.user):
+            x = T.div()
+            x.add(cls.FTrait.user_link(user=src))
             x.add(f': {cnt}')
             res.add(x)
         return res
