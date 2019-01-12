@@ -160,6 +160,11 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
             ll += f'/t:{tag}'
         return ll
 
+    @classmethod
+    def tag_link(cls, tag: str, user=None):
+        ll = cls.plink(tag=tag, user=user)
+        return T.a(tag, href=ll, cls='tag')
+
     # TODO default formatter?
     # TODO Self ?? maybe it should be metaclass or something?
     @classmethod
@@ -173,7 +178,7 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
             res.add(T.br())
         res.add('tags: ')
         for t in obj.tags:
-            res.add(T.a(t, href=SpinboardFormat.plink(user=obj.user, tag=t)))
+            res.add(trait.tag_link(tag=t, user=obj.user))
         res.add(T.br())
         res.add(T.a(f'{fdate(obj.when)} by {obj.user}', href=obj.blink, cls='permalink'))
         # TODO userstats
@@ -443,6 +448,17 @@ class CumulativeBase(AbsTrait):
     def sources_summary(cls, items):
         return f"No sources summary for {cls.Target} yet"
 
+    @classmethod
+    def sources_stats(cls, items, key):
+        c = Counter()
+        for i in items:
+            kk = key(i)
+            if not isinstance(kk, list):
+                kk = [kk]
+            for k in kk:
+                c[k] += 1
+        return list(sorted(c.items(), key=lambda p: (p[1], p[0])))
+
 class SpinboardCumulative(ForSpinboard, CumulativeBase):
     @classproperty
     def cumkey(cls):
@@ -485,7 +501,7 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
             res.add(T.br())
         res.add('tags: ')
         for t in self.tags:
-            res.add(T.a(t, href=self.FTrait.plink(tag=t), cls='tag'))
+            res.add(self.FTrait.tag_link(tag=t))
         res.add(T.br())
         pl = T.div(f'{fdate(self.when)} by', cls='permalink')
         fusers = [T.a(u, href=self.FTrait.plink(user=u), cls='user') for u in self.users]
@@ -493,6 +509,17 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
             pl.add(T.span(f))
         res.add(pl)
         return res
+
+    @classmethod
+    def sources_summary(cls, items):
+        res = T.div()
+        for src, cnt in cls.sources_stats(items, key=lambda i: i.tags):
+            x = T.div()
+            x.add(cls.FTrait.tag_link(tag=src))
+            x.add(f': {cnt}')
+            res.add(x)
+        return res
+
 CumulativeBase.reg(SpinboardCumulative)
 
 class TentacleCumulative(ForTentacle, CumulativeBase):
@@ -514,7 +541,10 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
     def format(self):
         assert len(self.items) == 1
         return self.FTrait.format(self.items[0])
+
+
 CumulativeBase.reg(TentacleCumulative)
+
 class ReachCumulative(ForReach, CumulativeBase):
     @property
     @lru_cache()
@@ -546,11 +576,8 @@ class ReachCumulative(ForReach, CumulativeBase):
 
     @classmethod
     def sources_summary(cls, items):
-        c = Counter()
-        for i in items:
-            c[i.subreddit] += 1
         res = T.div()
-        for sub, cnt in sorted(c.items(), key=lambda p: (p[1], p[0])):
+        for sub, cnt in cls.sources_stats(items, key=lambda i: i.subreddit):
             x = T.div()
             x.add(cls.FTrait.subreddit_link(sub))
             x.add(f': {cnt}')
