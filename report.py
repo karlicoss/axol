@@ -185,6 +185,12 @@ def reddit(s):
     return f'https://reddit.com{s}'
 
 class ReachFormat(ForReach, FormatTrait):
+
+    @classmethod
+    def subreddit_link(cls, sub: str):
+        subreddit_link = reddit('/r/' + sub)
+        return T.a(sub, href=subreddit_link, cls='subreddit')
+
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
@@ -198,8 +204,7 @@ class ReachFormat(ForReach, FormatTrait):
         if not isempty(obj.description):
             res.add(obj.description)
             res.add(T.br())
-        subreddit_link = reddit('/r/' + obj.subreddit)
-        res.add(T.div(T.a(obj.subreddit, href=subreddit_link, cls='subreddit')))
+        res.add(T.div(trait.subreddit_link(obj.subreddit)))
         user_link = reddit('/u/' + obj.user)
         res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink')); res.add(' by '); res.add(T.a(obj.user, href=user_link, cls='user'))
         return res
@@ -404,8 +409,11 @@ class CumulativeBase(AbsTrait):
     _impls = {}
 
     def __init__(self, items: List) -> None:
-        self.FTrait = FormatTrait.for_(self.Target)
         self.items = items
+
+    @classproperty
+    def FTrait(cls):
+        return FormatTrait.for_(cls.Target)
 
     # TODO mabye cached_property?
     @property # type: ignore
@@ -430,6 +438,10 @@ class CumulativeBase(AbsTrait):
     @classproperty
     def sortkey(cls):
         raise NotImplementedError
+
+    @classmethod
+    def sources_summary(cls, items):
+        return f"No sources summary for {cls.Target} yet"
 
 class SpinboardCumulative(ForSpinboard, CumulativeBase):
     @classproperty
@@ -531,6 +543,20 @@ class ReachCumulative(ForReach, CumulativeBase):
 
     def format(self):
         return self.FTrait.format(self.the)
+
+    @classmethod
+    def sources_summary(cls, items):
+        c = Counter()
+        for i in items:
+            c[i.subreddit] += 1
+        res = T.div()
+        for sub, cnt in sorted(c.items(), key=lambda p: (p[1], p[0])):
+            x = T.div()
+            x.add(cls.FTrait.subreddit_link(sub))
+            x.add(f': {cnt}')
+            res.add(x)
+        return res
+
 CumulativeBase.reg(ReachCumulative)
 
 def render_summary(repo, rendered: Path = None):
@@ -546,7 +572,6 @@ def render_summary(repo, rendered: Path = None):
     everything = flatten([ch for ch in digest.changes.values()])
 
     before = len(everything)
-
 
     grouped = group_by_key(everything, key=Cumulative.cumkey)
     print(f'before: {before}, after: {len(grouped)}')
@@ -568,6 +593,8 @@ def render_summary(repo, rendered: Path = None):
     with doc:
         T.h3("This is axol search summary")
         T.div("You can use 'hide' function in JS (chrome debugger) to hide certain tags/subreddits/users")
+        T.h4("Sources summary")
+        Cumulative.sources_summary(everything)
         for cc in cumulatives:
             T.div(cc.format(), cls='item')
 
