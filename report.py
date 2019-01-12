@@ -367,6 +367,14 @@ a:active {
 }
 """
 
+JS = """
+function hide(thing) {
+    const items = $x(`.//div[@class='item' and .//a[text()='${thing}']]`);
+    console.log(`hiding ${items.length} items`);
+    items.forEach(el => { el.hidden = true; });
+}
+"""
+
 from kython import group_by_key
 from kython.url import normalise
 from functools import lru_cache
@@ -495,7 +503,6 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
         assert len(self.items) == 1
         return self.FTrait.format(self.items[0])
 CumulativeBase.reg(TentacleCumulative)
-
 class ReachCumulative(ForReach, CumulativeBase):
     @property
     @lru_cache()
@@ -548,11 +555,21 @@ def render_summary(repo, rendered: Path = None):
     cumulatives = list(sorted(cumulatives, key=Cumulative.sortkey))
 
     doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
-    with doc.head:
+    with doc.head as dh:
         T.style(STYLE)
+        # SS = T.script
+        # SS.is_pretty = True # TODO wtf? why is it false by default
+        # SS(JS)
+        dh.add_raw_string(f"""
+        <script>
+        {JS}
+        </script>
+        """)
     with doc:
+        T.h3("This is axol search summary")
+        T.div("You can use 'hide' function in JS (chrome debugger) to hide certain tags/subreddits/users")
         for cc in cumulatives:
-            doc.add(T.div(cc.format(), cls='item'))
+            T.div(cc.format(), cls='item')
 
     with rendered.joinpath(name + '.html').open('w') as fo:
         fo.write(str(doc))
