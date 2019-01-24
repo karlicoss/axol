@@ -15,13 +15,19 @@ def slugify(s: str):
     return re.sub(r'(?u)[^-\w.]', '', s)
 
 
-def pintag(query: str) -> List[str]:
+def pintag(query: str) -> str:
     # https://pinboard.in/howto/#tags
-    return list({
-        f'tag:{query.replace(" ", "-")}',
-        f'tag:{query.replace(" ", "_")}',
-# TODO crap! it's also very useful to just concatenate the words in tag...
-    })
+    if ' ' in query or ':' in query:
+        raise RuntimeError(f'Bad tag: {query}')
+    return f'tag:{query}'
+
+
+def gen_pintags(query: str) -> List[str]:
+    # TODO crap! it's also very useful to just concatenate the words in tag...
+    return list(set(map(pintag, [
+        query.replace(" ", "-"),
+        query.replace(" ", "_"),
+    ])))
 
 
 def pinboard_quote(s: str):
@@ -106,16 +112,31 @@ class RedditQ(Query):
     def __repr__(self):
         return str(self.__dict__)
 
+pintags_implicit = object()
+
+def Dummy(*args, **kwargs):
+    return None
+
+# RedditQ = Dummy
+# GithubQ = Dummy
+
 # true for pintags means generating from queries
 def qall(qname: str, *args, pintags=None) -> Iterator[Query]:
     if pintags is None:
-        pintags = []
-    if pintags is True:
-        pintags = flatten([pintag(q) for q in args])
-    pintags = list(sorted(set(pintags)))
+        pintags = [pintags_implicit]
+
+    ptags: List[str] = []
+    for p in pintags:
+        if p is pintags_implicit:
+            ptags.extend(flatten([gen_pintags(q) for q in args]))
+        else:
+            # TODO ignore if it's already pintag??
+            assert isinstance(p, str)
+            ptags.append(pintag(p))
+    ptags = list(sorted(set(ptags)))
 
     yield RedditQ(qname, *args)
-    yield PinboardQ(qname, *args, *pintags)
+    yield PinboardQ(qname, *args, *ptags)
     yield GithubQ(qname, *args)
 
 
@@ -125,38 +146,43 @@ def make_queries() -> Iterator[Query]:
     R = RedditQ
     G = GithubQ
 
-    yield from qall('arbtt', 'arbtt')
+    yield from qall(
+        'arbtt',
+        'arbtt',
+    )
 
     emind = 'extended mind'
     yield from qall(
         emind,
         emind,
-        pintags=True,
     )
 
     ll = 'lifelogging'
     yield from qall(
         ll,
         ll,
-        pintags=True,
+        pintags=[pintags_implicit, 'lifelog']
     )
 
     openbci = 'openbci'
     yield from qall(
         openbci,
         openbci,
-        pintags=True,
-    ) #TODO maybe True by default??
+        pintags=[pintags_implicit, 'bci'],
+    )
+
+    # TODO not sue about eeg? where to put it?
 
     pkm = 'personal knowledge management'
     yield R(
         'pkm',
-        'pkm', pkm
+        'pkm', pkm,
     )
     yield P(
         'pkm',
-        'pkm', *pintag('pkm'),
-        pkm  , *pintag(pkm),
+        'pkm', pintag('pkm'),
+        pkm  , *gen_pintags(pkm),
+        pintag('km'), pintag('pim'),
     )
     yield G(
         'pkm', # TODO shit. that's a bit messed up...
@@ -169,14 +195,13 @@ def make_queries() -> Iterator[Query]:
     yield from qall(
         qg,
         qg,
-        pintags=True,
     )
 
     qs = 'quantified self'
     yield from qall(
         qs,
         qs, 'quantified-self',
-        pintags=True, # TODO if query is empty, imply from name??
+        pintags=[pintags_implicit, 'quantifiedself'],
     )
 
     # TODO probably, no github?
@@ -184,7 +209,7 @@ def make_queries() -> Iterator[Query]:
     yield from qall(
         tc,
         tc,
-        pintags=pintag('tedchiang'),
+        pintags=['tedchiang'],
     )
 
     yield from qall(
@@ -202,10 +227,11 @@ def make_queries() -> Iterator[Query]:
     yield from qall(
         sa,
         sa,
-        pintags=pintag('scottalexander')
+        pintags=['scottalexander'],
     )
     del P
     del R
     del G
 
-queries = make_queries()
+# convenient to temporary ignore certain providers via returning None
+queries = filter(lambda x: x is not None, make_queries())
