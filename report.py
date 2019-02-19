@@ -26,11 +26,32 @@ from kython.logging import setup_logzero
 class RepoHandle:
     def __init__(self, repo: str):
         self.repo = repo
+        self.logger = get_logger()
 
     def check_output(self, *args):
-        return check_output([
+        import gc
+        cmd = [
             'git', f'--git-dir={self.repo}/.git', *args
-        ])
+        ]
+        last = None
+        for _ in range(10):
+            try:
+                return check_output(cmd)
+            except OSError as e:
+                raise e
+                last = e
+                if 'Cannot allocate memory' in str(e):
+                    self.logger.debug(' '.join(cmd))
+                    self.logger.error('cannot allocate memory... trying GC and again')
+                    gc.collect()
+                    import time
+                    time.sleep(2)
+                else:
+                    raise e
+        else:
+            assert last is not None
+            raise last
+
 
     def get_revisions(self) -> List[Tuple[str, datetime]]:
         ss = list(reversed(self.check_output(
