@@ -20,7 +20,7 @@ import dominate # type: ignore
 from dominate import tags as T # type: ignore
 
 from kython import flatten
-from kython.logging import setup_logzero
+from kython.klogging import setup_logzero
 
 
 class RepoHandle:

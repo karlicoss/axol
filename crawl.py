@@ -9,7 +9,7 @@ import sys
 from subprocess import check_call, run, DEVNULL
 from typing import Union
 
-from kython.logging import setup_logzero
+from kython.klogging import setup_logzero
 
 from common import get_logger, setup_paths
 setup_paths()
