@@ -14,7 +14,7 @@ from kython.klogging import setup_logzero
 from common import get_logger, setup_paths
 setup_paths()
 
-from config import slugify, queries, OUTPUTS
+from config import slugify, get_queries, OUTPUTS
 from jsonify import to_json, from_json
 
 logger = get_logger()
@@ -80,7 +80,7 @@ class RepoHandle:
 # TODO make sure names are unique??
 # TODO create dir there as well??
 
-def process_all(dry=False):
+def process_all(dry=False, include=None, exclude=None):
     ok = True
     def reg_error(err):
         nonlocal ok
@@ -91,7 +91,7 @@ def process_all(dry=False):
             logger.error(err)
         ok = False
 
-    for q in queries:
+    for q in get_queries(include=include, exclude=exclude):
         try:
             logger.info('crawler: processing %s', q)
             searcher = q.searcher()
@@ -117,8 +117,10 @@ def main():
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('--dry', action='store_true')
+    p.add_argument('--include', action='append')
+    p.add_argument('--exclude', action='append')
     args = p.parse_args()
-    process_all(args.dry)
+    process_all(args.dry, include=args.include, exclude=args.exclude)
 
 if __name__ == '__main__':
     main()

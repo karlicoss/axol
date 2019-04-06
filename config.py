@@ -50,6 +50,10 @@ class GithubQ(Query):
         from tentacle import Tentacle # type: ignore
         return Tentacle
 
+    @property
+    def sname(self):
+        return 'github'
+
     def __init__(self, qname: str, *queries: str, quote=True):
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
@@ -73,6 +77,10 @@ class PinboardQ(Query):
     def searcher(self):
         from spinboard import Spinboard # type: ignore
         return Spinboard
+
+    @property
+    def sname(self):
+        return 'pinboard'
 
     def __init__(self, name: str, *queries: str, quote=True):
         if len(queries) == 1 and isinstance(queries[0], list):
@@ -99,6 +107,10 @@ class RedditQ(Query):
         from reach import Reach # type: ignore
         return Reach
 
+    @property
+    def sname(self):
+        return 'reddit'
+
     def __init__(self, qname: str, *queries: str) -> None:
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
@@ -117,6 +129,8 @@ pintags_implicit = object()
 def Dummy(*args, **kwargs):
     return None
 
+
+# PinboardQ = Dummy # TODO till I fix the (apparently) banned host issue
 # RedditQ = Dummy
 # GithubQ = Dummy
 
@@ -234,4 +248,12 @@ def make_queries() -> Iterator[Query]:
     del G
 
 # convenient to temporary ignore certain providers via returning None
-queries = filter(lambda x: x is not None, make_queries())
+def get_queries(include=None, exclude=None):
+    queries = list(filter(lambda x: x is not None, make_queries()))
+    if include is not None and exclude is not None:
+        raise RuntimeError('please specify only one of include/exclude')
+    if include is not None:
+        queries = [q for q in queries if q.sname in include]
+    if exclude is not None:
+        queries = [q for q in queries if q.sname not in exclude]
+    return queries
