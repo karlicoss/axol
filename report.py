@@ -4,7 +4,7 @@ from datetime import datetime
 from json import loads
 from itertools import islice
 from subprocess import check_call, check_output
-from typing import List, Tuple, Dict, Type, Union, Any
+from typing import List, Tuple, Dict, Type, Union, Any, Iterator
 import logging
 import sys
 from pathlib import Path
@@ -22,6 +22,9 @@ from dominate import tags as T # type: ignore
 from kython import flatten
 from kython.klogging import setup_logzero
 
+
+Revision = str
+Json = Dict
 
 class RepoHandle:
     def __init__(self, repo: str):
@@ -54,6 +57,9 @@ class RepoHandle:
 
 
     def get_revisions(self) -> List[Tuple[str, datetime]]:
+        """
+        returns in order of ascending timestamp
+        """
         ss = list(reversed(self.check_output(
             'log',
             '--pretty=format:%h %ad',
@@ -70,17 +76,16 @@ class RepoHandle:
             rev + ':content.json',
         ).decode('utf8')
 
-    def get_all_versions(self):
+    def iter_all_versions(self) -> Iterator[Tuple[Revision, datetime, Json]]:
         revs = self.get_revisions()
-        jsons = []
         for rev, dd in revs:
+            self.logger.debug('processing %s %s', rev, dd)
             cc = self.get_content(rev)
             if len(cc.strip()) == 0:
-                j = {}
+                j: Json = {}
             else:
                 j = loads(cc)
-            jsons.append((rev, dd, j))
-        return jsons
+            yield (rev, dd, j)
 
 def diffference(before, after):
     db = {x.uid: x for x in before}
@@ -307,7 +312,6 @@ def get_digest(repo: str, count=None) -> Changes:
         # TODO maybe, instead of email just check the html occasionnally? email takes quite a bit of time
 
     rh = RepoHandle(repo)
-    jsons = rh.get_all_versions()
     # ustats = get_user_stats(jsons, rtype=rtype)
     ustats = None
 
@@ -316,7 +320,7 @@ def get_digest(repo: str, count=None) -> Changes:
     cc = Collector()
     changes = Changes()
     # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
-    for jj in jsons:
+    for jj in rh.iter_all_versions():
         rev, dd, j = jj
         items = list(map(lambda x: from_json(rtype, x), j))
         added = cc.register(items)
