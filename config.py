@@ -107,10 +107,26 @@ class PinboardQ(Query):
 
 
 class Subreddit(NamedTuple):
-    name: str
+    regex: str
+
+    def matches(self, item) -> bool:
+        return re.fullmatch(self.regex, item.subreddit, re.I) is not None
+
+    @property
+    def reason(self) -> str:
+        return f'subreddit {self.regex}'
 
 class Contains(NamedTuple):
     seq: str
+
+    def matches(self, item) -> bool:
+        xx = f'{item.title} {item.description} {item.subreddit}'.lower()
+        return self.seq in xx
+
+    @property
+    def reason(self) -> str:
+        return f'contains {self.seq}'
+
 
 sub = Subreddit
 
@@ -216,11 +232,17 @@ def make_queries() -> Iterator[Query]:
         excluded=[
             subreddit(
                 'airsoft', 'mw4', 'CombatFootage',
-                'stalker', 'guns', 'airsoftmarket',
+                'stalker', 'airsoftmarket',
                 'insurgency', 'MilitaryPorn',
                 'ProjectMilSim', 'RingOfElysium', 'GunPorn',
+                'EscapefromTarkov', 'joinsquad', 'dayz',
+                'ClearBackblast', 'syriancivilwar',
+                'gaming', 'u_tkaqnfkf1',
+                'friendsafari', 'GlobalPowers', 'TheSilphRoad',
+                'LoLeventVoDs',
+                '.*pokemon.*', '.*nintendo.*', '.*gun.*',
             ),
-            contains('pokemon'),
+            contains('pokemon', 'ak47', ' guns '),
         ],
     )
     yield P(
@@ -292,15 +314,21 @@ def get_queries(include=None, exclude=None):
 
 # TODO get rid of this later...
 from functools import lru_cache
-@lru_cache(1000) # meh
-def ignored_subreddit(sub: str) -> bool:
+@lru_cache(1)
+def get_reddit_queries():
+    res = []
     for q in get_queries():
         if not isinstance(q, RedditQ):
             continue
+        res.append(q)
+    return res
+
+from typing import Optional
+def ignored_reddit(item) -> Optional[str]:
+    for q in get_reddit_queries():
+        # TODO eh. might need a quicker way to ignore....
         for ex in q.excluded:
-            if not isinstance(ex, Subreddit):
-                continue
             # TODO the item itself knows how to match
-            if ex.name == sub:
-                return True
-    return False
+            if ex.matches(item):
+                return ex.reason
+    return None

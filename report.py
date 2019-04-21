@@ -13,7 +13,7 @@ from collections import Counter
 
 from common import get_logger, setup_paths, classproperty
 setup_paths()
-from config import OUTPUTS, ignored_subreddit
+from config import OUTPUTS, ignored_reddit
 from jsonify import from_json
 
 import dominate # type: ignore
@@ -81,7 +81,7 @@ class RepoHandle:
         if last is not None:
             revs = revs[-last: ]
         for rev, dd in revs:
-            self.logger.debug('processing %s %s', rev, dd)
+            self.logger.info('processing %s %s', rev, dd)
             cc = self.get_content(rev)
             if len(cc.strip()) == 0:
                 j: Json = {}
@@ -205,11 +205,7 @@ class ReachIgnore(ForReach, IgnoreTrait):
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         # TODO eh, I def. need to separate in different files; that way I can have proper autocompletion..
-        sub = obj.subreddit
-        if ignored_subreddit(sub):
-            return f'ignoring due to subreddit {sub}'
-        else:
-            return None
+        return ignored_reddit(obj)
 IgnoreTrait.reg(ReachIgnore)
 
 # TODO not sure if should inherit from trait... it's more of an impl..
@@ -362,7 +358,7 @@ def get_digest(repo: str, last=None) -> Changes:
             item = from_json(rtype, x)
             ignored = ignore_result(item)
             if ignored is not None:
-                logger.debug(ignored)
+                logger.debug('ignoring due to %s', ignored)
                 continue
             # TODO would be nice to propagate and render... also not collect such items in the first place??
             items.append(item)
@@ -779,7 +775,7 @@ def main():
     args = parser.parse_args()
 
     logger = get_logger()
-    setup_logzero(logger, level=logging.DEBUG)
+    setup_logzero(logger, level=logging.INFO)
 
     # parser.add_argument('--from', default=None)
     # parser.add_argument('--to', default=None)
