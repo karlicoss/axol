@@ -1,6 +1,6 @@
 from pathlib import Path
 import re
-from typing import List, Iterator, NamedTuple, Type, Any
+from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 from typing_extensions import Protocol
 
 from kython import flatten
@@ -38,11 +38,16 @@ def pinboard_quote(s: str):
         return s
     return f'"{s}"'
 
+
+Filter = Any
+
 class Query(Protocol):
     searcher: Type[Any]
     queries: List[str]
+    excluded: Sequence[Filter]
     @property
     def repo_name(self): str = ...
+
 
 class GithubQ(Query):
     @property
@@ -101,6 +106,22 @@ class PinboardQ(Query):
         return str(self.__dict__)
 
 
+class Subreddit(NamedTuple):
+    name: str
+
+class Contains(NamedTuple):
+    seq: str
+
+sub = Subreddit
+
+def subreddit(*subs):
+    return [Subreddit(s) for s in subs]
+
+def contains(*items):
+    return [Contains(i) for i in items]
+
+# TODO Filter needs to be a more flexible type...
+
 class RedditQ(Query):
     @property
     def searcher(self):
@@ -111,11 +132,12 @@ class RedditQ(Query):
     def sname(self):
         return 'reddit'
 
-    def __init__(self, qname: str, *queries: str) -> None:
+    def __init__(self, qname: str, *queries: str, excluded: Sequence[Filter]=()) -> None:
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
         self.qname = qname
         self.queries = list(map(pinboard_quote, queries))
+        self.excluded = flatten(excluded)
 
     @property
     def repo_name(self) -> str:
@@ -191,6 +213,15 @@ def make_queries() -> Iterator[Query]:
     yield R(
         'pkm',
         'pkm', pkm,
+        excluded=[
+            subreddit(
+                'airsoft', 'mw4', 'CombatFootage',
+                'stalker', 'guns', 'airsoftmarket',
+                'insurgency', 'MilitaryPorn',
+                'ProjectMilSim', 'RingOfElysium', 'GunPorn',
+            ),
+            contains('pokemon'),
+        ],
     )
     yield P(
         'pkm',
@@ -257,3 +288,19 @@ def get_queries(include=None, exclude=None):
     if exclude is not None:
         queries = [q for q in queries if q.sname not in exclude]
     return queries
+
+
+# TODO get rid of this later...
+from functools import lru_cache
+@lru_cache(1000) # meh
+def ignored_subreddit(sub: str) -> bool:
+    for q in get_queries():
+        if not isinstance(q, RedditQ):
+            continue
+        for ex in q.excluded:
+            if not isinstance(ex, Subreddit):
+                continue
+            # TODO the item itself knows how to match
+            if ex.name == sub:
+                return True
+    return False

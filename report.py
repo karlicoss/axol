@@ -4,7 +4,7 @@ from datetime import datetime
 from json import loads
 from itertools import islice
 from subprocess import check_call, check_output
-from typing import List, Tuple, Dict, Type, Union, Any, Iterator
+from typing import List, Tuple, Dict, Type, Union, Any, Iterator, Optional
 import logging
 import sys
 from pathlib import Path
@@ -13,7 +13,7 @@ from collections import Counter
 
 from common import get_logger, setup_paths, classproperty
 setup_paths()
-from config import OUTPUTS
+from config import OUTPUTS, ignored_subreddit
 from jsonify import from_json
 
 import dominate # type: ignore
@@ -76,8 +76,10 @@ class RepoHandle:
             rev + ':content.json',
         ).decode('utf8')
 
-    def iter_all_versions(self) -> Iterator[Tuple[Revision, datetime, Json]]:
+    def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Json]]:
         revs = self.get_revisions()
+        if last is not None:
+            revs = revs[-last: ]
         for rev, dd in revs:
             self.logger.debug('processing %s %s', rev, dd)
             cc = self.get_content(rev)
@@ -86,6 +88,7 @@ class RepoHandle:
             else:
                 j = loads(cc)
             yield (rev, dd, j)
+
 
 def diffference(before, after):
     db = {x.uid: x for x in before}
@@ -143,6 +146,17 @@ class FormatTrait(AbsTrait):
     # def format(trait, cobj)
 format_result = pull(FormatTrait.format)
 
+IgnoreRes = Optional[str]
+
+class IgnoreTrait(AbsTrait):
+    _impls = {}
+
+    @classmethod
+    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
+        raise NotImplementedError
+
+ignore_result = pull(IgnoreTrait.ignore)
+
 def isempty(s) -> bool:
     if s is None:
         return True
@@ -174,6 +188,29 @@ class ForTentacle:
     def Target(cls):
         from tentacle import Result # type: ignore
         return Result
+
+class SpinboardIgnore(ForSpinboard, IgnoreTrait):
+    @classmethod
+    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
+        return None
+IgnoreTrait.reg(SpinboardIgnore)
+
+class TentacleIgnore(ForTentacle, IgnoreTrait):
+    @classmethod
+    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
+        return None
+IgnoreTrait.reg(TentacleIgnore)
+
+class ReachIgnore(ForReach, IgnoreTrait):
+    @classmethod
+    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
+        # TODO eh, I def. need to separate in different files; that way I can have proper autocompletion..
+        sub = obj.subreddit
+        if ignored_subreddit(sub):
+            return f'ignoring due to subreddit {sub}'
+        else:
+            return None
+IgnoreTrait.reg(ReachIgnore)
 
 # TODO not sure if should inherit from trait... it's more of an impl..
 class SpinboardFormat(ForSpinboard, FormatTrait):
@@ -303,13 +340,9 @@ class Changes:
         return sum(len(x) for x in self.changes.values())
 
 # TODO html mode??
-def get_digest(repo: str, count=None) -> Changes:
+def get_digest(repo: str, last=None) -> Changes:
+    logger = get_logger()
     rtype = get_result_type(repo)
-
-    count = None
-    # if count is None:
-    #     count = 100 # TODO fixme! maybe append if count is trimmed?
-        # TODO maybe, instead of email just check the html occasionnally? email takes quite a bit of time
 
     rh = RepoHandle(repo)
     # ustats = get_user_stats(jsons, rtype=rtype)
@@ -320,9 +353,21 @@ def get_digest(repo: str, count=None) -> Changes:
     cc = Collector()
     changes = Changes()
     # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
-    for jj in rh.iter_all_versions():
+    # TODO would be interesting to have non-consuming slice...
+    for jj in rh.iter_versions(last=last):
         rev, dd, j = jj
-        items = list(map(lambda x: from_json(rtype, x), j))
+        items = []
+
+        for x in j:
+            item = from_json(rtype, x)
+            ignored = ignore_result(item)
+            if ignored is not None:
+                logger.debug(ignored)
+                continue
+            # TODO would be nice to propagate and render... also not collect such items in the first place??
+            items.append(item)
+
+
         added = cc.register(items)
         #print(f'revision {rev}: total {len(cc.items)}')
         #print(f'added {len(added)}')
@@ -374,6 +419,12 @@ STYLE = """
 .item {
     margin-top:    10px;
     margin-bottom: 10px;
+}
+
+.item.ignored {
+    color: gray;
+    margin-top:    1px;
+    margin-bottom: 1px;
 }
 
 .permalink {
@@ -627,13 +678,13 @@ class ReachCumulative(ForReach, CumulativeBase):
 
 CumulativeBase.reg(ReachCumulative)
 
-def render_summary(repo, rendered: Path = None):
+def render_summary(repo, rendered: Path, last=None):
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
 
     Cumulative = CumulativeBase.for_(rtype)
 
-    digest = get_digest(repo)
+    digest = get_digest(repo, last=last)
     NOW = datetime.now()
     name = basename(repo)
 
@@ -669,8 +720,11 @@ def render_summary(repo, rendered: Path = None):
     with rendered.joinpath(name + '.html').open('w') as fo:
         fo.write(str(doc))
 
-def handle_one(repo: str, html=False, email=True, rendered: Path = None):
-    digest = get_digest(repo)
+def handle_one(repo: str, rendered: Path, html=False, email=True, last=None):
+    logger = get_logger()
+
+
+    digest = get_digest(repo, last=last)
     if email:
         raise RuntimeError('email is currenlty broken')
         # res = send(
@@ -696,18 +750,16 @@ def handle_one(repo: str, html=False, email=True, rendered: Path = None):
                     # TODO tab?
                     with T.div(cls='day-changes-inner') as dci:
                         for i in items:
-                            fi = format_result(i)
-                            # TODO append raw?
-                            dci.add(T.div(fi, cls='item'))
-            # with div(id='header').add(ol()):
-            #     for i in ['home', 'about', 'contact']:
-            #         li(a(i.title(), href='/%s.html' % i))
+                            ignored = ignore_result(i)
+                            if ignored is not None:
+                                # TODO maybe let format result handle that... not sure
+                                dci.add(T.div(ignored, cls='item ignored'))
+                                # TODO eh. need to handle in cumulatives...
+                            else:
+                                fi = format_result(i)
+                                # TODO append raw?
+                                dci.add(T.div(fi, cls='item'))
 
-            # with div():
-            #     attr(cls='body')
-            #     p('Lorem ipsum..')
-
-        # print(doc)
         with rendered.joinpath(name + '.html').open('w') as fo:
             fo.write(str(doc))
 
@@ -715,9 +767,13 @@ def handle_one(repo: str, html=False, email=True, rendered: Path = None):
 
 # TODO for starters, just send last few days digest..
 def main():
+    # from config import get_queries
+    # from pprint import pprint
+    # pprint(get_queries())
     parser = argparse.ArgumentParser()
     parser.add_argument('repo', nargs='?')
     parser.add_argument('--summary', action='store_true')
+    parser.add_argument('--last', type=int, default=None)
     parser.add_argument('--no-email', action='store_false', dest='email')
     parser.add_argument('--no-html', action='store_false', dest='html')
     args = parser.parse_args()
@@ -741,10 +797,10 @@ def main():
             logger.info("Processing %s", repo)
             if args.summary:
                 SUMMARY = Path(__file__).parent.joinpath('summary').resolve()
-                render_summary(str(repo), rendered=SUMMARY)
+                render_summary(str(repo), rendered=SUMMARY, last=args.last)
             else:
                 RENDERED = Path(__file__).parent.joinpath('rendered').resolve()
-                handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED)
+                handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
         except Exception as e:
             logger.exception(e)
             ok = False
