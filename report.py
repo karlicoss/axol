@@ -241,7 +241,7 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
             res.add(obj.description)
             res.add(T.br())
         res.add('tags: ')
-        for t in obj.tags:
+        for t in obj.ntags:
             res.add(trait.tag_link(tag=t, user=obj.user))
         res.add(T.br())
         res.add(T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink'))
@@ -552,7 +552,7 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
     @property # type: ignore
     @lru_cache()
     def tags(self) -> List[str]:
-        tt = {x for x in sum((i.tags for i in self.items), [])}
+        tt = {x for x in sum((i.ntags for i in self.items), [])}
         return list(sorted(tt))
 
     @property # type: ignore
@@ -594,7 +594,7 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
     def sources_summary(cls, items):
         res = T.div()
         res.add(T.div(T.b('Tag summary:')))
-        for src, cnt in cls.sources_stats(items, key=lambda i: i.tags):
+        for src, cnt in cls.sources_stats(items, key=lambda i: i.ntags):
             x = T.div()
             x.add(cls.FTrait.tag_link(tag=src))
             x.add(f': {cnt}')
