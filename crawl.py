@@ -103,6 +103,9 @@ def process_all(dry=False, include=None, exclude=None):
 
             results = searcher.search_all(qs)
             jsons = [to_json(r) for r in results]
+            if len(jsons) == 0:
+                # careful, that would trigger errors if query is genuinely resulting in empty results
+                raise RuntimeError("didn't retrieve anything, that's a bit suspicious")
 
             rh = RepoHandle.create(q.repo_name)
             rh.commit(jsons)
