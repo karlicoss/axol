@@ -199,6 +199,11 @@ def make_queries() -> Iterator[Query]:
     G = GithubQ
 
     yield from qall(
+        'bret victor',
+        'bret victor',
+    )
+
+    yield from qall(
         'arbtt',
         'arbtt',
     )

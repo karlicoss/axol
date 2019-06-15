@@ -17,14 +17,6 @@ setup_paths()
 from config import slugify, get_queries, OUTPUTS
 from jsonify import to_json, from_json
 
-logger = get_logger()
-
-
-def setup_logging():
-    setup_logzero(logger, level=logging.INFO)
-    # TODO spinboard? etc
-setup_logging()
-
 Pathish = Union[str, Path]
 
 # TODO should I slugify_in??
@@ -40,6 +32,7 @@ def slugify_in(path: str, dir: Pathish):
 class RepoHandle:
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.logger = get_logger()
 
     @classmethod
     def create(cls, name: str):
@@ -52,7 +45,7 @@ class RepoHandle:
         if self._git('rev-parse', 'HEAD', stderr=DEVNULL).returncode == 0:
             self._git('diff', '--exit-code').check_returncode()
         else:
-            logger.info('%s: empty repo!', self.path)
+            self.logger.info('%s: empty repo!', self.path)
 
     def _git(self, *cmd, **kwargs):
         return run([
@@ -81,6 +74,8 @@ class RepoHandle:
 # TODO create dir there as well??
 
 def process_all(dry=False, include=None, exclude=None):
+    logger = get_logger()
+
     ok = True
     def reg_error(err):
         nonlocal ok
@@ -114,6 +109,10 @@ def process_all(dry=False, include=None, exclude=None):
         sys.exit(1)
 
 def main():
+    logger = get_logger()
+    setup_logzero(logging.getLogger('spinboard'), level=logging.DEBUG)
+    setup_logzero(logger, level=logging.DEBUG)
+
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('--dry', action='store_true')
