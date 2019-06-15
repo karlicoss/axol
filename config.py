@@ -332,3 +332,9 @@ def ignored_reddit(item) -> Optional[str]:
             if ex.matches(item):
                 return ex.reason
     return None
+
+
+if __name__ == '__main__':
+    for q in get_queries():
+    # just check that it doesn't crash
+        print(q)
