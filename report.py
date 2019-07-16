@@ -18,6 +18,7 @@ from jsonify import from_json
 
 import dominate # type: ignore
 from dominate import tags as T # type: ignore
+from dominate.util import raw # type: ignore
 
 from kython import flatten
 from kython.klogging import setup_logzero
@@ -459,6 +460,7 @@ a:active {
 
 JS = """
 function hide(thing) {
+// TODO ugh, doesn't look like $x works in FF
     const items = $x(`.//div[@class='item' and .//a[text()='${thing}']]`);
     console.log(`hiding ${items.length} items`);
     items.forEach(el => { el.hidden = true; });
@@ -674,6 +676,13 @@ class ReachCumulative(ForReach, CumulativeBase):
 
 CumulativeBase.reg(ReachCumulative)
 
+
+# https://github.com/Knio/dominate/issues/63
+# eh, looks like it's the intended way..
+def raw_script(s):
+    raw(f'<script>{s}</script>')
+
+
 def render_summary(repo, rendered: Path, last=None):
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
@@ -695,16 +704,9 @@ def render_summary(repo, rendered: Path, last=None):
     cumulatives = list(sorted(cumulatives, key=Cumulative.sortkey))
 
     doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
-    with doc.head as dh:
+    with doc.head:
         T.style(STYLE)
-        # SS = T.script
-        # SS.is_pretty = True # TODO wtf? why is it false by default
-        # SS(JS)
-        dh.add_raw_string(f"""
-        <script>
-        {JS}
-        </script>
-        """)
+        raw_script(JS)
     with doc:
         T.h3("This is axol search summary")
         T.div("You can use 'hide' function in JS (chrome debugger) to hide certain tags/subreddits/users")
@@ -792,8 +794,8 @@ def main():
     ok = True
     output_dir = args.output_dir
     for repo in repos:
+        logger.info("Processing %s", repo)
         try:
-            logger.info("Processing %s", repo)
             if args.summary:
                 SUMMARY = output_dir/ 'summary'
                 render_summary(str(repo), rendered=SUMMARY, last=args.last)
