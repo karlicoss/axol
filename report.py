@@ -766,12 +766,14 @@ def main():
     # from config import get_queries
     # from pprint import pprint
     # pprint(get_queries())
+    BASE_DIR = Path(__file__).absolute().parent
     parser = argparse.ArgumentParser()
     parser.add_argument('repo', nargs='?')
     parser.add_argument('--summary', action='store_true')
     parser.add_argument('--last', type=int, default=None)
     parser.add_argument('--no-email', action='store_false', dest='email')
     parser.add_argument('--no-html', action='store_false', dest='html')
+    parser.add_argument('--output-dir', type=Path, default=BASE_DIR)
     args = parser.parse_args()
 
     logger = get_logger()
@@ -788,14 +790,15 @@ def main():
     else:
         repos = [x for x in OUTPUTS.iterdir() if x.is_dir()]
     ok = True
+    output_dir = args.output_dir
     for repo in repos:
         try:
             logger.info("Processing %s", repo)
             if args.summary:
-                SUMMARY = Path(__file__).parent.joinpath('summary').resolve()
+                SUMMARY = output_dir/ 'summary'
                 render_summary(str(repo), rendered=SUMMARY, last=args.last)
             else:
-                RENDERED = Path(__file__).parent.joinpath('rendered').resolve()
+                RENDERED = output_dir / 'rendered'
                 handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
         except Exception as e:
             logger.exception(e)
