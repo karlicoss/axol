@@ -10,9 +10,7 @@ def setup_paths():
         '/L/coding/reach',
     ])
 
-logger = LazyLogger('axol')
-def get_logger():
-    return logger
+logger = LazyLogger('axol', level=logging.DEBUG)
 
 # TODO kython??
 class classproperty(object):

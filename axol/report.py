@@ -10,7 +10,7 @@ from pathlib import Path
 from os.path import basename, join
 from collections import Counter
 
-from axol.common import get_logger, setup_paths, classproperty
+from axol.common import setup_paths, classproperty, logger
 setup_paths()
 from config import OUTPUTS, ignored_reddit
 from axol.jsonify import from_json
@@ -21,27 +21,10 @@ from dominate import tags as T # type: ignore
 from dominate.util import raw # type: ignore
 
 from kython import flatten
-from kython.klogging import setup_logzero
 
 
 
-
-def diffference(before, after):
-    db = {x.uid: x for x in before}
-    da = {x.uid: x for x in after}
-    removed = []
-    added = []
-    for x in {*db.keys(), *da.keys()}:
-        if x in db and x not in da:
-            removed.append(db[x])
-        elif x not in db and x in da:
-            added.append(da[x])
-        elif x in db and x in da:
-            pass # TODO compare??
-        else:
-            raise AssertionError
-    return removed, added
-
+# TODO it's basically make_dict with ignore_dups?
 class Collector:
     def __init__(self):
         self.items: Dict[str, Any] = {}
@@ -246,7 +229,6 @@ class Changes:
 
 # TODO html mode??
 def get_digest(repo: str, last=None) -> Changes:
-    logger = get_logger()
     rtype = get_result_type(repo)
 
     rh = RepoHandle(repo)
@@ -625,7 +607,7 @@ def render_summary(repo, rendered: Path, last=None):
         fo.write(str(doc))
 
 def handle_one(repo: str, rendered: Path, html=False, email=True, last=None):
-    logger = get_logger()
+    logger.info('processing %s', repo)
 
 
     digest = get_digest(repo, last=last)
@@ -649,6 +631,7 @@ def handle_one(repo: str, rendered: Path, html=False, email=True, last=None):
         # TODO email that as well?
         with doc:
             for d, items in sorted(digest.changes.items(), reverse=True):
+                logger.debug('dumping %d items for %s', len(items), d)
                 with T.div(cls='day-changes') as dc:
                     dc.add(T.div(T.b(fdate(d))))
                     # TODO tab?
@@ -680,11 +663,6 @@ def setup_parser(parser):
 
 # TODO for starters, just send last few days digest..
 def main():
-    logger = get_logger()
-    setup_logzero(logger, level=logging.INFO)
-    # from config import get_queries
-    # from pprint import pprint
-    # pprint(get_queries())
     parser = argparse.ArgumentParser()
     setup_parser(parser)
     args = parser.parse_args()
@@ -704,7 +682,7 @@ def run(args):
     ok = True
     output_dir = args.output_dir
     for repo in repos:
-        logger.info("Processing %s", repo)
+        logger.info("processing %s", repo)
         try:
             if args.summary:
                 SUMMARY = output_dir/ 'summary'

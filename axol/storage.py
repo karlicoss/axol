@@ -5,7 +5,7 @@ from datetime import datetime
 from subprocess import check_output
 from typing import Dict, Iterator, List, Tuple
 
-from axol.common import get_logger
+from axol.common import logger
 
 
 Revision = str
@@ -14,7 +14,7 @@ Json = Dict
 class RepoHandle:
     def __init__(self, repo: str):
         self.repo = repo
-        self.logger = get_logger()
+        self.logger = logger
 
     def check_output(self, *args):
         cmd = [
@@ -64,7 +64,7 @@ class RepoHandle:
         if last is not None:
             revs = revs[-last: ]
         for rev, dd in revs:
-            self.logger.info('processing %s %s', rev, dd)
+            self.logger.debug('processing %s %s', rev, dd)
             cc = self.get_content(rev)
             if len(cc.strip()) == 0:
                 j: Json = {}

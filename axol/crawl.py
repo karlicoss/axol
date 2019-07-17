@@ -11,7 +11,7 @@ from typing import Union
 
 from kython.klogging import setup_logzero
 
-from axol.common import get_logger, setup_paths
+from axol.common import setup_paths
 setup_paths()
 
 from config import slugify, get_queries, OUTPUTS
@@ -32,7 +32,7 @@ def slugify_in(path: str, dir: Pathish):
 class RepoHandle:
     def __init__(self, path: Path) -> None:
         self.path = path
-        self.logger = get_logger()
+        self.logger = logger
 
     @classmethod
     def create(cls, name: str):
