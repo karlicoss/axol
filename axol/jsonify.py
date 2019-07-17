@@ -108,4 +108,4 @@ def register_all():
         except Exception as e:
             raise e # TODO not sure what should we do...
 
-register_all()
+register_all() # TODO ??? 

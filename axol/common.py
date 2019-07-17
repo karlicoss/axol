@@ -9,6 +9,7 @@ def setup_paths():
         '/L/coding/spinboard',
         '/L/coding/reach',
     ])
+setup_paths()
 
 logger = LazyLogger('axol', level=logging.DEBUG)
 
@@ -18,24 +19,3 @@ class classproperty(object):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
-
-
-
-# TODO move target separately?
-class ForSpinboard:
-    @classproperty
-    def Target(cls):
-        from spinboard import Result # type: ignore
-        return Result
-
-class ForReach:
-    @classproperty
-    def Target(cls):
-        from reach import Result # type: ignore
-        return Result
-
-class ForTentacle:
-    @classproperty
-    def Target(cls):
-        from tentacle import Result # type: ignore
-        return Result

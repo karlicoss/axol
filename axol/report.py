@@ -11,10 +11,12 @@ from os.path import basename, join
 from collections import Counter
 
 from axol.common import setup_paths, classproperty, logger
-setup_paths()
 from config import OUTPUTS, ignored_reddit
 from axol.jsonify import from_json
-from axol.storage import RepoHandle
+from axol.storage import RepoHandle, get_digest, get_result_type
+from axol.traits import ignore_result
+from axol.traits import ForSpinboard, ForTentacle, ForReach
+from axol.trait import AbsTrait, pull
 
 import dominate # type: ignore
 from dominate import tags as T # type: ignore
@@ -24,25 +26,9 @@ from kython import flatten
 
 
 
-# TODO it's basically make_dict with ignore_dups?
-class Collector:
-    def __init__(self):
-        self.items: Dict[str, Any] = {}
-
-    def register(self, batch):
-        added = []
-        for i in batch:
-            if i.uid in self.items:
-                pass # TODO FIXME compare? if description or tags changed, report it?
-            else:
-                added.append(i)
-                self.items[i.uid] = i
-        return added
-
 # TODO need some sort of starting_from??
 # TODO I guess just use datetime?
 
-from axol.trait import AbsTrait, pull
 
 Htmlish = Union[str, T.dom_tag]
 
@@ -54,15 +40,6 @@ class FormatTrait(AbsTrait):
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         raise NotImplementedError
 format_result = pull(FormatTrait.format)
-
-
-IgnoreRes = Optional[str]
-
-class IgnoreTrait(AbsTrait):
-    @classmethod
-    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
-        raise NotImplementedError
-ignore_result = pull(IgnoreTrait.ignore)
 
 
 def isempty(s) -> bool:
@@ -79,28 +56,6 @@ def fdate(d: datetime) -> str:
     return d.strftime('%a %d %b %Y %H:%M')
 
 
-from axol.common import ForSpinboard, ForTentacle, ForReach
-
-# TODO default impl?? not sure..
-class SpinboardIgnore(ForSpinboard, IgnoreTrait):
-    @classmethod
-    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
-        if obj.user in ('lvwrence', 'ma51ne64'):
-            return True
-        return None
-        # return obj.user == 'lvwrence' # TODO FIXME NOCOMMIT
-
-class TentacleIgnore(ForTentacle, IgnoreTrait):
-    @classmethod
-    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
-        return None
-
-class ReachIgnore(ForReach, IgnoreTrait):
-    @classmethod
-    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
-        # TODO eh, I def. need to separate in different files; that way I can have proper autocompletion..
-        return ignored_reddit(obj)
-IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore)
 
 # TODO not sure if should inherit from trait... it's more of an impl..
 class SpinboardFormat(ForSpinboard, FormatTrait):
@@ -189,19 +144,6 @@ class TentacleTrait(ForTentacle, FormatTrait):
 
 FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait)
 
-# TODO maybe, move to jsonify?..
-def get_result_type(repo: str) -> Type:
-    name = basename(repo)
-    if name.startswith('reddit'):
-        from reach import Result # type: ignore
-        return Result
-    elif name.startswith('github'):
-        from tentacle import Result # type: ignore
-        return Result
-    else:
-        from spinboard import Result # type: ignore
-        return Result
-
 
 # TODO hmm. instead percentile would be more accurate?...
 def get_user_stats(jsons, rtype=None):
@@ -215,67 +157,6 @@ def get_user_stats(jsons, rtype=None):
     return {
         u: v / total for u, v in cnt.items()
     }
-
-class Changes:
-    def __init__(self) -> None:
-        self.changes: Dict[datetime, List[str]] = {}
-    # method to format everything?
-
-    def add(self, rev: datetime, items):
-        self.changes[rev] = items
-
-    def __len__(self):
-        return sum(len(x) for x in self.changes.values())
-
-# TODO html mode??
-def get_digest(repo: str, last=None) -> Changes:
-    rtype = get_result_type(repo)
-
-    rh = RepoHandle(repo)
-    # ustats = get_user_stats(jsons, rtype=rtype)
-    ustats = None
-
-    # TODO shit. should have stored metadata in repository?... for now guess from filename..
-
-    cc = Collector()
-    changes = Changes()
-    # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
-    # TODO would be interesting to have non-consuming slice...
-    for jj in rh.iter_versions(last=last):
-        rev, dd, j = jj
-        items = []
-
-        for x in j:
-            item = from_json(rtype, x)
-            ignored = ignore_result(item)
-            if ignored is not None:
-                logger.debug('ignoring due to %s', ignored)
-                continue
-            # TODO would be nice to propagate and render... also not collect such items in the first place??
-            items.append(item)
-
-
-        added = cc.register(items)
-        #print(f'revision {rev}: total {len(cc.items)}')
-        #print(f'added {len(added)}')
-        # if first:
-        if len(added) == 0:
-            continue
-        formatted = list(sorted(added, key=lambda e: e.when, reverse=True))
-        # not sure if should keep revision here at all..
-        changes.add(dd, formatted)
-        # TODO link to user
-        # TODO user weight?? count is fine I suppose...
-        # TODO added date
-#        if len(added) > 0:
-#            for r in sorted(added, key=lambda r: r.uid):
-#                # TODO link to bookmark
-#                # TODO actually chould even generate html here...
-#                # TODO highlight interesting users
-#                # TODO how to track which ones were already notified??
-#                # TODO I guess keep latest revision in a state??
-
-    return changes
 
 # TODO search is a bit of flaky: initially I was getting
 # so like exact opposites
@@ -606,7 +487,7 @@ def render_summary(repo, rendered: Path, last=None):
     with rendered.joinpath(name + '.html').open('w') as fo:
         fo.write(str(doc))
 
-def handle_one(repo: str, rendered: Path, html=False, email=True, last=None):
+def handle_one(repo: Path, rendered: Path, html=False, email=True, last=None):
     logger.info('processing %s', repo)
 
 
@@ -689,7 +570,7 @@ def run(args):
                 render_summary(str(repo), rendered=SUMMARY, last=args.last)
             else:
                 RENDERED = output_dir / 'rendered'
-                handle_one(str(repo), html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
+                handle_one(repo, html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
         except Exception as e:
             logger.exception(e)
             ok = False
