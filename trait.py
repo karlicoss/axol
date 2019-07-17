@@ -1,5 +1,5 @@
 from common import classproperty
-from typing import Dict, Type, Dict
+from typing import Dict, Type, Dict, Any
 
 
 # TODO mm, that should only be stored in target trait!!!
@@ -16,7 +16,7 @@ class AbsTrait:
 
 
     @classmethod
-    def reg(cls, *traits: Type['AbsTrait']):
+    def reg(cls, *traits: Type['AbsTrait']) -> None:
         for tr in traits:
             cls._impls[tr.Target] = tr # TODO check for existence?
 
@@ -35,13 +35,13 @@ def pull(mref):
     return _m
 
 # https://stackoverflow.com/a/3655857/706389
-def islambda(v):
+def islambda(v: Any) -> bool:
     LAMBDA = lambda:0
     return isinstance(v, type(LAMBDA)) and v.__name__ == LAMBDA.__name__
 
 
 class _For:
-    def __getitem__(self, cls):
+    def __getitem__(self, cls) -> Type:
         class ForCls:
             @classproperty # TODO can be static prop?
             def Target(ccc, cls=cls):
