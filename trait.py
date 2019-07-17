@@ -1,3 +1,4 @@
+from common import classproperty
 from typing import Dict, Type, Dict
 
 
@@ -25,3 +26,49 @@ def pull(mref):
         Dispatched = Trait.for_(obj)
         return getattr(Dispatched, name)(obj, *args, **kwargs)
     return _m
+
+
+
+def test():
+    from typing import NamedTuple
+    class A:
+        x = 123
+
+    class B:
+        z = "string!"
+
+
+    class ShowTrait(AbsTrait):
+        _impls = {}
+
+        @classmethod
+        def show(trait, obj, *args, **kwargs):
+            raise NotImplementedError
+
+
+    show = pull(ShowTrait.show) # TODO ?
+    class ForA:
+        @classproperty
+        def Target(cls):
+            return A
+
+    class ForB:
+        @classproperty
+        def Target(cls):
+            return B
+
+    class ShowA(ForA, ShowTrait):
+        @classmethod
+        def show(trait, obj, *args, **kwargs):
+            return f'A containing {obj.x}'
+
+    class ShowB(ForB, ShowTrait):
+        @classmethod
+        def show(trait, obj, *args, **kwargs):
+            return f'I am {obj.z}'
+    ShowTrait.reg(ShowA)
+    ShowTrait.reg(ShowB)
+
+
+    assert show(A()) == 'A containing 123'
+    assert show(B()) == 'I am string!'
