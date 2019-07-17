@@ -450,7 +450,7 @@ def raw_script(s):
     raw(f'<script>{s}</script>')
 
 
-def render_summary(repo, rendered: Path, last=None):
+def render_summary(repo: Path, rendered: Path, last=None):
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
 
@@ -487,7 +487,6 @@ def render_summary(repo, rendered: Path, last=None):
 
 def handle_one(repo: Path, rendered: Path, html=False, email=True, last=None):
     logger.info('processing %s', repo)
-
 
     digest = get_digest(repo, last=last)
     if email:
@@ -565,7 +564,7 @@ def run(args):
         try:
             if args.summary:
                 SUMMARY = output_dir/ 'summary'
-                render_summary(str(repo), rendered=SUMMARY, last=args.last)
+                render_summary(repo, rendered=SUMMARY, last=args.last)
             else:
                 RENDERED = output_dir / 'rendered'
                 handle_one(repo, html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
