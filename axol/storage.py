@@ -158,3 +158,11 @@ def get_digest(repo: str, last=None) -> Changes:
 #                # TODO I guess keep latest revision in a state??
 
     return changes
+
+
+def test_digest():
+    from config import OUTPUTS
+    dd = get_digest(OUTPUTS / 'bret_victor')
+    from itertools import chain
+    everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
+    assert len(everything) == len({x.uid for x in everything})
