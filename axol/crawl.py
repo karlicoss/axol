@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import argparse
 
 import os
 from pathlib import Path
 import json
 import re
 import logging
+import time
 import sys
 from subprocess import check_call, run, DEVNULL
 from typing import Union
@@ -28,15 +30,16 @@ def slugify_in(path: str, dir: Pathish):
             return res
         path = path + '_'
 
+# TODO reuse repo handle from storage??
 class RepoHandle:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.logger = logger
 
     @classmethod
-    def create(cls, name: str):
+    def create(cls, name: str, path=OUTPUTS):
         dname = slugify(name)
-        rpath = OUTPUTS.joinpath(dname)
+        rpath = path.joinpath(dname)
         rpath.mkdir(exist_ok=True)
         return RepoHandle(rpath)
 
@@ -107,12 +110,10 @@ def process_all(dry=False, include=None, exclude=None):
         logger.error("Had errors during processing!")
         sys.exit(1)
 
-def main():
-    logger = get_logger()
-    setup_logzero(logging.getLogger('spinboard'), level=logging.DEBUG)
-    setup_logzero(logger, level=logging.DEBUG)
 
-    import argparse
+def main():
+    setup_logzero(logging.getLogger('spinboard'), level=logging.DEBUG)
+
     p = argparse.ArgumentParser()
     p.add_argument('--dry', action='store_true')
     p.add_argument('--include', action='append')
@@ -120,5 +121,18 @@ def main():
     args = p.parse_args()
     process_all(args.dry, include=args.include, exclude=args.exclude)
 
+
 if __name__ == '__main__':
     main()
+
+
+def test_repohandle(tmp_path):
+    td = Path(tmp_path)
+    rh = RepoHandle.create('test', path=td)
+    jsons = [{i: str(i) for i in range(10)}]
+    rh.commit(jsons)
+    time.sleep(0.5)
+    rh.commit(jsons)
+    # TODO then run storage and check digests?
+
+
