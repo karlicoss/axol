@@ -26,13 +26,19 @@ class AbsTrait:
             f = type(f)
         return cls._impls[f]
 
-def pull(mref):
-    Trait = mref.__self__
-    name = mref.__name__
+def pull2(Trait, name):
     def _m(obj, *args, **kwargs):
         Dispatched = Trait.for_(obj)
         return getattr(Dispatched, name)(obj, *args, **kwargs)
     return _m
+
+
+def pull(mref):
+    Trait = mref.__self__
+    name = mref.__name__
+    return pull2(Trait, name)
+
+
 
 # https://stackoverflow.com/a/3655857/706389
 def islambda(v: Any) -> bool:
@@ -72,7 +78,14 @@ def test():
         def show(trait, obj, *args, **kwargs):
             raise NotImplementedError
 
-    show = pull(ShowTrait.show) # TODO ?
+        def safe_int(self):
+            raise NotImplementedError
+
+    # TODO shit. so why does it work with classmethod, but not normal methods??
+    show = pull(ShowTrait.show)
+    # TODO this is kinda ok, but should be nice. Maybe even repetition is better than string..
+    safe_int = pull2(ShowTrait, 'safe_int')
+
     class ForA:
         @classproperty
         def Target(cls):
@@ -83,6 +96,10 @@ def test():
         def show(trait, obj, *args, **kwargs):
             return f'A containing {obj.x}'
 
+        def safe_int(obj):
+            return obj.x
+
+
     # TODO perhaps specify what it's for in square brackets?
     # although no, too restrictive
     # TODO better error messages? Might do with abc module
@@ -91,11 +108,17 @@ def test():
         def show(trait, obj, *args, **kwargs):
             return f'I am {obj.z}'
 
+        def safe_int(obj):
+            return None
+
     ForL = For[lambda: L] # TODO eh, capturing?
     class ShowL(ForL, ShowTrait):
         @classmethod
         def show(trait, obj, *args, **kwargs):
             return 'showl'
+
+        def safe_int(obj):
+            return None
 
     ShowTrait.reg(ShowA, ShowB, ShowL)
 
@@ -104,6 +127,11 @@ def test():
     assert show(B()) == 'I am string!'
     assert show(L()) == 'showl'
 
-    assert show(A()) == 'A containing 123'
+    aa = A()
+    ll = L()
+    assert show(aa) == 'A containing 123'
     assert show(B()) == 'I am string!'
-    assert show(L()) == 'showl'
+    assert show(ll) == 'showl'
+
+    assert safe_int(aa) == 123
+    assert safe_int(ll) == None
