@@ -11,10 +11,10 @@ from pathlib import Path
 from os.path import basename, join
 from collections import Counter
 
-from common import get_logger, setup_paths, classproperty
+from axol.common import get_logger, setup_paths, classproperty
 setup_paths()
 from config import OUTPUTS, ignored_reddit
-from jsonify import from_json
+from axol.jsonify import from_json
 
 import dominate # type: ignore
 from dominate import tags as T # type: ignore
@@ -124,7 +124,7 @@ class Collector:
 # TODO need some sort of starting_from??
 # TODO I guess just use datetime?
 
-from trait import AbsTrait, pull
+from axol.trait import AbsTrait, pull
 
 Htmlish = Union[str, T.dom_tag]
 
@@ -161,7 +161,7 @@ def fdate(d: datetime) -> str:
     return d.strftime('%a %d %b %Y %H:%M')
 
 
-from common import ForSpinboard, ForTentacle, ForReach
+from axol.common import ForSpinboard, ForTentacle, ForReach
 
 # TODO default impl?? not sure..
 class SpinboardIgnore(ForSpinboard, IgnoreTrait):
@@ -733,25 +733,29 @@ def handle_one(repo: str, rendered: Path, html=False, email=True, last=None):
             fo.write(str(doc))
 
 
-
-# TODO for starters, just send last few days digest..
-def main():
-    # from config import get_queries
-    # from pprint import pprint
-    # pprint(get_queries())
+def setup_parser(parser):
     BASE_DIR = Path(__file__).absolute().parent
-    parser = argparse.ArgumentParser()
     parser.add_argument('repo', nargs='?')
     parser.add_argument('--summary', action='store_true')
     parser.add_argument('--last', type=int, default=None)
     parser.add_argument('--no-email', action='store_false', dest='email')
     parser.add_argument('--no-html', action='store_false', dest='html')
     parser.add_argument('--output-dir', type=Path, default=BASE_DIR)
-    args = parser.parse_args()
 
+
+# TODO for starters, just send last few days digest..
+def main():
     logger = get_logger()
     setup_logzero(logger, level=logging.INFO)
+    # from config import get_queries
+    # from pprint import pprint
+    # pprint(get_queries())
+    parser = argparse.ArgumentParser()
+    setup_parser(parser)
+    args = parser.parse_args()
+    run(args)
 
+def run(args):
     # parser.add_argument('--from', default=None)
     # parser.add_argument('--to', default=None)
     # froms = getattr(args, 'from')

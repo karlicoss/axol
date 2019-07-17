@@ -5,8 +5,8 @@ from typing import Any, Dict, Type
 
 from kython.kjson import ToFromJson
 
-from common import classproperty
-from trait import AbsTrait, pull
+from axol.common import classproperty
+from axol.trait import AbsTrait, pull
 
 Json = Any
 

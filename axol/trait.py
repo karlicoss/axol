@@ -1,5 +1,6 @@
-from common import classproperty
 from typing import Dict, Type, Dict, Any
+
+from axol.common import classproperty
 
 
 # TODO mm, that should only be stored in target trait!!!
