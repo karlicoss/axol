@@ -821,3 +821,33 @@ if __name__ == '__main__':
 # and notify of new ones..
 
 # TODO need to plot some nice dashboard..
+
+def astext(html: Path) -> str:
+    from subprocess import check_output
+    return check_output(['html2text', str(html)]).decode('utf8')
+
+
+def test_all(tmp_path):
+    tdir = Path(tmp_path)
+    rr = OUTPUTS / 'bret_victor'
+    handle_one(rr, html=True, email=False, rendered=tdir)
+    out = tdir / 'bret_victor.html'
+
+    ht = out.read_text()
+
+    assert 'http://worrydream.com/MagicInk/' in ht
+    assert 'http://enjalot.com/' in ht
+
+
+    text = astext(out).splitlines()
+    def tcontains(x):
+        for line in text:
+            if x in line:
+                return True
+        return False
+
+    assert tcontains('Tue 18 Jun 2019 13:10')
+    assert tcontains('Fri_14_Jun_2019_14:33 by pmf')
+    assert tcontains('tags: bret_victor javascript mar12 visualization')
+
+
