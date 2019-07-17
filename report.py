@@ -132,31 +132,20 @@ Htmlish = Union[str, T.dom_tag]
 
 # TODO hmm. maybe calling base class method pulls automatically??
 class FormatTrait(AbsTrait):
-    _impls = {}
-
-    # TODO go through registered classes and dispatch
-    # TODO not sure about extras...
-    # TODO first arg for format is this??
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         raise NotImplementedError
-
-
-    # TODO crap. does it have to be a separate trait??
-    # @classmethod
-    # def format(trait, cobj)
 format_result = pull(FormatTrait.format)
+
 
 IgnoreRes = Optional[str]
 
 class IgnoreTrait(AbsTrait):
-    _impls = {}
-
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         raise NotImplementedError
-
 ignore_result = pull(IgnoreTrait.ignore)
+
 
 def isempty(s) -> bool:
     if s is None:
@@ -171,43 +160,29 @@ def isempty(s) -> bool:
 def fdate(d: datetime) -> str:
     return d.strftime('%a %d %b %Y %H:%M')
 
-# TODO move target separately?
-class ForSpinboard:
-    @classproperty
-    def Target(cls):
-        from spinboard import Result # type: ignore
-        return Result
 
-class ForReach:
-    @classproperty
-    def Target(cls):
-        from reach import Result # type: ignore
-        return Result
+from common import ForSpinboard, ForTentacle, ForReach
 
-class ForTentacle:
-    @classproperty
-    def Target(cls):
-        from tentacle import Result # type: ignore
-        return Result
-
+# TODO default impl?? not sure..
 class SpinboardIgnore(ForSpinboard, IgnoreTrait):
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
+        if obj.user in ('lvwrence', 'ma51ne64'):
+            return True
         return None
-IgnoreTrait.reg(SpinboardIgnore)
+        # return obj.user == 'lvwrence' # TODO FIXME NOCOMMIT
 
 class TentacleIgnore(ForTentacle, IgnoreTrait):
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         return None
-IgnoreTrait.reg(TentacleIgnore)
 
 class ReachIgnore(ForReach, IgnoreTrait):
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         # TODO eh, I def. need to separate in different files; that way I can have proper autocompletion..
         return ignored_reddit(obj)
-IgnoreTrait.reg(ReachIgnore)
+IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore)
 
 # TODO not sure if should inherit from trait... it's more of an impl..
 class SpinboardFormat(ForSpinboard, FormatTrait):
@@ -250,8 +225,6 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         res.add(trait.user_link(user=obj.user))
         # TODO userstats
         return res
-# TODO better name for reg
-FormatTrait.reg(SpinboardFormat)
 
 def reddit(s):
     return f'https://reddit.com{s}'
@@ -280,7 +253,6 @@ class ReachFormat(ForReach, FormatTrait):
         user_link = reddit('/u/' + obj.user)
         res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink')); res.add(' by '); res.add(T.a(obj.user, href=user_link, cls='user'))
         return res
-FormatTrait.reg(ReachFormat)
 
 class TentacleTrait(ForTentacle, FormatTrait):
     # TODO mm. maybe permalink is a part of trait?
@@ -296,7 +268,8 @@ class TentacleTrait(ForTentacle, FormatTrait):
         res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.link, cls='permalink'))
         return res
         # TODO indicate how often is user showing up?
-FormatTrait.reg(TentacleTrait)
+
+FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait)
 
 # TODO maybe, move to jsonify?..
 def get_result_type(repo: str) -> Type:
@@ -493,8 +466,6 @@ def invkey(kk):
 
 
 class CumulativeBase(AbsTrait):
-    _impls = {}
-
     def __init__(self, items: List) -> None:
         self.items = items
 

@@ -1,3 +1,5 @@
+from kython.klogging import LazyLogger
+
 import logging
 
 def setup_paths():
@@ -8,8 +10,9 @@ def setup_paths():
         '/L/coding/reach',
     ])
 
+logger = LazyLogger('axol')
 def get_logger():
-    return logging.getLogger('axol')
+    return logger
 
 # TODO kython??
 class classproperty(object):
@@ -17,3 +20,24 @@ class classproperty(object):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
+
+
+
+# TODO move target separately?
+class ForSpinboard:
+    @classproperty
+    def Target(cls):
+        from spinboard import Result # type: ignore
+        return Result
+
+class ForReach:
+    @classproperty
+    def Target(cls):
+        from reach import Result # type: ignore
+        return Result
+
+class ForTentacle:
+    @classproperty
+    def Target(cls):
+        from tentacle import Result # type: ignore
+        return Result
