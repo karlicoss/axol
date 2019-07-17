@@ -17,7 +17,6 @@ class RepoHandle:
         self.logger = get_logger()
 
     def check_output(self, *args):
-        import gc
         cmd = [
             'git', f'--git-dir={self.repo}/.git', *args
         ]
@@ -32,7 +31,6 @@ class RepoHandle:
                     self.logger.debug(' '.join(cmd))
                     self.logger.error('cannot allocate memory... trying GC and again')
                     gc.collect()
-                    import time
                     time.sleep(2)
                 else:
                     raise e
@@ -73,3 +71,9 @@ class RepoHandle:
             else:
                 j = json.loads(cc)
             yield (rev, dd, j)
+
+
+def test_repo_handle():
+    from config import OUTPUTS
+    hh = RepoHandle(OUTPUTS / 'bret_victor')
+    assert len(list(hh.iter_versions())) > 5
