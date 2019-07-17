@@ -6,8 +6,14 @@ from typing import Dict, Type, Dict
 class AbsTrait:
     Target: Type = NotImplemented
 
+    @classproperty
     # TODO how to refer to target here??
-    _impls: Dict[Type, Type['AbsTrait']] = NotImplemented
+    def _impls(cls) -> Dict[Type, Type['AbsTrait']]:
+        kk = '_type2impls'
+        if not hasattr(cls, kk):
+            setattr(cls, kk, {})
+        return getattr(cls, kk)
+
 
     @classmethod
     def reg(cls, *traits: Type['AbsTrait']):
@@ -34,6 +40,21 @@ def islambda(v):
     return isinstance(v, type(LAMBDA)) and v.__name__ == LAMBDA.__name__
 
 
+class _For:
+    def __getitem__(self, cls):
+        class ForCls:
+            @classproperty # TODO can be static prop?
+            def Target(ccc, cls=cls):
+                if islambda(cls):
+                    cc = cls()
+                else:
+                    cc = cls
+                return cc
+        return ForCls
+
+For = _For()
+
+
 def test():
     from typing import NamedTuple
     class A:
@@ -47,27 +68,9 @@ def test():
 
 
     class ShowTrait(AbsTrait):
-        _impls = {}
-
         @classmethod
         def show(trait, obj, *args, **kwargs):
             raise NotImplementedError
-
-
-    # TODO square brackets?
-    class _For:
-        def __getitem__(self, cls):
-            class ForCls:
-                @classproperty # TODO can be static prop?
-                def Target(ccc, cls=cls):
-                    if islambda(cls):
-                        cc = cls()
-                    else:
-                        cc = cls
-                    return cc
-            return ForCls
-
-    For = _For()
 
     show = pull(ShowTrait.show) # TODO ?
     class ForA:
@@ -80,6 +83,9 @@ def test():
         def show(trait, obj, *args, **kwargs):
             return f'A containing {obj.x}'
 
+    # TODO perhaps specify what it's for in square brackets?
+    # although no, too restrictive
+    # TODO better error messages? Might do with abc module
     class ShowB(For[B], ShowTrait):
         @classmethod
         def show(trait, obj, *args, **kwargs):
