@@ -10,12 +10,13 @@ class AbsTrait:
     _impls: Dict[Type, Type['AbsTrait']] = NotImplemented
 
     @classmethod
-    def reg(cls, tr: Type['AbsTrait']):
-        cls._impls[tr.Target] = tr # TODO check for existence?
+    def reg(cls, *traits: Type['AbsTrait']):
+        for tr in traits:
+            cls._impls[tr.Target] = tr # TODO check for existence?
 
     @classmethod
     def for_(cls, f):
-        if not isinstance(f, type):
+        if not isinstance(f, type): # TODO eh?
             f = type(f)
         return cls._impls[f]
 
@@ -27,6 +28,10 @@ def pull(mref):
         return getattr(Dispatched, name)(obj, *args, **kwargs)
     return _m
 
+# https://stackoverflow.com/a/3655857/706389
+def islambda(v):
+    LAMBDA = lambda:0
+    return isinstance(v, type(LAMBDA)) and v.__name__ == LAMBDA.__name__
 
 
 def test():
@@ -36,6 +41,9 @@ def test():
 
     class B:
         z = "string!"
+
+    class L:
+        x = 'smth lazy'
 
 
     class ShowTrait(AbsTrait):
@@ -51,8 +59,12 @@ def test():
         def __getitem__(self, cls):
             class ForCls:
                 @classproperty # TODO can be static prop?
-                def Target(ccc):
-                    return cls
+                def Target(ccc, cls=cls):
+                    if islambda(cls):
+                        cc = cls()
+                    else:
+                        cc = cls
+                    return cc
             return ForCls
 
     For = _For()
@@ -72,9 +84,20 @@ def test():
         @classmethod
         def show(trait, obj, *args, **kwargs):
             return f'I am {obj.z}'
-    ShowTrait.reg(ShowA)
-    ShowTrait.reg(ShowB)
+
+    ForL = For[lambda: L] # TODO eh, capturing?
+    class ShowL(ForL, ShowTrait):
+        @classmethod
+        def show(trait, obj, *args, **kwargs):
+            return 'showl'
+
+    ShowTrait.reg(ShowA, ShowB, ShowL)
 
 
     assert show(A()) == 'A containing 123'
     assert show(B()) == 'I am string!'
+    assert show(L()) == 'showl'
+
+    assert show(A()) == 'A containing 123'
+    assert show(B()) == 'I am string!'
+    assert show(L()) == 'showl'
