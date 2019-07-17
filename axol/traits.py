@@ -41,7 +41,7 @@ class SpinboardIgnore(ForSpinboard, IgnoreTrait):
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         if obj.user in ('lvwrence', 'ma51ne64'):
-            return True
+            return 'user blacklisted'
         return None
         # return obj.user == 'lvwrence' # TODO FIXME NOCOMMIT
 

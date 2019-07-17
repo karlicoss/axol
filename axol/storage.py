@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import check_output
-from typing import Dict, Iterator, List, Tuple, Type
+from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar
 
 from axol.common import logger
 from axol.jsonify import from_json
@@ -15,7 +15,7 @@ Revision = str
 Json = Dict
 
 class RepoHandle:
-    def __init__(self, repo: str):
+    def __init__(self, repo: Path) -> None:
         self.repo = repo
         self.logger = logger
 
@@ -97,20 +97,22 @@ class Collector:
                 self.items[i.uid] = i
         return added
 
+R = TypeVar('R')
 
-class Changes:
+# TODO uh. kinda pointless class... could just be a dict?
+class Changes(Generic[R]):
     def __init__(self) -> None:
-        self.changes: Dict[datetime, List[str]] = {}
+        self.changes: Dict[datetime, List[R]] = {}
     # method to format everything?
 
-    def add(self, rev: datetime, items):
+    def add(self, rev: datetime, items) -> None:
         self.changes[rev] = items
 
     def __len__(self):
         return sum(len(x) for x in self.changes.values())
 
 # TODO html mode??
-def get_digest(repo: str, last=None) -> Changes:
+def get_digest(repo: Path, last=None) -> Changes[R]:
     rtype = get_result_type(repo)
 
     rh = RepoHandle(repo)
@@ -120,7 +122,7 @@ def get_digest(repo: str, last=None) -> Changes:
     # TODO shit. should have stored metadata in repository?... for now guess from filename..
 
     cc = Collector()
-    changes = Changes()
+    changes = Changes[R]() # TODO ?? does it really add getitem??
     # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
     # TODO would be interesting to have non-consuming slice...
     for jj in rh.iter_versions(last=last):
