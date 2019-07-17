@@ -46,23 +46,29 @@ def test():
             raise NotImplementedError
 
 
+    # TODO square brackets?
+    class _For:
+        def __getitem__(self, cls):
+            class ForCls:
+                @classproperty # TODO can be static prop?
+                def Target(ccc):
+                    return cls
+            return ForCls
+
+    For = _For()
+
     show = pull(ShowTrait.show) # TODO ?
     class ForA:
         @classproperty
         def Target(cls):
             return A
 
-    class ForB:
-        @classproperty
-        def Target(cls):
-            return B
-
     class ShowA(ForA, ShowTrait):
         @classmethod
         def show(trait, obj, *args, **kwargs):
             return f'A containing {obj.x}'
 
-    class ShowB(ForB, ShowTrait):
+    class ShowB(For[B], ShowTrait):
         @classmethod
         def show(trait, obj, *args, **kwargs):
             return f'I am {obj.z}'
