@@ -11,7 +11,6 @@ from collections import Counter
 
 from axol.common import setup_paths, classproperty, logger
 from config import OUTPUTS, ignored_reddit
-from axol.jsonify import from_json
 from axol.storage import RepoHandle, get_digest, get_result_type
 from axol.traits import ignore_result
 from axol.traits import ForSpinboard, ForTentacle, ForReach

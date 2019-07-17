@@ -6,21 +6,9 @@ from typing import Any, Dict, Type
 from kython.kjson import Json, ToFromJson
 
 from axol.common import classproperty
-from axol.traits import ForSpinboard
+from axol.traits import ForSpinboard, ForReach, ForTentacle
 from axol.trait import AbsTrait, pull
 
-
-# class JsonTrait(AbsTrait):
-#     _impls = {}
-
-#     @classmethod
-#     def to_json(trait, obj) -> Json:
-#         raise NotImplementedError
-
-#     # @classmethod
-#     # def from_json(trait, jj: Json):
-#     #     raise NotImplementedError
-# # from_json = # TODO ugh.. sometimes might require manual dispatching??
 
 # class SpinboardJson(JsonTrait):
 #     # TODO rename Target to Self?
@@ -30,20 +18,24 @@ from axol.trait import AbsTrait, pull
 #         return Result
 
 
-# to_json = pull(JsonTrait.to_json)
-
 class JsonTrait(AbsTrait): # TODO generic..
     @classmethod
     def from_json(trait, obj: Json):
-        raise NotImplementedError
+        tf = ToFromJson( # TODO FIXME isoformat??
+            trait.Target,
+            as_dates=['when'],
+        )
+        return tf.from_(obj)
 
 
 class SpinboardJsonTrait(ForSpinboard, JsonTrait):
-    @classmethod
-    def from_json(trait, obj: Json):
-        cp = {k: v for k, v in obj.items()}
-        cp['when'] = datetime.strptime(cp['when'], '%Y%m%d%H%M%S')
-        return trait.Target(**cp)
+    pass
+
+class ReachJsonTrait(ForReach, JsonTrait):
+    pass
+
+class TentacleJsonTrait(ForTentacle, JsonTrait):
+    pass
 
 
 class Jsoner:
@@ -54,13 +46,7 @@ class Jsoner:
     def to_json(self, obj) -> Json:
         return self.to_json_f[type(obj)](obj)
 
-    def from_json(self, cls, jj: Json):
-        return self.from_json_f[cls](jj)
-
 _jsoner = Jsoner() # eh, hopefully singleton is ok..
-
-def from_json(cls, jj: Json):
-    return _jsoner.from_json(cls, jj)
 
 
 def to_json(thing) -> Json:
@@ -75,6 +61,7 @@ def register_spinboard():
         res['when'] = res['when'].strftime('%Y%m%d%H%M%S')
 
         # make sure it's inverse
+        # TOOD FIXME how to make automatic?
         tmp = _from(res)
         assert tmp == obj
 
@@ -92,7 +79,7 @@ def register_reach():
         as_dates=['when'],
     )
     _jsoner.to_json_f[Result] = lambda r: tf.to(r)
-    _jsoner.from_json_f[Result] = lambda j: tf.from_(j)
+    JsonTrait.reg(ReachJsonTrait)
 
 def register_tentacle():
     from tentacle import Result # type: ignore
@@ -102,7 +89,7 @@ def register_tentacle():
         as_dates=['when'],
     )
     _jsoner.to_json_f[Result] = lambda r: tf.to(r)
-    _jsoner.from_json_f[Result] = lambda j: tf.from_(j)
+    JsonTrait.reg(TentacleJsonTrait)
 
 
 def register_all():

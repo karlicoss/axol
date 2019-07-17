@@ -7,7 +7,7 @@ from subprocess import check_output
 from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar
 
 from axol.common import logger
-from axol.jsonify import from_json
+from axol.jsonify import JsonTrait
 from axol.traits import get_result_type, ignore_result
 
 
@@ -114,7 +114,6 @@ class Changes(Generic[R]):
 # TODO html mode??
 def get_digest(repo: Path, last=None) -> Changes[R]:
     rtype = get_result_type(repo)
-    from axol.jsonify import JsonTrait
     Trait = JsonTrait.for_(rtype)
     from_json = Trait.from_json
 
