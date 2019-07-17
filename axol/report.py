@@ -450,13 +450,12 @@ def raw_script(s):
     raw(f'<script>{s}</script>')
 
 
-def render_summary(repo: Path, rendered: Path, last=None):
+def render_summary(repo: Path, digest, rendered: Path, last=None):
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
 
     Cumulative = CumulativeBase.for_(rtype)
 
-    digest = get_digest(repo, last=last)
     NOW = datetime.now()
     name = repo.name
 
@@ -485,10 +484,9 @@ def render_summary(repo: Path, rendered: Path, last=None):
     with rendered.joinpath(name + '.html').open('w') as fo:
         fo.write(str(doc))
 
-def handle_one(repo: Path, rendered: Path, html=False, email=True, last=None):
+def render_latest(repo: Path, digest, rendered: Path, html=False, email=True, last=None):
     logger.info('processing %s', repo)
 
-    digest = get_digest(repo, last=last)
     if email:
         raise NotImplementedError('email is currenlty broken')
         # res = send(
@@ -546,12 +544,8 @@ def main():
     args = parser.parse_args()
     run(args)
 
+
 def run(args):
-    # parser.add_argument('--from', default=None)
-    # parser.add_argument('--to', default=None)
-    # froms = getattr(args, 'from')
-    # TODO utc timestamp??
-    # tos = args.to
     repos: List[Path] = []
     if args.repo is not None:
         repos = [OUTPUTS.joinpath(args.repo)]
@@ -562,20 +556,19 @@ def run(args):
     for repo in repos:
         logger.info("processing %s", repo)
         try:
+            digest = get_digest(repo, last=args.last)
             if args.summary:
                 SUMMARY = output_dir/ 'summary'
-                render_summary(repo, rendered=SUMMARY, last=args.last)
+                render_summary(repo, digest=digest, rendered=SUMMARY, last=args.last)
             else:
                 RENDERED = output_dir / 'rendered'
-                handle_one(repo, html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
+                render_latest(repo, digest=digest, html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
         except Exception as e:
             logger.exception(e)
             ok = False
 
     if not ok:
         sys.exit(1)
-
-
 
 
 if __name__ == '__main__':
@@ -595,8 +588,9 @@ def astext(html: Path) -> str:
 
 def test_all(tmp_path):
     tdir = Path(tmp_path)
-    rr = OUTPUTS / 'bret_victor'
-    handle_one(rr, html=True, email=False, rendered=tdir)
+    repo = OUTPUTS / 'bret_victor'
+    digest = get_digest(repo)
+    render_latest(repo, digest=digest, html=True, email=False, rendered=tdir)
     out = tdir / 'bret_victor.html'
 
     ht = out.read_text()
