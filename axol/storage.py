@@ -114,6 +114,9 @@ class Changes(Generic[R]):
 # TODO html mode??
 def get_digest(repo: Path, last=None) -> Changes[R]:
     rtype = get_result_type(repo)
+    from axol.jsonify import JsonTrait
+    Trait = JsonTrait.for_(rtype)
+    from_json = Trait.from_json
 
     rh = RepoHandle(repo)
     # ustats = get_user_stats(jsons, rtype=rtype)
@@ -130,7 +133,7 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
         items = []
 
         for x in j:
-            item = from_json(rtype, x)
+            item = from_json(x)
             ignored = ignore_result(item)
             if ignored is not None:
                 logger.debug('ignoring due to %s', ignored)

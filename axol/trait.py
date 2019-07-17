@@ -22,7 +22,7 @@ class AbsTrait:
             cls._impls[tr.Target] = tr # TODO check for existence?
 
     @classmethod
-    def for_(cls, f):
+    def for_(cls, f): # TODO returns AbsTrait??
         if not isinstance(f, type): # TODO eh?
             f = type(f)
         return cls._impls[f]

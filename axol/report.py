@@ -7,7 +7,6 @@ from typing import List, Tuple, Dict, Type, Union, Any, Iterator, Optional
 import logging
 import sys
 from pathlib import Path
-from os.path import basename, join
 from collections import Counter
 
 from axol.common import setup_paths, classproperty, logger
@@ -460,7 +459,7 @@ def render_summary(repo, rendered: Path, last=None):
 
     digest = get_digest(repo, last=last)
     NOW = datetime.now()
-    name = basename(repo)
+    name = repo.name
 
     everything = flatten([ch for ch in digest.changes.values()])
 
@@ -503,7 +502,7 @@ def handle_one(repo: Path, rendered: Path, html=False, email=True, last=None):
     else:
         NOW = datetime.now()
 
-        name = basename(repo)
+        name = repo.name
         doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
 
         with doc.head:

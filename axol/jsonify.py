@@ -3,12 +3,12 @@
 from datetime import datetime
 from typing import Any, Dict, Type
 
-from kython.kjson import ToFromJson
+from kython.kjson import Json, ToFromJson
 
 from axol.common import classproperty
+from axol.traits import ForSpinboard
 from axol.trait import AbsTrait, pull
 
-Json = Any
 
 # class JsonTrait(AbsTrait):
 #     _impls = {}
@@ -31,6 +31,19 @@ Json = Any
 
 
 # to_json = pull(JsonTrait.to_json)
+
+class JsonTrait(AbsTrait): # TODO generic..
+    @classmethod
+    def from_json(trait, obj: Json):
+        raise NotImplementedError
+
+
+class SpinboardJsonTrait(ForSpinboard, JsonTrait):
+    @classmethod
+    def from_json(trait, obj: Json):
+        cp = {k: v for k, v in obj.items()}
+        cp['when'] = datetime.strptime(cp['when'], '%Y%m%d%H%M%S')
+        return trait.Target(**cp)
 
 
 class Jsoner:
@@ -56,11 +69,6 @@ def to_json(thing) -> Json:
 def register_spinboard():
     from spinboard import Result # type: ignore
 
-    def _from(jdict: Json):
-        cp = {k: v for k, v in jdict.items()}
-        cp['when'] = datetime.strptime(cp['when'], '%Y%m%d%H%M%S')
-        return Result(**cp)
-
     # TODO switch to tofromjson..
     def _to(obj) -> Json:
         res = obj._asdict()
@@ -74,7 +82,7 @@ def register_spinboard():
 
 
     _jsoner.to_json_f[Result] = _to
-    _jsoner.from_json_f[Result] = _from
+    JsonTrait.reg(SpinboardJsonTrait)
 
 def register_reach():
     from reach import Result # type: ignore

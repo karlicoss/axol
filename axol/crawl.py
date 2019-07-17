@@ -11,11 +11,10 @@ from typing import Union
 
 from kython.klogging import setup_logzero
 
-from axol.common import setup_paths
-setup_paths()
+from axol.common import logger
 
 from config import slugify, get_queries, OUTPUTS
-from axol.jsonify import to_json, from_json
+from axol.jsonify import to_json
 
 Pathish = Union[str, Path]
 
