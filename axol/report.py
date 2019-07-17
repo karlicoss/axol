@@ -491,43 +491,43 @@ def handle_one(repo: Path, rendered: Path, html=False, email=True, last=None):
 
     digest = get_digest(repo, last=last)
     if email:
-        raise RuntimeError('email is currenlty broken')
+        raise NotImplementedError('email is currenlty broken')
         # res = send(
         #     subject=basename(repo),
         #     body=digest,
         #     html=html,
         # )
         # res.raise_for_status()
-    else:
-        NOW = datetime.now()
 
-        name = repo.name
-        doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
+    NOW = datetime.now()
 
-        with doc.head:
-            T.style(STYLE)
+    name = repo.name
+    doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
 
-        # TODO email that as well?
-        with doc:
-            for d, items in sorted(digest.changes.items(), reverse=True):
-                logger.debug('dumping %d items for %s', len(items), d)
-                with T.div(cls='day-changes') as dc:
-                    dc.add(T.div(T.b(fdate(d))))
-                    # TODO tab?
-                    with T.div(cls='day-changes-inner') as dci:
-                        for i in items:
-                            ignored = ignore_result(i)
-                            if ignored is not None:
-                                # TODO maybe let format result handle that... not sure
-                                dci.add(T.div(ignored, cls='item ignored'))
-                                # TODO eh. need to handle in cumulatives...
-                            else:
-                                fi = format_result(i)
-                                # TODO append raw?
-                                dci.add(T.div(fi, cls='item'))
+    with doc.head:
+        T.style(STYLE)
 
-        with rendered.joinpath(name + '.html').open('w') as fo:
-            fo.write(str(doc))
+    # TODO email that as well?
+    with doc:
+        for d, items in sorted(digest.changes.items(), reverse=True):
+            logger.debug('dumping %d items for %s', len(items), d)
+            with T.div(cls='day-changes'):
+                T.div(T.b(fdate(d)))
+                # TODO tab?
+                with T.div(cls='day-changes-inner'):
+                    for i in items:
+                        ignored = ignore_result(i)
+                        if ignored is not None:
+                            # TODO maybe let format result handle that... not sure
+                            T.div(ignored, cls='item ignored')
+                            # TODO eh. need to handle in cumulatives...
+                        else:
+                            fi = format_result(i)
+                            # TODO append raw?
+                            T.div(fi, cls='item')
+
+    with rendered.joinpath(name + '.html').open('w') as fo:
+        fo.write(str(doc))
 
 
 def setup_parser(parser):
