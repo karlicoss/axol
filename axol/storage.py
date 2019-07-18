@@ -1,9 +1,11 @@
 import gc
 import json
+import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
-from subprocess import check_output
+from subprocess import DEVNULL, check_output, run
 from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar
 
 from axol.common import logger
@@ -171,3 +173,62 @@ def test_digest():
     from itertools import chain
     everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
     assert len(everything) == len({x.uid for x in everything})
+
+
+# TODO move somewhere more appropriate
+def slugify(s: str):
+    s = s.strip().replace(' ', '_')
+    return re.sub(r'(?u)[^-\w.]', '', s)
+
+
+def slugify_in(path: str, dir: Path):
+    dd = os.listdir(str(dir))
+    while True:
+        res = slugify(path)
+        if res not in dd:
+            return res
+        path = path + '_'
+
+
+# TODO reuse RepoHandle? not sure..
+class RepoWriteHandle:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.logger = logger
+
+    @classmethod
+    def create(cls, name: str, base: Path):
+        dname = slugify(name) # TODO FIXME slugify_in?
+        rpath = base.joinpath(dname)
+        rpath.mkdir(exist_ok=True)
+        return RepoWriteHandle(rpath)
+
+    def assert_clean(self):
+        if self._git('rev-parse', 'HEAD', stderr=DEVNULL).returncode == 0:
+            self._git('diff', '--exit-code').check_returncode()
+        else:
+            self.logger.info('%s: empty repo!', self.path)
+
+    def _git(self, *cmd, **kwargs):
+        return run([
+            'git',
+            *cmd,
+        ], cwd=str(self.path), **kwargs)
+
+    def commit(self, jj):
+        self._git('init', '--quiet').check_returncode()
+        self.assert_clean()
+
+        cpath = self.path.joinpath('content.json')
+        before = None
+        if cpath.exists():
+            with cpath.open('r') as fo:
+                jb = json.load(fo)
+                before = len(jb)
+
+        with cpath.open('w') as fo:
+            json.dump(jj, fo, ensure_ascii=False, indent=1, sort_keys=True)
+        self._git('add', 'content.json')
+        self._git('commit', '-m', f'updated content ({before} -> {len(jj)} entries)', '--allow-empty').check_returncode()
+        self.assert_clean()
+# TODO make sure names are unique??

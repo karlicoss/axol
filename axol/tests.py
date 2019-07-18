@@ -3,13 +3,13 @@ from pathlib import Path
 import time
 
 from axol.common import Query, logger
-from axol.crawl import RepoHandle, process_query
-from axol.storage import RepoHandle as SRepoHandle, get_digest
+from axol.crawl import process_query
+from axol.storage import RepoWriteHandle, get_digest
 
 
 def test_repohandle(tmp_path):
     td = Path(tmp_path)
-    rh = RepoHandle.create('test', path=td)
+    rh = RepoWriteHandle.create('test', base=td)
     jsons = [{i: str(i) for i in range(10)}]
     rh.commit(jsons)
     time.sleep(0.5)

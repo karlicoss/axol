@@ -9,12 +9,6 @@ OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
 
 assert OUTPUTS.exists()
 
-# TODO move somewhere more appropriate
-def slugify(s: str):
-    s = s.strip().replace(' ', '_')
-    return re.sub(r'(?u)[^-\w.]', '', s)
-
-
 def pintag(query: str) -> str:
     # https://pinboard.in/howto/#tags
     if ' ' in query or ':' in query:
