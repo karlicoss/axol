@@ -84,6 +84,10 @@ def test_crawl(tmp_path):
     testrange.clear(); testrange.extend([10, 11, 12, 17, 18])
     process_query(q=q, dry=False, path=td)
 
+    time.sleep(2)
+    process_query(q=q, dry=False, path=td)
+    # this should be ignored in digest?
+
     # TODO eh?? FIXME duplication of things across queries?
     assert len(contents()) == 10
 
