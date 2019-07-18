@@ -450,7 +450,7 @@ def raw_script(s):
     raw(f'<script>{s}</script>')
 
 
-def render_summary(repo: Path, digest, rendered: Path, last=None):
+def render_summary(repo: Path, digest, rendered: Path):
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
 
@@ -484,17 +484,8 @@ def render_summary(repo: Path, digest, rendered: Path, last=None):
     with rendered.joinpath(name + '.html').open('w') as fo:
         fo.write(str(doc))
 
-def render_latest(repo: Path, digest, rendered: Path, html=False, email=True, last=None):
+def render_latest(repo: Path, digest, rendered: Path):
     logger.info('processing %s', repo)
-
-    if email:
-        raise NotImplementedError('email is currenlty broken')
-        # res = send(
-        #     subject=basename(repo),
-        #     body=digest,
-        #     html=html,
-        # )
-        # res.raise_for_status()
 
     NOW = datetime.now()
 
@@ -545,29 +536,45 @@ def main():
     run(args)
 
 
+def do_repo(repo, args):
+    output_dir = args.output_dir
+    digest = get_digest(repo, last=args.last)
+    if args.summary:
+        SUMMARY = output_dir/ 'summary'
+        render_summary(repo, digest=digest, rendered=SUMMARY)
+    else:
+        RENDERED = output_dir / 'rendered'
+        render_latest(repo, digest=digest, rendered=RENDERED)
+    # TODO FIXME return summary
+
+
 def run(args):
+    from concurrent.futures import wait, ProcessPoolExecutor
+
     repos: List[Path] = []
     if args.repo is not None:
         repos = [OUTPUTS.joinpath(args.repo)]
     else:
         repos = [x for x in OUTPUTS.iterdir() if x.is_dir()]
-    ok = True
-    output_dir = args.output_dir
-    for repo in repos:
-        logger.info("processing %s", repo)
-        try:
-            digest = get_digest(repo, last=args.last)
-            if args.summary:
-                SUMMARY = output_dir/ 'summary'
-                render_summary(repo, digest=digest, rendered=SUMMARY, last=args.last)
-            else:
-                RENDERED = output_dir / 'rendered'
-                render_latest(repo, digest=digest, html=args.html, email=args.email, rendered=RENDERED, last=args.last) # TODO handle last=thing uniformly..
-        except Exception as e:
-            logger.exception(e)
-            ok = False
+    logger.info('will be processing %s', repos)
 
-    if not ok:
+    # TODO would be cool to do some sort of parallel logging? 
+    # maybe some sort of rolling log using the whole terminal screen?
+    errors = []
+    with ProcessPoolExecutor() as pool:
+        futures = []
+        for repo in repos:
+            futures.append(pool.submit(do_repo, repo, args))
+        for r, f in zip(repos, futures):
+            try:
+                f.result()
+            except Exception as e:
+                logger.exception(e)
+                errors.append(e)
+
+    # TODO index page + put errors on it
+
+    if len(errors) > 0:
         sys.exit(1)
 
 
@@ -590,7 +597,7 @@ def test_all(tmp_path):
     tdir = Path(tmp_path)
     repo = OUTPUTS / 'bret_victor'
     digest = get_digest(repo)
-    render_latest(repo, digest=digest, html=True, email=False, rendered=tdir)
+    render_latest(repo, digest=digest, rendered=tdir)
     out = tdir / 'bret_victor.html'
 
     ht = out.read_text()

@@ -12,18 +12,21 @@ from config import ignored_reddit
 class ForSpinboard:
     @classproperty
     def Target(cls):
+        # pylint: disable=import-error
         from spinboard import Result # type: ignore
         return Result
 
 class ForReach:
     @classproperty
     def Target(cls):
+        # pylint: disable=import-error
         from reach import Result # type: ignore
         return Result
 
 class ForTentacle:
     @classproperty
     def Target(cls):
+        # pylint: disable=import-error
         from tentacle import Result # type: ignore
         return Result
 
@@ -59,16 +62,19 @@ IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore)
 
 
 
-# TODO maybe, move to jsonify?..
+# TODO maybe, return For directly?
 def get_result_type(repo: Path) -> Type:
     name = repo.name
     # TODO this could also be a trait?
     if name.startswith('reddit'):
+        # pylint: disable=import-error
         from reach import Result # type: ignore
         return Result
     elif name.startswith('github'):
+        # pylint: disable=import-error
         from tentacle import Result # type: ignore
         return Result
     else:
+        # pylint: disable=import-error
         from spinboard import Result # type: ignore
         return Result
