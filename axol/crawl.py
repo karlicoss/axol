@@ -194,9 +194,14 @@ def test_crawl(tmp_path):
 
     # TODO eh, global trait is kind of meh?
     # maybe makes more sense to do lru cache and configuring
+    def contents():
+        return json.loads((trp / 'content.json').read_text())
 
     process_query(q=q, dry=False, path=td)
-    contents = json.loads((trp / 'content.json').read_text())
-    assert len(contents) == 20
+    assert len(contents()) == 20
 
+    testrange.clear(); testrange.extend([10, 11, 12])
+    process_query(q=q, dry=False, path=td)
 
+    # TODO eh?? FIXME duplication of things across queries?
+    assert len(contents()) == 6
