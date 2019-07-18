@@ -62,8 +62,8 @@ def register_spinboard():
 
         # make sure it's inverse
         # TOOD FIXME how to make automatic?
-        tmp = _from(res)
-        assert tmp == obj
+        # tmp = _from(res)
+        # assert tmp == obj
 
         return res
 

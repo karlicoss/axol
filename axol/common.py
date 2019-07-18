@@ -1,6 +1,9 @@
-from kython.klogging import LazyLogger
-
 import logging
+from typing import Any, List, Sequence, Type
+
+from kython.klogging import LazyLogger
+from typing_extensions import Protocol
+
 
 def setup_paths():
     import sys
@@ -19,3 +22,13 @@ class classproperty(object):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
+
+
+Filter = Any
+
+class Query(Protocol):
+    searcher: Type[Any]
+    queries: List[str]
+    excluded: Sequence[Filter]
+    @property
+    def repo_name(self): str = ...
