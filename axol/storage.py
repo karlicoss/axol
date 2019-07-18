@@ -106,6 +106,7 @@ class Changes(Generic[R]):
     # method to format everything?
 
     def add(self, rev: datetime, items) -> None:
+        assert rev not in self.changes # TODO not sure
         self.changes[rev] = items
 
     def __len__(self):

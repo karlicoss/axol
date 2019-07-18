@@ -4,6 +4,7 @@ import time
 
 from axol.common import Query, logger
 from axol.crawl import RepoHandle, process_query
+from axol.storage import RepoHandle as SRepoHandle, get_digest
 
 
 def test_repohandle(tmp_path):
@@ -78,8 +79,17 @@ def test_crawl(tmp_path):
     process_query(q=q, dry=False, path=td)
     assert len(contents()) == 20
 
-    testrange.clear(); testrange.extend([10, 11, 12])
+    # TODO FIXME because of git time. ugh
+    time.sleep(2)
+    testrange.clear(); testrange.extend([10, 11, 12, 17, 18])
     process_query(q=q, dry=False, path=td)
 
     # TODO eh?? FIXME duplication of things across queries?
-    assert len(contents()) == 6
+    assert len(contents()) == 10
+
+    # TODO split in other test
+
+    digest = get_digest(trp)
+    assert [p[1] for p in sorted((k, len(v)) for k, v in digest.changes.items())] == [15, 2]
+
+
