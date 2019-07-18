@@ -50,16 +50,23 @@ def process_all(dry=False, include=None, exclude=None):
         logger.error("Had errors during processing!")
         sys.exit(1)
 
+def run(args):
+    process_all(args.dry, include=args.include, exclude=args.exclude)
+
+
+def setup_parser(p):
+    p.add_argument('--dry', action='store_true')
+    p.add_argument('--include', action='append')
+    p.add_argument('--exclude', action='append')
+
 
 def main():
     setup_logzero(logging.getLogger('spinboard'), level=logging.DEBUG)
 
     p = argparse.ArgumentParser()
-    p.add_argument('--dry', action='store_true')
-    p.add_argument('--include', action='append')
-    p.add_argument('--exclude', action='append')
+    setup_parser(p)
     args = p.parse_args()
-    process_all(args.dry, include=args.include, exclude=args.exclude)
+    run(args)
 
 
 if __name__ == '__main__':
