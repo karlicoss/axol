@@ -6,9 +6,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 from subprocess import DEVNULL, check_output, run
-from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar
+from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar, Any
 
-from axol.common import logger
+from axol.common import logger, slugify
 from axol.jsonify import JsonTrait
 from axol.traits import get_result_type, ignore_result
 
@@ -173,12 +173,6 @@ def test_digest():
     from itertools import chain
     everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
     assert len(everything) == len({x.uid for x in everything})
-
-
-# TODO move somewhere more appropriate
-def slugify(s: str):
-    s = s.strip().replace(' ', '_')
-    return re.sub(r'(?u)[^-\w.]', '', s)
 
 
 def slugify_in(path: str, dir: Path):

@@ -1,13 +1,12 @@
 from pathlib import Path
 import re
 from typing import List, Iterator, NamedTuple, Type, Any, Sequence
-from typing_extensions import Protocol
 
 from kython import flatten
 
-OUTPUTS = Path(__file__).parent.joinpath('outputs').resolve()
+from axol.common import Query, Filter, slugify
 
-assert OUTPUTS.exists()
+OUTPUTS = Path(__file__).parent.absolute() / 'outputs'; assert OUTPUTS.exists()
 
 def pintag(query: str) -> str:
     # https://pinboard.in/howto/#tags
@@ -31,16 +30,6 @@ def pinboard_quote(s: str):
     if s.startswith("'"):
         return s
     return f'"{s}"'
-
-
-Filter = Any
-
-class Query(Protocol):
-    searcher: Type[Any]
-    queries: List[str]
-    excluded: Sequence[Filter]
-    @property
-    def repo_name(self): str = ...
 
 
 class GithubQ(Query):

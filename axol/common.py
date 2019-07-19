@@ -1,11 +1,13 @@
 import logging
-from typing import Any, List, Sequence, Type
-
-from kython.klogging import LazyLogger
+import re
+from typing import Any, Callable, List, Sequence, Type, TypeVar
 from typing_extensions import Protocol
 
 
-def setup_paths():
+from kython.klogging import LazyLogger
+
+
+def setup_paths() -> None:
     import sys
     sys.path.extend([
         '/L/coding/tentacle',
@@ -16,12 +18,6 @@ setup_paths()
 
 logger = LazyLogger('axol', level=logging.DEBUG)
 
-# TODO kython??
-class classproperty(object):
-    def __init__(self, f):
-        self.f = f
-    def __get__(self, obj, owner):
-        return self.f(owner)
 
 
 Filter = Any
@@ -31,4 +27,11 @@ class Query(Protocol):
     queries: List[str]
     excluded: Sequence[Filter]
     @property
-    def repo_name(self): str = ...
+    def repo_name(self) -> str: ...
+
+
+
+# TODO move somewhere more appropriate
+def slugify(s: str):
+    s = s.strip().replace(' ', '_')
+    return re.sub(r'(?u)[^-\w.]', '', s)

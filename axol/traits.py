@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Optional, Type
 
-from axol.common import classproperty
-from axol.trait import AbsTrait, pull
+from kython import classproperty
 
+from axol.trait import AbsTrait, pull
 
 from config import ignored_reddit
 

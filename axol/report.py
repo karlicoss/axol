@@ -9,17 +9,20 @@ import sys
 from pathlib import Path
 from collections import Counter
 
-from axol.common import setup_paths, classproperty, logger
+from axol.common import logger
 from config import OUTPUTS, ignored_reddit
 from axol.storage import RepoHandle, get_digest, get_result_type
 from axol.traits import ignore_result
 from axol.traits import ForSpinboard, ForTentacle, ForReach
 from axol.trait import AbsTrait, pull
 
+
 import dominate # type: ignore
 from dominate import tags as T # type: ignore
 from dominate.util import raw # type: ignore
 
+
+from kython import classproperty
 from kython import flatten
 
 
@@ -523,8 +526,6 @@ def setup_parser(parser):
     parser.add_argument('repo', nargs='?')
     parser.add_argument('--summary', action='store_true')
     parser.add_argument('--last', type=int, default=None)
-    parser.add_argument('--no-email', action='store_false', dest='email')
-    parser.add_argument('--no-html', action='store_false', dest='html')
     parser.add_argument('--output-dir', type=Path, default=BASE_DIR)
 
 

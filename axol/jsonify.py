@@ -3,9 +3,9 @@
 from datetime import datetime
 from typing import Type
 
+from kython import classproperty
 from kython.kjson import Json, ToFromJson
 
-from axol.common import classproperty
 from axol.traits import ForSpinboard, ForReach, ForTentacle
 from axol.trait import AbsTrait, pull
 
