@@ -13,7 +13,7 @@ from axol.storage import RepoWriteHandle
 from config import get_queries, OUTPUTS
 
 
-def process_query(q: Query, dry: bool, path=None):
+def process_query(q: Query, dry: bool, path: Path):
     logger.info('crawler: processing %s', q)
     searcher = q.searcher()
     qs = q.queries
@@ -42,7 +42,7 @@ def process_all(dry=False, include=None, exclude=None):
 
     for q in get_queries(include=include, exclude=exclude):
         try:
-            process_query(q, dry=dry)
+            process_query(q, dry=dry, path=OUTPUTS)
         except Exception as e:
             reg_error(e)
 
