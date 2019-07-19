@@ -514,7 +514,7 @@ def render_latest(repo: Path, digest, rendered: Path):
 
 
 def setup_parser(parser):
-    BASE_DIR = Path(__file__).absolute().parent
+    from config import BASE_DIR
     parser.add_argument('repo', nargs='?')
     parser.add_argument('--summary', action='store_true')
     parser.add_argument('--last', type=int, default=None)
