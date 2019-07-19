@@ -1,30 +1,24 @@
 #!/usr/bin/env python3
 import argparse
+import sys
+import logging
+from collections import Counter
 from datetime import datetime
 from itertools import islice
-from subprocess import check_call, check_output
-from typing import List, Tuple, Dict, Type, Union, Any, Iterator, Optional
-import logging
-import sys
 from pathlib import Path
-from collections import Counter
+from subprocess import check_call, check_output
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
+
+import dominate
+import dominate.tags as T
+from dominate.util import raw
+from kython import classproperty, cproperty, flatten
 
 from axol.common import logger
-from config import OUTPUTS, ignored_reddit
-from axol.storage import RepoHandle, get_digest, get_result_type
-from axol.traits import ignore_result
-from axol.traits import ForSpinboard, ForTentacle, ForReach
+from axol.storage import Changes, RepoHandle, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
-
-
-import dominate # type: ignore
-from dominate import tags as T # type: ignore
-from dominate.util import raw # type: ignore
-
-
-from kython import classproperty
-from kython import flatten
-
+from axol.traits import ForReach, ForSpinboard, ForTentacle, ignore_result
+from config import OUTPUTS, ignored_reddit
 
 
 # TODO need some sort of starting_from??
@@ -272,9 +266,7 @@ class CumulativeBase(AbsTrait):
     def FTrait(cls):
         return FormatTrait.for_(cls.Target)
 
-    # TODO mabye cached_property?
-    @property # type: ignore
-    @lru_cache()
+    @cproperty
     def nlink(self) -> str:
         return normalise(self.items[0].link) # TODO not sure if useful..
 
@@ -392,8 +384,7 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
         rev_when = invkey(lambda c: c.when)
         return lambda c: (c.stars, rev_when(c))
 
-    @property
-    @lru_cache()
+    @cproperty
     def stars(self) -> int:
         # TODO vote for method??
         return vote(i.stars for i in self.items)
@@ -406,19 +397,16 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
 CumulativeBase.reg(TentacleCumulative)
 
 class ReachCumulative(ForReach, CumulativeBase):
-    @property
-    @lru_cache()
+    @cproperty
     def the(self):
         assert len(self.items) == 1
         return self.items[0]
 
-    @property
-    @lru_cache()
+    @cproperty
     def ups(self):
         return self.the.ups
 
-    @property
-    @lru_cache()
+    @cproperty
     def downs(self):
         return self.the.downs
 
@@ -453,7 +441,7 @@ def raw_script(s):
     raw(f'<script>{s}</script>')
 
 
-def render_summary(repo: Path, digest, rendered: Path) -> Path:
+def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
 
@@ -542,7 +530,7 @@ def main():
 
 
 def do_repo(repo, output_dir, last, summary: bool) -> Path:
-    digest = get_digest(repo, last=last)
+    digest: Changes[Any] = get_digest(repo, last=last)
     if summary:
         SUMMARY = output_dir/ 'summary'
         return render_summary(repo, digest=digest, rendered=SUMMARY)
@@ -619,5 +607,4 @@ def test_all(tmp_path):
     assert tcontains('Tue 18 Jun 2019 13:10')
     assert tcontains('Fri_14_Jun_2019_14:33 by pmf')
     assert tcontains('tags: bret_victor javascript mar12 visualization')
-
 
