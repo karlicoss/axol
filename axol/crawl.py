@@ -13,7 +13,7 @@ from axol.storage import RepoWriteHandle
 from config import get_queries, OUTPUTS
 
 
-def process_query(q, dry: bool, path=None):
+def process_query(q: Query, dry: bool, path=None):
     logger.info('crawler: processing %s', q)
     searcher = q.searcher()
     qs = q.queries

@@ -5,6 +5,7 @@ import time
 from axol.common import Query, logger
 from axol.crawl import process_query
 from axol.storage import RepoWriteHandle, get_digest
+import axol.adhoc
 
 
 def test_repohandle(tmp_path):
@@ -95,5 +96,26 @@ def test_crawl(tmp_path):
 
     digest = get_digest(trp)
     assert [p[1] for p in sorted((k, len(v)) for k, v in digest.changes.items())] == [15, 2]
+
+
+# TODO better name
+def test_adhoc(tmp_path):
+    td = Path(tmp_path)
+
+    # TODO take
+    # TODO eh, could render separately...
+    # TODO just output htmls as it goes
+    # axol adhoc [--summary] (--all  | --pinboard | --github | --reddit) 'query1' 'query2' 'query3'
+    # TODO not sure if needs some sort of limit? and maybe lower timeout
+    # TODO qname is temporary?
+    # TODO not sure if should keep separate storages separate? Or maybe story query alongside?
+    queries = ['quantified mind']
+    axol.adhoc.run(queries=queries, sources=['github'], tdir=td)
+    [js] = list(td.rglob('*.json'))
+
+    assert len(json.loads(js.read_text())) > 0
+
+
+
 
 
