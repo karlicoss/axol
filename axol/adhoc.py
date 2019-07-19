@@ -1,21 +1,32 @@
 from pathlib import Path
+from subprocess import check_call
+from tempfile import TemporaryDirectory
 from typing import Sequence
 
-from axol.common import Query, slugify
+from kython.tui import getch
+
+from axol.common import Query, slugify, logger
 from axol.crawl import process_query
+from axol.report import do_repo
 
 
-def run(queries: Sequence[str], sources: Sequence[str], tdir: Path):
+
+def do_run(queries: Sequence[str], sources: Sequence[str], tdir: Path):
     [src] = sources
     assert src == 'github'
+    qname = src
 
-    q = GithubQ(src, *queries)
+    q = GithubQ(qname, *queries)
 
     dry = False
     process_query(q, path=tdir, dry=dry)
 
-    print(type(tdir))
-    pass
+    repo = tdir / ('github_' + qname) # TODO FIXME need to return it from process?
+    (tdir / 'summary').mkdir(exist_ok=True, parents=True)
+    res = do_repo(repo, output_dir=tdir, last=None, summary=True)
+    print(f"Rendered summary: {res}")
+    print("Opening in browser....")
+    check_call(['xdg-open', str(res)])
 
 
 def pinboard_quote(s: str):
@@ -25,6 +36,7 @@ def pinboard_quote(s: str):
     if s.startswith("'"):
         return s
     return f'"{s}"'
+
 
 class GithubQ(Query):
     @property
@@ -53,3 +65,26 @@ class GithubQ(Query):
 
     def __repr__(self):
         return str(self.__dict__)
+
+def setup_parser(p):
+    p.add_argument('queries', type=str, nargs='+')
+
+
+def run(args):
+    # TODO FIXME
+    with TemporaryDirectory() as td:
+        tdir = Path(td)
+        try:
+            do_run(queries=args.queries, sources=['github'], tdir=tdir)
+            # TODO open html??
+        except Exception as e:
+            logger.exception(e)
+            raise e
+        finally:
+            print("Press any key when ready")
+            getch()
+
+
+
+
+

@@ -453,7 +453,7 @@ def raw_script(s):
     raw(f'<script>{s}</script>')
 
 
-def render_summary(repo: Path, digest, rendered: Path):
+def render_summary(repo: Path, digest, rendered: Path) -> Path:
     rtype = get_result_type(repo) # TODO ??
     # ODO just get trait for type??
 
@@ -484,8 +484,10 @@ def render_summary(repo: Path, digest, rendered: Path):
         for cc in cumulatives:
             T.div(cc.format(), cls='item')
 
-    with rendered.joinpath(name + '.html').open('w') as fo:
+    sf = rendered.joinpath(name + '.html')
+    with sf.open('w') as fo:
         fo.write(str(doc))
+    return sf
 
 def render_latest(repo: Path, digest, rendered: Path):
     logger.info('processing %s', repo)
@@ -517,8 +519,10 @@ def render_latest(repo: Path, digest, rendered: Path):
                             # TODO append raw?
                             T.div(fi, cls='item')
 
-    with rendered.joinpath(name + '.html').open('w') as fo:
+    rf = rendered.joinpath(name + '.html')
+    with rf.open('w') as fo:
         fo.write(str(doc))
+    return rf
 
 
 def setup_parser(parser):
@@ -537,16 +541,14 @@ def main():
     run(args)
 
 
-def do_repo(repo, args):
-    output_dir = args.output_dir
-    digest = get_digest(repo, last=args.last)
-    if args.summary:
+def do_repo(repo, output_dir, last, summary: bool) -> Path:
+    digest = get_digest(repo, last=last)
+    if summary:
         SUMMARY = output_dir/ 'summary'
-        render_summary(repo, digest=digest, rendered=SUMMARY)
+        return render_summary(repo, digest=digest, rendered=SUMMARY)
     else:
         RENDERED = output_dir / 'rendered'
-        render_latest(repo, digest=digest, rendered=RENDERED)
-    # TODO FIXME return summary
+        return render_latest(repo, digest=digest, rendered=RENDERED)
 
 
 def run(args):
@@ -565,7 +567,7 @@ def run(args):
     with ProcessPoolExecutor() as pool:
         futures = []
         for repo in repos:
-            futures.append(pool.submit(do_repo, repo, args))
+            futures.append(pool.submit(do_repo, repo, output_dir=args.output_dir, last=args.last, summary=args.summary))
         for r, f in zip(repos, futures):
             try:
                 f.result()

@@ -98,11 +98,9 @@ def test_crawl(tmp_path):
     assert [p[1] for p in sorted((k, len(v)) for k, v in digest.changes.items())] == [15, 2]
 
 
-# TODO better name
 def test_adhoc(tmp_path):
     td = Path(tmp_path)
 
-    # TODO take
     # TODO eh, could render separately...
     # TODO just output htmls as it goes
     # axol adhoc [--summary] (--all  | --pinboard | --github | --reddit) 'query1' 'query2' 'query3'
@@ -110,10 +108,11 @@ def test_adhoc(tmp_path):
     # TODO qname is temporary?
     # TODO not sure if should keep separate storages separate? Or maybe story query alongside?
     queries = ['quantified mind']
-    axol.adhoc.run(queries=queries, sources=['github'], tdir=td)
-    [js] = list(td.rglob('*.json'))
+    axol.adhoc.do_run(queries=queries, sources=['github'], tdir=td)
 
+    [js] = list(td.rglob('*.json'))
     assert len(json.loads(js.read_text())) > 0
+    # TODO html??
 
 
 
