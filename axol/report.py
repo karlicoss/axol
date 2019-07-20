@@ -3,15 +3,18 @@ import argparse
 import sys
 import logging
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from itertools import islice
 from pathlib import Path
+from pprint import pprint
 from subprocess import check_call, check_output
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
+from typing import (Any, Dict, Iterator, List, NamedTuple, Optional, Sequence,
+    Tuple, Type, Union)
 
 import dominate
 import dominate.tags as T
-from dominate.util import raw
+from dominate.util import raw, text
 from kython import classproperty, cproperty, flatten
 
 from axol.common import logger
@@ -513,12 +516,13 @@ def render_latest(repo: Path, digest, rendered: Path):
     return rf
 
 
-def setup_parser(parser):
+def setup_parser(p):
     from config import BASE_DIR
-    parser.add_argument('repo', nargs='?')
-    parser.add_argument('--summary', action='store_true')
-    parser.add_argument('--last', type=int, default=None)
-    parser.add_argument('--output-dir', type=Path, default=BASE_DIR)
+    p.add_argument('repo', nargs='?')
+    p.add_argument('--summary', action='store_true')
+    p.add_argument('--tag-summary', action='store_true')
+    p.add_argument('--last', type=int, default=None)
+    p.add_argument('--output-dir', type=Path, default=BASE_DIR)
 
 
 # TODO for starters, just send last few days digest..
@@ -539,23 +543,42 @@ def do_repo(repo, output_dir, last, summary: bool) -> Path:
         return render_latest(repo, digest=digest, rendered=RENDERED)
 
 
-def run(args):
-    from concurrent.futures import wait, ProcessPoolExecutor
+class Storage(NamedTuple):
+    path: Path
 
-    repos: List[Path] = []
+    @property
+    def name(self) -> str:
+        return self.path.name
+
+    @property
+    def source(self) -> str:
+        return get_result_type(self.path)
+
+
+def get_all_storages() -> Sequence[Storage]:
+    return[Storage(path=x) for x in sorted(OUTPUTS.iterdir()) if x.is_dir()]
+
+
+def run(args):
+    res: List[Storage]
     if args.repo is not None:
-        repos = [OUTPUTS.joinpath(args.repo)]
+        # TODO FIXME let it take several repos
+        repos = [Storage(OUTPUTS.joinpath(args.repo))]
     else:
-        repos = [x for x in OUTPUTS.iterdir() if x.is_dir()]
+        repos = get_all_storages()
+
     logger.info('will be processing %s', repos)
+
+    if args.tag_summary:
+        tag_summary(repos, output_dir=args.output_dir)
 
     # TODO would be cool to do some sort of parallel logging? 
     # maybe some sort of rolling log using the whole terminal screen?
     errors = []
-    with ProcessPoolExecutor() as pool:
+    with ProcessPoolExecutor() as pool: # TODO this is just pool map??
         futures = []
         for repo in repos:
-            futures.append(pool.submit(do_repo, repo, output_dir=args.output_dir, last=args.last, summary=args.summary))
+            futures.append(pool.submit(do_repo, repo.path, output_dir=args.output_dir, last=args.last, summary=args.summary))
         for r, f in zip(repos, futures):
             try:
                 f.result()
@@ -564,6 +587,7 @@ def run(args):
                 errors.append(e)
 
     # TODO index page + put errors on it
+
 
     if len(errors) > 0:
         sys.exit(1)
@@ -607,4 +631,45 @@ def test_all(tmp_path):
     assert tcontains('Tue 18 Jun 2019 13:10')
     assert tcontains('Fri_14_Jun_2019_14:33 by pmf')
     assert tcontains('tags: bret_victor javascript mar12 visualization')
+
+
+def tag_summary(storages, output_dir: Path):
+    from spinboard import Result # type: ignore
+    logger.warning('filtering pinboard only (FIXME)')
+    storages = [s for s in storages if s.source == Result]
+
+    ustats = {}
+    def reg(user, query, stats):
+        if user not in ustats:
+            ustats[user] = {}
+        ustats[user][query] = stats
+
+    with ProcessPoolExecutor() as pp:
+        digests = pp.map(get_digest, [s.path for s in storages])
+
+    for s, digest in zip(storages, digests):
+        everything = flatten([ch for ch in digest.changes.values()])
+        for user, items in group_by_key(everything, key=lambda x: x.user).items():
+            reg(user, s.name, f'{len(items)}')
+
+    now = datetime.now()
+    doc = dominate.document(title=f'axol tags summary for {[s.name for s in storages]}, rendered at {fdate(now)}')
+    with doc.head:
+        T.style(STYLE)
+        raw_script(JS) # TODO necessary?
+
+    ft = FormatTrait.for_(Result)
+    with doc.body:
+        with T.table():
+            for user, stats in sorted(ustats.items(), key=lambda x: (-len(x[1]), x)):
+                with T.tr():
+                    T.td(ft.user_link(user))
+                    for q, st in stats.items():
+                        with T.td():
+                            text(q) # TODO link to source in index?
+                            T.sup(st)
+
+    out = (output_dir / 'pinboard_tags.html')
+    out.write_text(str(doc))
+    logger.info('Dumped tag summary to %s', out)
 
