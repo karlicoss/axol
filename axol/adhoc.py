@@ -22,7 +22,8 @@ def do_run(queries: Sequence[str], sources: Sequence[str], tdir: Path):
     process_query(q, path=tdir, dry=dry)
 
     repo = tdir / ('github_' + qname) # TODO FIXME need to return it from process?
-    (tdir / 'summary').mkdir(exist_ok=True, parents=True)
+    for d in ('summary', 'rendered'):
+        (tdir / d).mkdir(exist_ok=True, parents=True)
     res = do_repo(repo, output_dir=tdir, last=None, summary=True)
     print(f"Rendered summary: {res}")
     print("Opening in browser....")
