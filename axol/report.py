@@ -666,7 +666,9 @@ def tag_summary(storages, output_dir: Path):
                     T.td(ft.user_link(user))
                     for q, st in stats.items():
                         with T.td():
-                            text(q) # TODO link to source in index?
+                            # TODO I guess unclear which tag to choose though.
+                            T.a(q, href=f'summary/{q}.html') # TODO link to source in index? or on pinboard maybe
+                            # TODO also project onto user's tags straight away
                             T.sup(st)
 
     out = (output_dir / 'pinboard_tags.html')
