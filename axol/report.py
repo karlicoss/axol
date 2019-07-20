@@ -519,8 +519,8 @@ def render_latest(repo: Path, digest, rendered: Path):
 def setup_parser(p):
     from config import BASE_DIR
     p.add_argument('repo', nargs='?')
-    p.add_argument('--summary', action='store_true')
-    p.add_argument('--tag-summary', action='store_true')
+    p.add_argument('--with-summary', action='store_true')
+    p.add_argument('--with-tag-summary', action='store_true')
     p.add_argument('--last', type=int, default=None)
     p.add_argument('--output-dir', type=Path, default=BASE_DIR)
 
@@ -535,12 +535,14 @@ def main():
 
 def do_repo(repo, output_dir, last, summary: bool) -> Path:
     digest: Changes[Any] = get_digest(repo, last=last)
+    RENDERED = output_dir / 'rendered'
+    # TODO mm, maybe should return list of outputs..
+    res = render_latest(repo, digest=digest, rendered=RENDERED)
+
     if summary:
         SUMMARY = output_dir/ 'summary'
-        return render_summary(repo, digest=digest, rendered=SUMMARY)
-    else:
-        RENDERED = output_dir / 'rendered'
-        return render_latest(repo, digest=digest, rendered=RENDERED)
+        res = render_summary(repo, digest=digest, rendered=SUMMARY)
+    return res
 
 
 class Storage(NamedTuple):
@@ -569,7 +571,10 @@ def run(args):
 
     logger.info('will be processing %s', repos)
 
-    if args.tag_summary:
+    storages = repos
+    odir = args.output_dir
+
+    if args.with_tag_summary:
         tag_summary(repos, output_dir=args.output_dir)
 
     # TODO would be cool to do some sort of parallel logging? 
@@ -578,7 +583,7 @@ def run(args):
     with ProcessPoolExecutor() as pool: # TODO this is just pool map??
         futures = []
         for repo in repos:
-            futures.append(pool.submit(do_repo, repo.path, output_dir=args.output_dir, last=args.last, summary=args.summary))
+            futures.append(pool.submit(do_repo, repo.path, output_dir=args.output_dir, last=args.last, summary=args.with_summary))
         for r, f in zip(repos, futures):
             try:
                 f.result()
@@ -586,7 +591,8 @@ def run(args):
                 logger.exception(e)
                 errors.append(e)
 
-    # TODO index page + put errors on it
+    # TODO put errors on index page?
+    write_index(storages, odir)
 
 
     if len(errors) > 0:
@@ -631,6 +637,26 @@ def test_all(tmp_path):
     assert tcontains('Tue 18 Jun 2019 13:10')
     assert tcontains('Fri_14_Jun_2019_14:33 by pmf')
     assert tcontains('tags: bret_victor javascript mar12 visualization')
+
+
+def write_index(storages, output_dir: Path):
+    now = datetime.now()
+    doc = dominate.document(title=f'axol index for {[s.name for s in storages]}, rendered at {fdate(now)}')
+    with doc.head:
+        T.style(STYLE)
+
+    with doc.body:
+        with T.table():
+            for storage in storages:
+                with T.tr():
+                    T.td(storage.name)
+                    T.td(T.a('summary', href=f'summary/{storage.name}.html'))
+                    T.td(T.a('history', href=f'rendered/{storage.name}.html'))
+        with T.div():
+            T.b(T.a('pinboard tag summary', href=f'pinboard_tags.html'))
+
+    # TODO 'last updated'?
+    (output_dir / 'index.html').write_text(str(doc))
 
 
 def tag_summary(storages, output_dir: Path):

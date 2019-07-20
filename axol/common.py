@@ -16,7 +16,7 @@ def setup_paths() -> None:
     ])
 setup_paths()
 
-logger = LazyLogger('axol', level=logging.DEBUG)
+logger = LazyLogger('axol', level=logging.INFO)
 
 
 
