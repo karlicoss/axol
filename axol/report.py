@@ -579,8 +579,13 @@ def run(args):
 
     # TODO would be cool to do some sort of parallel logging? 
     # maybe some sort of rolling log using the whole terminal screen?
-    errors = []
-    with ProcessPoolExecutor() as pool: # TODO this is just pool map??
+    errors: List[str] = []
+
+    # from kython.koncurrent import DummyExecutor
+    # pool = DummyExecutor()
+    pool = ProcessPoolExecutor()
+    with pool:
+        # TODO this is just pool map??
         futures = []
         for repo in repos:
             futures.append(pool.submit(do_repo, repo.path, output_dir=args.output_dir, last=args.last, summary=args.with_summary))
@@ -588,14 +593,18 @@ def run(args):
             try:
                 f.result()
             except Exception as e:
+                logger.error('while processing %s', r)
                 logger.exception(e)
-                errors.append(e)
+                err = f'while processing {r}: {e}'
+                errors.append(err)
 
     # TODO put errors on index page?
     write_index(storages, odir)
 
 
     if len(errors) > 0:
+        for e in errors:
+            logger.error(e)
         sys.exit(1)
 
 
