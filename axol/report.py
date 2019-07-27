@@ -69,7 +69,7 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
     @classmethod
     def tag_link(cls, tag: str, user=None):
         ll = cls.plink(tag=tag, user=user)
-        return T.a(tag, href=ll, cls='tag')
+        return T.a(f'#{tag}', href=ll, cls='tag')
 
     @classmethod
     def user_link(cls, user: str):
@@ -87,10 +87,12 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         if not isempty(obj.description):
             res.add(obj.description)
             res.add(T.br())
-        res.add('tags: ')
-        for t in obj.ntags:
+        # res.add('tags: ')
+        tags = obj.ntags
+        for t in tags:
             res.add(trait.tag_link(tag=t, user=obj.user))
-        res.add(T.br())
+        if len(tags) > 0:
+            res.add(T.br())
         res.add(T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink'))
         res.add(' by')
         res.add(trait.user_link(user=obj.user))
