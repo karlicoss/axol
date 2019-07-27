@@ -110,6 +110,11 @@ class ReachFormat(ForReach, FormatTrait):
         return T.a(sub, href=subreddit_link, cls='subreddit')
 
     @classmethod
+    def user_link(cls, user: str):
+        ll = reddit('/u/' + user)
+        return T.a(user, href=ll, cls='user')
+
+    @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
         ll = reddit(obj.link)
@@ -123,8 +128,9 @@ class ReachFormat(ForReach, FormatTrait):
             res.add(obj.description)
             res.add(T.br())
         res.add(T.div(trait.subreddit_link(obj.subreddit)))
-        user_link = reddit('/u/' + obj.user)
-        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink')); res.add(' by '); res.add(T.a(obj.user, href=user_link, cls='user'))
+        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink'))
+        res.add(' by ')
+        res.add(trait.user_link(user=obj.user))
         return res
 
 class TentacleTrait(ForTentacle, FormatTrait):
@@ -520,9 +526,9 @@ def render_latest(repo: Path, digest, rendered: Path):
 
 def setup_parser(p):
     from config import BASE_DIR
-    p.add_argument('repo', nargs='?')
+    p.add_argument('repos', nargs='*')
     p.add_argument('--with-summary', action='store_true')
-    p.add_argument('--with-tag-summary', action='store_true')
+    p.add_argument('--with-user-summary', action='store_true')
     p.add_argument('--last', type=int, default=None)
     p.add_argument('--output-dir', type=Path, default=BASE_DIR)
 
@@ -565,19 +571,19 @@ def get_all_storages() -> Sequence[Storage]:
 
 def run(args):
     res: List[Storage]
-    if args.repo is not None:
-        # TODO FIXME let it take several repos
-        repos = [Storage(OUTPUTS.joinpath(args.repo))]
+    if len(args.repos) > 0:
+        repos = [Storage(OUTPUTS.joinpath(r)) for r in args.repos]
     else:
         repos = get_all_storages()
 
+    assert len(repos) > 0
     logger.info('will be processing %s', repos)
 
     storages = repos
     odir = args.output_dir
 
-    if args.with_tag_summary:
-        tag_summary(repos, output_dir=args.output_dir)
+    if args.with_user_summary:
+        user_summary(repos, output_dir=args.output_dir)
 
     # TODO would be cool to do some sort of parallel logging? 
     # maybe some sort of rolling log using the whole terminal screen?
@@ -663,18 +669,27 @@ def write_index(storages, output_dir: Path):
                     T.td(storage.name)
                     T.td(T.a('summary', href=f'summary/{storage.name}.html'))
                     T.td(T.a('history', href=f'rendered/{storage.name}.html'))
-        with T.div():
-            T.b(T.a('pinboard tag summary', href=f'pinboard_tags.html'))
+        T.div(T.b(T.a('pinboard users summary', href=f'pinboard_users.html')))
+        T.div(T.b(T.a('reddit users summary'  , href=f'pinboard_users.html')))
+
 
     # TODO 'last updated'?
     (output_dir / 'index.html').write_text(str(doc))
 
 
-def tag_summary(storages, output_dir: Path):
-    from spinboard import Result # type: ignore
-    logger.warning('filtering pinboard only (FIXME)')
-    storages = [s for s in storages if s.source == Result]
+def user_summary(storages, output_dir: Path):
+    import spinboard # type: ignore
+    import reach # type: ignore
+    logger.warning('filtering pinboard and reddit only (FIXME)')
+    for src, outf in (
+            (reach.Result    , output_dir / 'reddit_users.html'  ),
+            (spinboard.Result, output_dir / 'pinboard_users.html'),
+    ):
+        storages = [s for s in storages if s.source == src]
+        user_summary_for(rtype=src, storages=storages, output_path=outf)
 
+
+def user_summary_for(rtype, storages, output_path: Path):
     ustats = {}
     def reg(user, query, stats):
         if user not in ustats:
@@ -695,7 +710,7 @@ def tag_summary(storages, output_dir: Path):
         T.style(STYLE)
         raw_script(JS) # TODO necessary?
 
-    ft = FormatTrait.for_(Result)
+    ft = FormatTrait.for_(rtype)
     with doc.body:
         with T.table():
             for user, stats in sorted(ustats.items(), key=lambda x: (-len(x[1]), x)):
@@ -708,7 +723,6 @@ def tag_summary(storages, output_dir: Path):
                             # TODO also project onto user's tags straight away
                             T.sup(st)
 
-    out = (output_dir / 'pinboard_tags.html')
-    out.write_text(str(doc))
-    logger.info('Dumped tag summary to %s', out)
+    output_path.write_text(str(doc))
+    logger.info('Dumped user summary to %s', output_path)
 
