@@ -708,7 +708,7 @@ def user_summary_for(rtype, storages, output_path: Path):
     for s, digest in zip(storages, digests):
         everything = flatten([ch for ch in digest.changes.values()])
         for user, items in group_by_key(everything, key=lambda x: x.user).items():
-            reg(user, s.name, f'{len(items)}')
+            reg(user, s.name, len(items))
 
     now = datetime.now()
     doc = dominate.document(title=f'axol tags summary for {[s.name for s in storages]}, rendered at {fdate(now)}')
@@ -727,7 +727,7 @@ def user_summary_for(rtype, storages, output_path: Path):
                             # TODO I guess unclear which tag to choose though.
                             T.a(q, href=f'summary/{q}.html') # TODO link to source in index? or on pinboard maybe
                             # TODO also project onto user's tags straight away
-                            T.sup(st)
+                            T.sup(str(st) if st < 5 else T.b(T.font(str(st), color='red'))) # TODO css
 
     output_path.write_text(str(doc))
     logger.info('Dumped user summary to %s', output_path)
