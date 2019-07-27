@@ -135,6 +135,11 @@ class ReachFormat(ForReach, FormatTrait):
 
 class TentacleTrait(ForTentacle, FormatTrait):
     # TODO mm. maybe permalink is a part of trait?
+
+    @classmethod
+    def user_link(cls, user: str):
+        return T.a(user, href=f'https://github.com/{user}', clas='user')
+
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         res = T.div(cls='github')
@@ -670,8 +675,8 @@ def write_index(storages, output_dir: Path):
                     T.td(T.a('summary', href=f'summary/{storage.name}.html'))
                     T.td(T.a('history', href=f'rendered/{storage.name}.html'))
         T.div(T.b(T.a('pinboard users summary', href=f'pinboard_users.html')))
-        T.div(T.b(T.a('reddit users summary'  , href=f'pinboard_users.html')))
-
+        T.div(T.b(T.a('reddit users summary'  , href=f'reddit_users.html')))
+        T.div(T.b(T.a('github users summary'  , href=f'github_users.html')))
 
     # TODO 'last updated'?
     (output_dir / 'index.html').write_text(str(doc))
@@ -680,8 +685,9 @@ def write_index(storages, output_dir: Path):
 def user_summary(storages, output_dir: Path):
     import spinboard # type: ignore
     import reach # type: ignore
-    logger.warning('filtering pinboard and reddit only (FIXME)')
+    import tentacle # type: ignore
     for src, outf in (
+            (tentacle.Result , output_dir / 'github_users.html'  ),
             (reach.Result    , output_dir / 'reddit_users.html'  ),
             (spinboard.Result, output_dir / 'pinboard_users.html'),
     ):
