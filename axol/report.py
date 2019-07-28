@@ -246,7 +246,7 @@ STYLE = """
 
 .day-changes-inner {
     padding-left: 1em;
-    border-left: 3px solid;
+    border-left: 10px solid;
 }
 
 .day-changes-inner.even {
@@ -591,10 +591,14 @@ def render_latest(repo: Path, digest, rendered: Path):
                     for i in items:
                         # TODO FIXME use getattr to specialise trait?
                         # TODO FIXME ignore not gonna work after grouping.. not sure what should we do
-                        ignored = Ignore.ignore(i)
+                        # TODO FIXME
+                        # ignore should be at changes collecting stage?
+
+                        ignored = Ignore.ignore_group(i)
                         if ignored is not None:
                             # TODO maybe let format result handle that... not sure
                             T.div(ignored, cls='item ignored')
+                            # TODO log maybe?
                             # TODO eh. need to handle in cumulatives...
                         else:
                             fi = Format.format(i)

@@ -34,6 +34,16 @@ IgnoreRes = Optional[str]
 
 class IgnoreTrait(AbsTrait):
     @classmethod
+    def ignore_group(trait, objs) -> IgnoreRes:
+        ignores = [trait.ignore(o) for _, o in objs]
+        ignores = [x for x in ignores if x is not None]
+        if len(ignores) == 0:
+            return None
+        else:
+            return '|'.join(ignores) # meh
+
+
+    @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         raise NotImplementedError
 ignore_result = pull(IgnoreTrait.ignore)
