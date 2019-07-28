@@ -16,6 +16,7 @@ import dominate
 import dominate.tags as T
 from dominate.util import raw, text
 from kython import classproperty, cproperty, flatten, the
+from kython.kdominate import adhoc_html
 
 from axol.common import logger
 from axol.storage import Changes, RepoHandle, get_digest, get_result_type
@@ -86,17 +87,22 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         link  = the( o.link  for _, o in objs)
         res.add(T.div(T.a(title, href=link)))
 
-        for _, obj in objs:
-            if not isempty(obj.description):
-                res.add(T.div(obj.description))
-            tags = obj.ntags
-            for t in tags:
-                res.add(trait.tag_link(tag=t, user=obj.user))
-            if len(tags) > 0:
-                res.add(T.br())
-            res.add(T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink'))
-            res.add(' by')
-            res.add(trait.user_link(user=obj.user))
+        with adhoc_html('pinboard', cb=lambda children: res.add(*children)):
+            with T.table():
+                for _, obj in objs:
+                    if not isempty(obj.description):
+                        with T.tr():
+                            with T.td(colspan=3):
+                                T.span(obj.description, cls='description')
+                    with T.tr():
+                        with T.td(cls='min'):
+                            T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink timestamp')
+                        with T.td(cls='min'):
+                            text('by ')
+                            trait.user_link(user=obj.user)
+                        with T.td():
+                            for t in obj.ntags:
+                                trait.tag_link(tag=t, user=obj.user)
         # TODO userstats
         return res
 
@@ -211,6 +217,12 @@ STYLE = """
     color: gray;
 }
 
+.timestamp {
+    /* TODO not sure it looks good... */
+    font-family: monospace;
+
+}
+
 .day-changes-inner {
     margin-left: 15px;
 }
@@ -239,6 +251,21 @@ a:hover {
 a:active {
   text-decoration: underline;
 }
+
+
+td.min {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.description {
+  padding-left: 1em;
+}
+
+table {
+  border-collapse: collapse;
+}
+
 """
 
 JS = """
@@ -509,33 +536,16 @@ def render_latest(repo: Path, digest, rendered: Path):
     with doc.head:
         T.style(STYLE)
 
-    items = chain.from_iterable(((d, x) for x in zz) for d, zz in sorted(digest.changes.items(), reverse=True))
-    items2 = []
-    for _, grp in group_by_key(items, key=lambda p: f'{p[1].link}').items():
-        # TODO sort them?
-        # md = min(grp, key=lambda g: g[0])
-        items2.append(grp) # (md[0], grp))
-        # title = max(x.title for x in grp, key=lambda t: len(t))
-        # link  = the(x.link for x in grp)
-        
-
-        # TODO select longest title?
-    #     print("------")
-    #     # TODO do I need date when it was crawled? not sure..
-    #     print(f"{g.title} {g.link}")
-    #     print(f"   {g.description}")
-    #     for d, i in grp:
-    #         print(f"{i.uid} {fdate(i.when)}: {i.tags}")
-    #     print("------")
-    # raise RuntimeError()
-    # items2: ()
+    items = chain.from_iterable(((d, x) for x in zz) for d, zz in digest.changes.items())
+    items2 = [grp for  _, grp in group_by_key(items, key=lambda p: f'{p[1].link}').items()]
+    # TODO sort within each group?
 
     with doc:
-        for d, items in group_by_key(items2, key=lambda p: min(x[0] for x in p)).items():
-            logger.debug('dumping %d items for %s', len(items), d)
+        for d, items in sorted(group_by_key(items2, key=lambda p: min(x[0] for x in p)).items(), reverse=True):
+            logger.info('dumping %d items for %s', len(items), d)
             with T.div(cls='day-changes'):
                 T.div(T.b(fdate(d)))
-                # TODO tab?
+
                 with T.div(cls='day-changes-inner'):
                     for i in items:
                         # TODO FIXME use getattr to specialise trait?
@@ -546,7 +556,6 @@ def render_latest(repo: Path, digest, rendered: Path):
                             T.div(ignored, cls='item ignored')
                             # TODO eh. need to handle in cumulatives...
                         else:
-                            print(i)
                             fi = Format.format(i)
                             # TODO append raw?
                             T.div(fi, cls='item')
