@@ -224,7 +224,16 @@ STYLE = """
 }
 
 .day-changes-inner {
-    margin-left: 15px;
+    padding-left: 1em;
+    border-left: 3px solid;
+}
+
+.day-changes-inner.even {
+    border-color: black;
+}
+
+.day-changes-inner.odd {
+    border-color: orange;
 }
 
 .user {
@@ -541,12 +550,16 @@ def render_latest(repo: Path, digest, rendered: Path):
     # TODO sort within each group?
 
     with doc:
+        odd = True
         for d, items in sorted(group_by_key(items2, key=lambda p: min(x[0] for x in p)).items(), reverse=True):
-            logger.info('dumping %d items for %s', len(items), d)
+            odd = not odd
+            logger.info('%s: dumping %d items', d, len(items))
             with T.div(cls='day-changes'):
-                T.div(T.b(fdate(d)))
+                with T.div():
+                    T.b(fdate(d))
+                    T.span(f'{len(items)} items')
 
-                with T.div(cls='day-changes-inner'):
+                with T.div(cls=f'day-changes-inner {"odd" if odd else "even"}'):
                     for i in items:
                         # TODO FIXME use getattr to specialise trait?
                         # TODO FIXME ignore not gonna work after grouping.. not sure what should we do
@@ -557,7 +570,6 @@ def render_latest(repo: Path, digest, rendered: Path):
                             # TODO eh. need to handle in cumulatives...
                         else:
                             fi = Format.format(i)
-                            # TODO append raw?
                             T.div(fi, cls='item')
 
     rf = rendered.joinpath(name + '.html')
