@@ -62,7 +62,7 @@ def isempty(s) -> bool:
     return False
 
 
-# TODO FIXME not sure if I want DOW
+# TODO not sure if I want DOW
 def fdate(d: datetime) -> str:
     return d.strftime('%d %b %Y %H:%M')
 
@@ -168,7 +168,7 @@ class TentacleTrait(ForTentacle, FormatTrait):
     def format(trait, objs, *args, **kwargs) -> Htmlish:
         res = T.div(cls='github')
         res.add(T.div(T.a(trait.title(objs), href=trait.link(objs))))
-        # TODO FIXME total stars?
+        # TODO total stars?
         with adhoc_html('github', cb=lambda ch: res.add(*ch)):
             for _, obj in objs:
                 if not isempty(obj.description):
@@ -590,9 +590,7 @@ def render_latest(repo: Path, digest, rendered: Path):
                 with T.div(cls=f'day-changes-inner {"odd" if odd else "even"}'):
                     for i in items:
                         # TODO FIXME use getattr to specialise trait?
-                        # TODO FIXME ignore not gonna work after grouping.. not sure what should we do
-                        # TODO FIXME
-                        # ignore should be at changes collecting stage?
+                        # TODO FIXME ignore should be at changes collecting stage?
 
                         ignored = Ignore.ignore_group(i)
                         if ignored is not None:
