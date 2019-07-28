@@ -22,7 +22,7 @@ from axol.common import logger
 from axol.storage import Changes, RepoHandle, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
 from axol.traits import ForReach, ForSpinboard, ForTentacle, IgnoreTrait, ignore_result
-from config import OUTPUTS, ignored_reddit
+from config import OUTPUTS
 
 
 # TODO need some sort of starting_from??
@@ -38,6 +38,19 @@ class FormatTrait(AbsTrait):
     @classmethod
     def format(trait, obj, *args, **kwargs) -> Htmlish:
         raise NotImplementedError
+
+    @classmethod
+    def title(cls, objs):
+        return max((o.title for _, o in objs), key=lambda t: len(t))
+
+    @classmethod
+    def link(cls, objs):
+        return the(o.link  for _, o in objs)
+
+    @classmethod
+    def format_one(cls, obj):
+        return cls.format([(None, obj)]) # TODO ?
+
 format_result = pull(FormatTrait.format)
 
 
@@ -83,8 +96,8 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         # TODO would be nice to have spinboard imported here for type checking..
         res = T.div(cls='pinboard')
 
-        title = max((o.title for _, o in objs), key=lambda t: len(t))
-        link  = the( o.link  for _, o in objs)
+        title = trait.title(objs)
+        link = trait.links(objs)
         res.add(T.div(T.a(title, href=link)))
 
         with adhoc_html('pinboard', cb=lambda children: res.add(*children)):
@@ -122,22 +135,26 @@ class ReachFormat(ForReach, FormatTrait):
         return T.a(user, href=ll, cls='user')
 
     @classmethod
-    def format(trait, obj, *args, **kwargs) -> Htmlish:
+    def format(trait, objs, *args, **kwargs) -> Htmlish:
         res = T.div(cls='reddit')
-        ll = reddit(obj.link)
 
-        ud = f'{obj.ups}⇅{obj.downs}'
-        res.add(T.a(obj.title, href=ll))
-        res.add(T.span(ud))
-        res.add(T.br())
+        title = trait.title(objs)
+        link = trait.link(objs)
 
-        if not isempty(obj.description):
-            res.add(obj.description)
-            res.add(T.br())
-        res.add(T.div(trait.subreddit_link(obj.subreddit)))
-        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink'))
-        res.add(' by ')
-        res.add(trait.user_link(user=obj.user))
+        ll = reddit(link)
+
+        res.add(T.div(T.a(title, href=ll)))
+        with adhoc_html('reddit', cb=lambda ch: res.add(*ch)):
+            for _, obj in objs:
+                if not isempty(obj.description):
+                    T.div(obj.description)
+                T.div(trait.subreddit_link(obj.subreddit))
+                with T.div():
+                    ud = f'{obj.ups}⇅{obj.downs}' # TODO sum all ups and downs??
+                    T.b(ud)
+                    T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")}', href=ll, cls='permalink')
+                    text(' by ')
+                    trait.user_link(user=obj.user)
         return res
 
 class TentacleTrait(ForTentacle, FormatTrait):
@@ -148,15 +165,19 @@ class TentacleTrait(ForTentacle, FormatTrait):
         return T.a(user, href=f'https://github.com/{user}', clas='user')
 
     @classmethod
-    def format(trait, obj, *args, **kwargs) -> Htmlish:
+    def format(trait, objs, *args, **kwargs) -> Htmlish:
         res = T.div(cls='github')
-        res.add(T.a(obj.title, href=obj.link))
-        res.add(T.span(f'{obj.stars}★'))
-        res.add(T.br())
-        if not isempty(obj.description):
-            res.add(obj.description)
-            res.add(T.br())
-        res.add(T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.link, cls='permalink'))
+        res.add(T.div(T.a(trait.title(objs), href=trait.link(objs))))
+        # TODO FIXME total stars?
+        with adhoc_html('github', cb=lambda ch: res.add(*ch)):
+            for _, obj in objs:
+                if not isempty(obj.description):
+                    T.div(obj.description)
+                with T.div():
+                    if obj.stars > 0:
+                        sts = '' if obj.stars == 1 else str(obj.stars)
+                        T.b(sts + '★')
+                    T.a(f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}', href=obj.link, cls='permalink')
         return res
         # TODO indicate how often is user showing up?
 
