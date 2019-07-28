@@ -5,7 +5,7 @@ import logging
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from itertools import islice
+from itertools import islice, chain
 from pathlib import Path
 from pprint import pprint
 from subprocess import check_call, check_output
@@ -15,12 +15,12 @@ from typing import (Any, Dict, Iterator, List, NamedTuple, Optional, Sequence,
 import dominate
 import dominate.tags as T
 from dominate.util import raw, text
-from kython import classproperty, cproperty, flatten
+from kython import classproperty, cproperty, flatten, the
 
 from axol.common import logger
 from axol.storage import Changes, RepoHandle, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
-from axol.traits import ForReach, ForSpinboard, ForTentacle, ignore_result
+from axol.traits import ForReach, ForSpinboard, ForTentacle, IgnoreTrait, ignore_result
 from config import OUTPUTS, ignored_reddit
 
 
@@ -47,11 +47,10 @@ def isempty(s) -> bool:
         return True
     return False
 
-# def fdate(d: datetime) -> str:
-#     return d.strftime("%Y-%m-%d %H:%M")
 
+# TODO FIXME not sure if I want DOW
 def fdate(d: datetime) -> str:
-    return d.strftime('%a %d %b %Y %H:%M')
+    return d.strftime('%d %b %Y %H:%M')
 
 
 
@@ -79,23 +78,25 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
     # TODO default formatter?
     # TODO Self ?? maybe it should be metaclass or something?
     @classmethod
-    def format(trait, obj, *args, **kwargs) -> Htmlish:
+    def format(trait, objs, *args, **kwargs) -> Htmlish:
         # TODO would be nice to have spinboard imported here for type checking..
         res = T.div(cls='pinboard')
-        res.add(T.a(obj.title, href=obj.link))
-        res.add(T.br())
-        if not isempty(obj.description):
-            res.add(obj.description)
-            res.add(T.br())
-        # res.add('tags: ')
-        tags = obj.ntags
-        for t in tags:
-            res.add(trait.tag_link(tag=t, user=obj.user))
-        if len(tags) > 0:
-            res.add(T.br())
-        res.add(T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink'))
-        res.add(' by')
-        res.add(trait.user_link(user=obj.user))
+
+        title = max((o.title for _, o in objs), key=lambda t: len(t))
+        link  = the( o.link  for _, o in objs)
+        res.add(T.div(T.a(title, href=link)))
+
+        for _, obj in objs:
+            if not isempty(obj.description):
+                res.add(T.div(obj.description))
+            tags = obj.ntags
+            for t in tags:
+                res.add(trait.tag_link(tag=t, user=obj.user))
+            if len(tags) > 0:
+                res.add(T.br())
+            res.add(T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink'))
+            res.add(' by')
+            res.add(trait.user_link(user=obj.user))
         # TODO userstats
         return res
 
@@ -496,6 +497,10 @@ def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
 def render_latest(repo: Path, digest, rendered: Path):
     logger.info('processing %s', repo)
 
+    rtype = get_result_type(repo)
+    Format = FormatTrait.for_(rtype)
+    Ignore = IgnoreTrait.for_(rtype)
+
     NOW = datetime.now()
 
     name = repo.name
@@ -504,22 +509,45 @@ def render_latest(repo: Path, digest, rendered: Path):
     with doc.head:
         T.style(STYLE)
 
-    # TODO email that as well?
+    items = chain.from_iterable(((d, x) for x in zz) for d, zz in sorted(digest.changes.items(), reverse=True))
+    items2 = []
+    for _, grp in group_by_key(items, key=lambda p: f'{p[1].link}').items():
+        # TODO sort them?
+        # md = min(grp, key=lambda g: g[0])
+        items2.append(grp) # (md[0], grp))
+        # title = max(x.title for x in grp, key=lambda t: len(t))
+        # link  = the(x.link for x in grp)
+        
+
+        # TODO select longest title?
+    #     print("------")
+    #     # TODO do I need date when it was crawled? not sure..
+    #     print(f"{g.title} {g.link}")
+    #     print(f"   {g.description}")
+    #     for d, i in grp:
+    #         print(f"{i.uid} {fdate(i.when)}: {i.tags}")
+    #     print("------")
+    # raise RuntimeError()
+    # items2: ()
+
     with doc:
-        for d, items in sorted(digest.changes.items(), reverse=True):
+        for d, items in group_by_key(items2, key=lambda p: min(x[0] for x in p)).items():
             logger.debug('dumping %d items for %s', len(items), d)
             with T.div(cls='day-changes'):
                 T.div(T.b(fdate(d)))
                 # TODO tab?
                 with T.div(cls='day-changes-inner'):
                     for i in items:
-                        ignored = ignore_result(i)
+                        # TODO FIXME use getattr to specialise trait?
+                        # TODO FIXME ignore not gonna work after grouping.. not sure what should we do
+                        ignored = Ignore.ignore(i)
                         if ignored is not None:
                             # TODO maybe let format result handle that... not sure
                             T.div(ignored, cls='item ignored')
                             # TODO eh. need to handle in cumulatives...
                         else:
-                            fi = format_result(i)
+                            print(i)
+                            fi = Format.format(i)
                             # TODO append raw?
                             T.div(fi, cls='item')
 

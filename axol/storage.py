@@ -127,7 +127,7 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
     # TODO shit. should have stored metadata in repository?... for now guess from filename..
 
     cc = Collector()
-    changes = Changes[R]() # TODO ?? does it really add getitem??
+    changes: Changes[R] = Changes()
     # TODO maybe collector can figure it out by itself? basically track when the item was 'first se
     # TODO would be interesting to have non-consuming slice...
     for jj in rh.iter_versions(last=last):
