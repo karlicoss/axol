@@ -97,7 +97,7 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
         res = T.div(cls='pinboard')
 
         title = trait.title(objs)
-        link = trait.links(objs)
+        link = trait.link(objs)
         res.add(T.div(T.a(title, href=link)))
 
         with adhoc_html('pinboard', cb=lambda children: res.add(*children)):
@@ -380,6 +380,7 @@ class CumulativeBase(AbsTrait):
 class SpinboardCumulative(ForSpinboard, CumulativeBase):
     @classproperty
     def cumkey(cls):
+        # TODO FIXME reuse grouping code? it could also normalise..
         return lambda x: normalise(x.link)
 
     @classproperty
@@ -410,7 +411,11 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
         return list(sorted(uu))
 
     def format(self):
+        # TODO errr.. why is this duplicated??
         # TODO also display total count??
+        # TODO accumulated tags?
+        # return self.FTrait.format_one(self.items[0])
+
         res = T.div(cls='pinboard')
         res.add(T.a(self.title, href=self.link))
         res.add(T.br())
@@ -456,7 +461,7 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
     @classproperty
     def sortkey(cls):
         rev_when = invkey(lambda c: c.when)
-        return lambda c: (c.stars, rev_when(c))
+        return lambda c: (-c.stars, rev_when(c))
 
     @cproperty
     def stars(self) -> int:
@@ -464,8 +469,8 @@ class TentacleCumulative(ForTentacle, CumulativeBase):
         return vote(i.stars for i in self.items)
 
     def format(self):
-        assert len(self.items) == 1
-        return self.FTrait.format(self.items[0])
+        item = the(self.items)
+        return self.FTrait.format_one(item)
 
 
 CumulativeBase.reg(TentacleCumulative)
@@ -473,8 +478,7 @@ CumulativeBase.reg(TentacleCumulative)
 class ReachCumulative(ForReach, CumulativeBase):
     @cproperty
     def the(self):
-        assert len(self.items) == 1
-        return self.items[0]
+        return the(self.items)
 
     @cproperty
     def ups(self):
@@ -490,11 +494,14 @@ class ReachCumulative(ForReach, CumulativeBase):
 
     @classproperty
     def sortkey(cls):
-        invwhen = invkey(lambda c: c.when)
-        return lambda c: (c.ups + c.downs, invwhen(c))
+        invwhen  = invkey(lambda c: c.when)
+        # invscore = invkey(lambda c: c.ups + c.downs)
+        # TODO wtf, invkey didn't work..
+        # return lambda c: (invscore(c), invwhen(c))
+        return lambda c: (-(c.ups + c.downs), invwhen(c))
 
     def format(self):
-        return self.FTrait.format(self.the)
+        return self.FTrait.format_one(self.the)
 
     @classmethod
     def sources_summary(cls, items):
