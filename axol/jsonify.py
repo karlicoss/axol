@@ -6,7 +6,7 @@ from typing import Type
 from kython import classproperty
 from kython.kjson import Json, ToFromJson
 
-from axol.traits import ForSpinboard, ForReach, ForTentacle
+from axol.traits import ForSpinboard, ForReach, ForTentacle, ForTwitter
 from axol.trait import AbsTrait, pull
 
 # TODO rename Target to Self?
@@ -40,4 +40,7 @@ class ReachJsonTrait(ForReach, JsonTrait):
 class TentacleJsonTrait(ForTentacle, JsonTrait):
     pass
 
-JsonTrait.reg(SpinboardJsonTrait, ReachJsonTrait, TentacleJsonTrait)
+class TwitterJsonTrait(ForTwitter, JsonTrait):
+    pass
+
+JsonTrait.reg(SpinboardJsonTrait, ReachJsonTrait, TentacleJsonTrait, TwitterJsonTrait)

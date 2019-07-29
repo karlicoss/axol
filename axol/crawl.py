@@ -58,6 +58,8 @@ def setup_parser(p):
     p.add_argument('--dry', action='store_true')
     p.add_argument('--include', action='append')
     p.add_argument('--exclude', action='append')
+    # TODO ugh.
+    # p.add_argument('repos', nargs='*')
 
 
 def main():

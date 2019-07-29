@@ -30,6 +30,13 @@ class ForTentacle:
         from tentacle import Result # type: ignore
         return Result
 
+class ForTwitter:
+    @classproperty
+    def Target(cls):
+        from axol.twitter import Result
+        return Result
+
+
 IgnoreRes = Optional[str]
 
 class IgnoreTrait(AbsTrait):
@@ -45,7 +52,7 @@ class IgnoreTrait(AbsTrait):
 
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
-        raise NotImplementedError
+        return None
 ignore_result = pull(IgnoreTrait.ignore)
 
 
@@ -59,20 +66,23 @@ class SpinboardIgnore(ForSpinboard, IgnoreTrait):
         # return obj.user == 'lvwrence' # TODO FIXME NOCOMMIT
 
 class TentacleIgnore(ForTentacle, IgnoreTrait):
-    @classmethod
-    def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
-        return None
+    pass
 
 class ReachIgnore(ForReach, IgnoreTrait):
     @classmethod
     def ignore(trait, obj, *args, **kwargs) -> IgnoreRes:
         # TODO eh, I def. need to separate in different files; that way I can have proper autocompletion..
         return ignored_reddit(obj)
-IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore)
+
+class TwitterIgnore(ForTwitter, IgnoreTrait):
+    pass
+
+IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore, TwitterIgnore)
 
 
 
 # TODO maybe, return For directly?
+# TODO FIXME duplication with queries..
 def get_result_type(repo: Path) -> Type:
     name = repo.name
     # TODO this could also be a trait?
@@ -83,7 +93,7 @@ def get_result_type(repo: Path) -> Type:
     elif name.startswith('github'):
         # pylint: disable=import-error
         from tentacle import Result # type: ignore
-        return Result
+        return Result # TODO FIXME reuse 'For' here??  or just get marker by name directly?
     else:
         # pylint: disable=import-error
         from spinboard import Result # type: ignore

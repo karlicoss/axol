@@ -33,6 +33,28 @@ def pinboard_quote(s: str):
     return f'"{s}"'
 
 
+class TwitterQ(Query):
+    @property
+    def searcher(self):
+        from axol.twitter import TwitterSearch
+        return TwitterSearch
+
+    @property
+    def sname(self):
+        return 'twitter'
+
+    def __init__(self, qname: str, query: str): # TODO FIXME multiple
+        self.qname = qname
+        self.queries = [query]
+
+    @property
+    def repo_name(self) -> str:
+        return f'twitter_{slugify(self.qname)}'
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+
 class GithubQ(Query):
     @property
     def searcher(self):
@@ -174,6 +196,7 @@ def qall(qname: str, *args, pintags=None) -> Iterator[Query]:
     yield RedditQ(qname, *args)
     yield PinboardQ(qname, *args, *ptags)
     yield GithubQ(qname, *args)
+    # TODO FIXME twitter
 
 
 # TODO warn if we got less than expected?
@@ -181,6 +204,7 @@ def make_queries() -> Iterator[Query]:
     P = PinboardQ
     R = RedditQ
     G = GithubQ
+    T = TwitterQ
 
     yield from qall(
         'bret victor',
@@ -247,7 +271,7 @@ def make_queries() -> Iterator[Query]:
         quote=False,
     )
 
-    qg = 'quantum gravity'
+    qg = 'quantum gravity' # TODO eh, needs quoting?
     yield from qall(
         qg,
         qg,
@@ -268,10 +292,12 @@ def make_queries() -> Iterator[Query]:
         pintags=['tedchiang'],
     )
 
+    ar = 'argonov'
     yield from qall(
-        'argonov',
-        'виктор аргонов',
+        ar,
+        'виктор аргонов', # TODO eh, needs quoting?
     )
+    yield T(ar, '"виктор аргонов"')
 
     sr = 'spaced repetition'
     yield from qall(
@@ -288,6 +314,7 @@ def make_queries() -> Iterator[Query]:
     del P
     del R
     del G
+    del T
 
 # convenient to temporary ignore certain providers via returning None
 def get_queries(include=None, exclude=None):
