@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Type
 
-from kython import classproperty
+from kython import classproperty, the
 
 from axol.trait import AbsTrait, pull
 
@@ -10,6 +10,8 @@ from config import ignored_reddit
 
 # TODO move target separately?
 class ForSpinboard:
+    name = 'pinboard'
+
     @classproperty
     def Target(cls):
         # pylint: disable=import-error
@@ -17,6 +19,8 @@ class ForSpinboard:
         return Result
 
 class ForReach:
+    name = 'reddit'
+
     @classproperty
     def Target(cls):
         # pylint: disable=import-error
@@ -24,6 +28,8 @@ class ForReach:
         return Result
 
 class ForTentacle:
+    name = 'github'
+
     @classproperty
     def Target(cls):
         # pylint: disable=import-error
@@ -31,11 +37,18 @@ class ForTentacle:
         return Result
 
 class ForTwitter:
+    name = 'twitter'
+
     @classproperty
     def Target(cls):
         from axol.twitter import Result
         return Result
 
+
+Fors = [ForSpinboard, ForReach, ForTentacle, ForTwitter]
+
+def For(res):
+    return the([F for F in Fors if res == F.Target])
 
 IgnoreRes = Optional[str]
 

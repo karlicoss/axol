@@ -21,7 +21,7 @@ from kython.kdominate import adhoc_html
 from axol.common import logger
 from axol.storage import Changes, RepoHandle, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
-from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, IgnoreTrait, ignore_result
+from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, IgnoreTrait, ignore_result, For
 from config import OUTPUTS
 
 
@@ -188,7 +188,7 @@ def tw(s):
 class FormatTwitter(ForTwitter, FormatTrait):
     @classmethod
     def user_link(cls, user: str):
-        return tw(user)
+        return T.a(user, href=tw('/' + user))
 
     @classmethod
     def format(trait, objs) -> Htmlish:
@@ -197,8 +197,10 @@ class FormatTwitter(ForTwitter, FormatTrait):
         with adhoc_html('twitter', cb=lambda ch: res.add(*ch)):
             for _, obj in objs:
                 T.div(obj.text)
-                    # TODO FIXME likes?
                 with T.div():
+                    if obj.likes + obj.retweets + obj.replies > 0:
+                        ll = f'★{obj.likes} ♺{obj.retweets} 🗬{obj.replies}'
+                        T.b(ll)
                     T.a(
                         f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}',
                         href=tw(obj.link),
@@ -542,6 +544,36 @@ class ReachCumulative(ForReach, CumulativeBase):
 CumulativeBase.reg(ReachCumulative)
 
 
+class TwitterCumulative(ForTwitter, CumulativeBase):
+    @cproperty
+    def the(self):
+        return the(self.items)
+
+    @cproperty
+    def interactions(self):
+        th = the(self.items)
+        return th.replies + th.retweets + th.likes
+
+    @classproperty
+    def cumkey(cls):
+        return lambda x: id(x) # TODO FIXME ???
+
+    @classproperty
+    def sortkey(cls):
+        invwhen  = invkey(lambda c: c.when)
+        return lambda c: (-c.interactions, invwhen(c))
+
+    def format(self):
+        return self.FTrait.format_one(self.the)
+
+    @classmethod
+    def sources_summary(cls, items):
+        res = T.div("TODO")
+        return res
+
+
+CumulativeBase.reg(TwitterCumulative)
+
 # https://github.com/Knio/dominate/issues/63
 # eh, looks like it's the intended way..
 def raw_script(s):
@@ -788,16 +820,10 @@ def write_index(storages, output_dir: Path):
 
 
 def user_summary(storages, output_dir: Path):
-    import spinboard # type: ignore
-    import reach # type: ignore
-    import tentacle # type: ignore
-    for src, outf in (
-            (tentacle.Result , output_dir / 'github_users.html'  ),
-            (reach.Result    , output_dir / 'reddit_users.html'  ),
-            (spinboard.Result, output_dir / 'pinboard_users.html'),
-    ):
-        storages = [s for s in storages if s.source == src]
-        user_summary_for(rtype=src, storages=storages, output_path=outf)
+    for src, st in group_by_key(storages, key=lambda s: s.source).items():
+        rtype = the(get_result_type(x) for x in st)
+        outf = output_dir / (For(src).name + '_users.html')
+        user_summary_for(rtype=rtype, storages=st, output_path=outf)
 
 
 def user_summary_for(rtype, storages, output_path: Path):
