@@ -216,18 +216,28 @@ def make_queries() -> Iterator[Query]:
         'arbtt',
     )
 
-    emind = 'extended mind'
-    yield from qall(
-        emind,
-        emind,
-    )
+    if True:
+        emind = 'extended mind'
+        yield from qall(
+            emind,
+            emind,
+        )
+        yield T(
+            emind,
+            f'"{emind}"',
+        )
 
-    ll = 'lifelogging'
-    yield from qall(
-        ll,
-        ll,
-        pintags=[pintags_implicit, 'lifelog']
-    )
+    if True:
+        ll = 'lifelogging'
+        yield from qall(
+            ll,
+            ll,
+            pintags=[pintags_implicit, 'lifelog']
+        )
+        yield T(
+            ll,
+            ll,
+        )
 
     openbci = 'openbci'
     yield from qall(
@@ -238,38 +248,44 @@ def make_queries() -> Iterator[Query]:
 
     # TODO not sue about eeg? where to put it?
 
-    pkm = 'personal knowledge management'
-    yield R(
-        'pkm',
-        'pkm', pkm,
-        excluded=[
-            subreddit(
-                'airsoft', 'mw4', 'CombatFootage',
-                'stalker', 'airsoftmarket',
-                'insurgency', 'MilitaryPorn',
-                'ProjectMilSim', 'RingOfElysium', 'GunPorn',
-                'EscapefromTarkov', 'joinsquad', 'dayz',
-                'ClearBackblast', 'syriancivilwar',
-                'gaming', 'u_tkaqnfkf1',
-                'friendsafari', 'GlobalPowers', 'TheSilphRoad',
-                'LoLeventVoDs',
-                '.*pokemon.*', '.*nintendo.*', '.*gun.*',
-            ),
-            contains('pokemon', 'ak47', ' guns '),
-        ],
-    )
-    yield P(
-        'pkm',
-        'pkm', pintag('pkm'),
-        pkm  , *gen_pintags(pkm),
-        pintag('km'), pintag('pim'),
-    )
-    yield G(
-        'pkm', # TODO shit. that's a bit messed up...
-        'pkm NOT pokemon', # TODO NOT pkm
-        f'"{pkm}"',
-        quote=False,
-    )
+    if True:
+        pk = 'pkm'
+        pkm = 'personal knowledge management'
+        yield R(
+            pk,
+            'pkm', pkm,
+            excluded=[
+                subreddit(
+                    'airsoft', 'mw4', 'CombatFootage',
+                    'stalker', 'airsoftmarket',
+                    'insurgency', 'MilitaryPorn',
+                    'ProjectMilSim', 'RingOfElysium', 'GunPorn',
+                    'EscapefromTarkov', 'joinsquad', 'dayz',
+                    'ClearBackblast', 'syriancivilwar',
+                    'gaming', 'u_tkaqnfkf1',
+                    'friendsafari', 'GlobalPowers', 'TheSilphRoad',
+                    'LoLeventVoDs',
+                    '.*pokemon.*', '.*nintendo.*', '.*gun.*',
+                ),
+                contains('pokemon', 'ak47', ' guns '),
+            ],
+        )
+        yield P(
+            pk,
+            'pkm', pintag('pkm'),
+            pkm  , *gen_pintags(pkm),
+            pintag('km'), pintag('pim'),
+        )
+        yield G(
+            pk, # TODO shit. that's a bit messed up...
+            'pkm NOT pokemon', # TODO NOT pkm
+            f'"{pkm}"',
+            quote=False,
+        )
+        yield T(
+            pk,
+            f'"{pkm}"',
+        )
 
     qg = 'quantum gravity' # TODO eh, needs quoting?
     yield from qall(
@@ -277,12 +293,17 @@ def make_queries() -> Iterator[Query]:
         qg,
     )
 
-    qs = 'quantified self'
-    yield from qall(
-        qs,
-        qs, 'quantified-self',
-        pintags=[pintags_implicit, 'quantifiedself'],
-    )
+    if True:
+        qs = 'quantified self'
+        yield from qall(
+            qs,
+            qs, 'quantified-self',
+            pintags=[pintags_implicit, 'quantifiedself'],
+        )
+        yield T(
+            qs,
+            '"quantified self"',
+        )
 
     # TODO probably, no github?
     tc = 'ted chiang'
@@ -292,12 +313,13 @@ def make_queries() -> Iterator[Query]:
         pintags=['tedchiang'],
     )
 
-    ar = 'argonov'
-    yield from qall(
-        ar,
-        'виктор аргонов', # TODO eh, needs quoting?
-    )
-    yield T(ar, '"виктор аргонов"')
+    if True:
+        ar = 'argonov'
+        yield from qall(
+            ar,
+            'виктор аргонов', # TODO eh, needs quoting?
+        )
+        yield T(ar, '"виктор аргонов"')
 
     sr = 'spaced repetition'
     yield from qall(
