@@ -21,7 +21,7 @@ from kython.kdominate import adhoc_html
 from axol.common import logger
 from axol.storage import Changes, RepoHandle, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
-from axol.traits import ForReach, ForSpinboard, ForTentacle, IgnoreTrait, ignore_result
+from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, IgnoreTrait, ignore_result
 from config import OUTPUTS
 
 
@@ -181,7 +181,33 @@ class TentacleTrait(ForTentacle, FormatTrait):
         return res
         # TODO indicate how often is user showing up?
 
-FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait)
+def tw(s):
+    return f'https://twitter.com{s}'
+
+
+class FormatTwitter(ForTwitter, FormatTrait):
+    @classmethod
+    def user_link(cls, user: str):
+        return tw(user)
+
+    @classmethod
+    def format(trait, objs) -> Htmlish:
+        res = T.div(cls='twitter')
+        res.add(T.div(T.a(trait.title(objs), href=tw(trait.link(objs)))))
+        with adhoc_html('twitter', cb=lambda ch: res.add(*ch)):
+            for _, obj in objs:
+                T.div(obj.text)
+                    # TODO FIXME likes?
+                with T.div():
+                    T.a(
+                        f'{obj.when.strftime("%Y-%m-%d %H:%M")} by {obj.user}',
+                        href=tw(obj.link),
+                        cls='permalink',
+                    )
+        return res
+
+
+FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait, FormatTwitter)
 
 
 # TODO hmm. instead percentile would be more accurate?...

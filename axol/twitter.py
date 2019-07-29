@@ -13,10 +13,15 @@ class Result(NamedTuple):
     link: str
     text: str
     user: str
-    # TODO fixme not sure about title?..
     replies: int
     retweets: int
     likes: int
+
+    # TODO fixme not sure about title?..
+    @property
+    def title(self) -> str:
+        return self.link
+
 
 
 # TODO move this to scrapy_singlefile (and rename to 'adhoc'??)

@@ -87,14 +87,10 @@ def get_result_type(repo: Path) -> Type:
     name = repo.name
     # TODO this could also be a trait?
     if name.startswith('reddit'):
-        # pylint: disable=import-error
-        from reach import Result # type: ignore
-        return Result
+        return ForReach.Target
     elif name.startswith('github'):
-        # pylint: disable=import-error
-        from tentacle import Result # type: ignore
-        return Result # TODO FIXME reuse 'For' here??  or just get marker by name directly?
+        return ForTentacle.Target
+    elif name.startswith('twitter'):
+        return ForTwitter.Target
     else:
-        # pylint: disable=import-error
-        from spinboard import Result # type: ignore
-        return Result
+        return ForSpinboard.Target
