@@ -814,6 +814,7 @@ def write_index(storages, output_dir: Path):
         T.div(T.b(T.a('pinboard users summary', href=f'pinboard_users.html')))
         T.div(T.b(T.a('reddit users summary'  , href=f'reddit_users.html')))
         T.div(T.b(T.a('github users summary'  , href=f'github_users.html')))
+        T.div(T.b(T.a('twitter users summary' , href=f'twitter_users.html')))
 
     # TODO 'last updated'?
     (output_dir / 'index.html').write_text(str(doc))
@@ -847,14 +848,27 @@ def user_summary_for(rtype, storages, output_path: Path):
         T.style(STYLE)
         raw_script(JS) # TODO necessary?
 
+        # TODO FIXME can't inline due to some utf shit
+        sortable_js = Path(__file__).absolute().parent / 'js' / 'sorttable.js'
+        T.script(src=str(sortable_js))
+        # raw_script(.read_text())
+
     ft = FormatTrait.for_(rtype)
     with doc.body:
-        with T.table():
+        with T.table(cls='sortable'):
+            emitted_head = False
             for user, stats in sorted(ustats.items(), key=lambda x: (-len(x[1]), x)):
+                if not emitted_head:
+                    with T.thead():
+                        T.td('user')
+                        for q, _ in stats.items():
+                            T.td(q)
+                    emitted_head = True
+
                 with T.tr():
                     T.td(ft.user_link(user))
                     for q, st in stats.items():
-                        with T.td():
+                        with T.td(sorttable_customkey=str(st)):
                             # TODO I guess unclear which tag to choose though.
                             T.a(q, href=f'summary/{q}.html') # TODO link to source in index? or on pinboard maybe
                             # TODO also project onto user's tags straight away
