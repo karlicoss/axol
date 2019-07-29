@@ -64,7 +64,7 @@ class TwitterSearch:
     def iter_search(self, query, limit=None) -> Iterator[Result]:
         from twitterscraper import query_tweets # type: ignore
         # TODO FIXME not sure if we can be iterative here..
-        for i in sorted(query_tweets(query, limit=limit)):
+        for i in sorted(query_tweets(query, limit=limit, poolsize=2)): # TODO not sure about poolsize, hopefully it prevents hammering twitter?
             yield Result(
                 uid =i.id,
                 when=i.timestamp, # no tz, apparently local scraping tz?
