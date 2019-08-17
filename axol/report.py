@@ -193,7 +193,7 @@ class FormatTwitter(ForTwitter, FormatTrait):
     @classmethod
     def format(trait, objs) -> Htmlish:
         res = T.div(cls='twitter')
-        res.add(T.div(T.a(trait.title(objs), href=tw(trait.link(objs)))))
+        # res.add(T.div(T.a(trait.title(objs), href=tw(trait.link(objs)))))
         with adhoc_html('twitter', cb=lambda ch: res.add(*ch)):
             for _, obj in objs:
                 T.div(obj.text)
