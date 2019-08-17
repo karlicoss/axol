@@ -693,9 +693,10 @@ def run(args):
     # maybe some sort of rolling log using the whole terminal screen?
     errors: List[str] = []
 
-    # from kython.koncurrent import DummyExecutor
-    # pool = DummyExecutor()
-    pool = ProcessPoolExecutor()
+    from kython.koncurrent import DummyExecutor
+    pool = DummyExecutor()
+    if len(storages) > 1: # just to siplify debugging
+        pool = ProcessPoolExecutor()
     with pool:
         # TODO this is just pool map??
         futures = []
