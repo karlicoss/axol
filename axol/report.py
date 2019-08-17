@@ -31,6 +31,8 @@ from config import OUTPUTS
 
 Htmlish = Union[str, T.dom_tag]
 
+STYLE = (Path(__file__).parent / 'css/style.css').read_text()
+
 # TODO use Genetic[T]??
 
 # TODO hmm. maybe calling base class method pulls automatically??
@@ -249,82 +251,6 @@ def send(subject: str, body: str, html=False):
         }
     )
 
-STYLE = """
-
-.item {
-    margin-top:    10px;
-    margin-bottom: 10px;
-}
-
-.item.ignored {
-    color: gray;
-    margin-top:    1px;
-    margin-bottom: 1px;
-}
-
-.permalink {
-    color: gray;
-}
-
-.timestamp {
-    /* TODO not sure it looks good... */
-    font-family: monospace;
-
-}
-
-.day-changes-inner {
-    padding-left: 1em;
-    border-left: 10px solid;
-}
-
-.day-changes-inner.even {
-    border-color: black;
-}
-
-.day-changes-inner.odd {
-    border-color: orange;
-}
-
-.user {
-    color: #035E7B;
-}
-
-.tag, .subreddit {
-    color: darkgreen;
-    /* color: #97130F; */
-}
-
-a:link {
-  text-decoration: none;
-}
-
-a:visited {
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-a:active {
-  text-decoration: underline;
-}
-
-
-td.min {
-  width: 1%;
-  white-space: nowrap;
-}
-
-.description {
-  padding-left: 1em;
-}
-
-table {
-  border-collapse: collapse;
-}
-
-"""
 
 JS = """
 function hide(thing) {
