@@ -252,14 +252,37 @@ def send(subject: str, body: str, html=False):
     )
 
 
-JS = """
-function hide(thing) {
-// TODO ugh, doesn't look like $x works in FF
-    const items = $x(`.//div[@class='item' and .//a[text()='${thing}']]`);
-    console.log(`hiding ${items.length} items`);
-    items.forEach(el => { el.hidden = true; });
-}
-"""
+JS = (Path(__file__).parent / 'js/report.js').read_text()
+
+
+#
+# ok. fuck iframe for now. it doesn't work well.
+#
+# window.addEventListener('DOMContentLoaded', async (event) => {
+#     console.log('DOM fully loaded and parsed');
+#
+#     const fr = document.createElement('iframe'); document.body.appendChild(fr);
+#     fr.src = '';
+#     fr.id = 'blacklist';
+#
+#
+#     fr.contentWindow.document.write(`
+#     <html>
+#     <head>
+#     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.min.js"></script>
+#     </head>
+#     <body>
+#
+#     <div>HELOOO</div>
+#     <textarea rows="5" id="bll"></textarea>
+#
+#     </body></html>
+# `);
+#
+# });
+
+
+
 
 from kython import group_by_key
 from kython.url import normalise
@@ -556,12 +579,21 @@ def render_latest(repo: Path, digest, rendered: Path):
 
     with doc.head:
         T.style(STYLE)
+        raw_script(JS)
+
+        T.link(rel='stylesheet', href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.min.css")
+        T.script(src='https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.js') # TODO use min?
 
     items = chain.from_iterable(((d, x) for x in zz) for d, zz in digest.changes.items())
     items2 = [grp for  _, grp in group_by_key(items, key=lambda p: f'{p[1].link}').items()]
     # TODO sort within each group?
 
     with doc:
+        with T.div(id='blacklist'):
+            T.textarea(id='blacklist-edit', rows=10)
+            T.button('apply', id='blacklist-apply')
+
+
         odd = True
         for d, items in sorted(group_by_key(items2, key=lambda p: min(x[0] for x in p)).items(), reverse=True):
             odd = not odd
@@ -585,7 +617,11 @@ def render_latest(repo: Path, digest, rendered: Path):
                         else:
                             fi = Format.format(i)
                             T.div(fi, cls='item')
+        # fucking hell.. didn't manage to render content inside iframe no matter how I tried..
+        # with T.iframe(id='blacklist', src=''):
+        #     pass
 
+    # TODO perhaps needs to be iterative...
     rf = rendered.joinpath(name + '.html')
     with rf.open('w') as fo:
         fo.write(str(doc))
@@ -777,7 +813,6 @@ def user_summary_for(rtype, storages, output_path: Path):
         # TODO FIXME can't inline due to some utf shit
         sortable_js = Path(__file__).absolute().parent / 'js' / 'sorttable.js'
         T.script(src=str(sortable_js))
-        # raw_script(.read_text())
 
     ft = FormatTrait.for_(rtype)
     with doc.body:

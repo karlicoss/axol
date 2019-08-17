@@ -70,3 +70,19 @@ td.min {
 table {
   border-collapse: collapse;
 }
+
+
+body {
+    padding-right: 500px;
+}
+
+#blacklist {
+	  width: 500px;
+
+	  position: fixed;
+	  background: lightblue;
+	  right: 0px;
+	  z-index: 9999;
+	  top: 0px;
+	  height: 100%;
+}
