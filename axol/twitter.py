@@ -54,7 +54,7 @@ class Result(NamedTuple):
 #     finally:
 #         _items.clear()
 
-
+# TODO FIXME if zero results, means we're banned?
 class TwitterSearch:
     def __init__(self) -> None:
         self.logger = get_logger()

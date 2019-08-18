@@ -208,6 +208,7 @@ class FormatTwitter(ForTwitter, FormatTrait):
                         href=tw(obj.link),
                         cls='permalink',
                     )
+                    T.a('X', user=obj.user, cls='blacklist')
         return res
 
 
@@ -589,7 +590,9 @@ def render_latest(repo: Path, digest, rendered: Path):
     # TODO sort within each group?
 
     with doc:
-        with T.div(id='blacklist'):
+        with T.div(id='sidebar'):
+            T.label('Blacklisted:', for_='blacklisted')
+            T.div(id='blacklisted')
             T.textarea(id='blacklist-edit', rows=10)
             T.button('apply', id='blacklist-apply')
 

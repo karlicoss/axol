@@ -9,15 +9,40 @@ function xquery(xpath, parent)
     return results;
 }
 
-function hide(thing) {
+const doc = document;
+
+function hide_user(user) {
+
+    // TODO append hidden?
+
+    const cc = doc.getElementById('blacklisted');
+    const d = doc.createElement('div'); cc.appendChild(d);
+    const node = doc.createTextNode(user); d.appendChild(node);
+
 // TODO ugh, doesn't look like $x works in FF
-    const items = xquery(`.//div[@class='item' and .//a[text()='${thing}']]`);
-    console.log(`${thing}: hiding ${items.length} items`);
+    const items = xquery(`.//div[@class='item' and .//*[@user='${user}']]`);
+    console.log(`${user}: hiding ${items.length} items`);
+
+    // TODO just delete?
     items.forEach(el => { el.hidden = true; });
 }
 
 
 window.addEventListener('DOMContentLoaded', async (event) => {
+    const aaa = xquery('//a[@class="blacklist"]');
+    for (let aa of aaa) {
+        aa.addEventListener('click', async(event) => {
+            const target = event.target;
+
+            const u = target.getAttribute('user');
+
+            if (confirm(`hide ${u}?`)) {
+                hide_user(u);
+            }
+        });
+    }
+
+/*
     const elem = document.getElementById('blacklist-edit');
     CodeMirror.fromTextArea(elem, {
          mode:  'js',
@@ -34,4 +59,5 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             }
         }
     });
+    */
 });
