@@ -5,7 +5,7 @@ from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 from kython import flatten
 
 from axol.common import Query, slugify
-from axol.queries import GithubQ, pinboard_quote, RedditQ
+from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 OUTPUTS = BASE_DIR / 'outputs'
@@ -23,29 +23,6 @@ def gen_pintags(query: str) -> List[str]:
         query.replace(" ", "-"),
         query.replace(" ", "_"),
     ])))
-
-
-class TwitterQ(Query):
-    @property
-    def searcher(self):
-        from axol.twitter import TwitterSearch
-        return TwitterSearch
-
-    @property
-    def sname(self):
-        return 'twitter'
-
-    def __init__(self, qname: str, query: str): # TODO FIXME multiple
-        self.qname = qname
-        self.queries = [query]
-
-    @property
-    def repo_name(self) -> str:
-        return f'twitter_{slugify(self.qname)}'
-
-    def __repr__(self):
-        return str(self.__dict__)
-
 
 
 # TODO protocol?..

@@ -1,18 +1,32 @@
 from pathlib import Path
 from subprocess import check_call
 from tempfile import TemporaryDirectory
-from typing import Sequence
+from typing import Sequence, List
 
 from kython.tui import getch
 
 from .common import Query, slugify, logger
 from .crawl import process_query
 from .report import do_repo
-from .queries import GithubQ, RedditQ
+from .queries import GithubQ, RedditQ, TwitterQ
+
+
+SUPPORTED = [
+    GithubQ,
+    RedditQ,
+    TwitterQ,
+]
+
+def get_sources() -> List[str]:
+    res = []
+    for Cls in SUPPORTED:
+        c = Cls('test', 'query')
+        res.append(c.sname)
+    return res
 
 
 def do_run_one(queries: Sequence[str], source: str, tdir: Path):
-    searchers = [Cls(source,  *queries) for Cls in [GithubQ, RedditQ]]
+    searchers = [Cls(source,  *queries) for Cls in SUPPORTED]
     [q] = [s for s in searchers if s.sname == source]
 
     dry = False
@@ -41,7 +55,7 @@ def run(args):
     with TemporaryDirectory() as td:
         tdir = Path(td)
         try:
-            do_run(queries=args.queries, sources=['github', 'reddit'], tdir=tdir)
+            do_run(queries=args.queries, sources=get_sources(), tdir=tdir)
         except Exception as e:
             logger.exception(e)
             raise e

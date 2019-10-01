@@ -69,3 +69,27 @@ class RedditQ(Query):
 
     def __repr__(self):
         return str(self.__dict__)
+
+
+class TwitterQ(Query):
+    @property
+    def searcher(self):
+        from axol.twitter import TwitterSearch
+        return TwitterSearch
+
+    @property
+    def sname(self):
+        return 'twitter'
+
+    def __init__(self, qname: str, query: str): # TODO FIXME multiple
+        self.qname = qname
+        self.queries = [query]
+
+    @property
+    def repo_name(self) -> str:
+        return self.sname + '_' + slugify(self.qname)
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+
