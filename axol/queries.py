@@ -92,6 +92,36 @@ class TwitterQ(Query):
     def __repr__(self):
         return str(self.__dict__)
 
+# TODO protocol?..
+class PinboardQ(Query):
+    @property
+    def searcher(self):
+        from spinboard import Spinboard # type: ignore
+        return Spinboard
+
+    @property
+    def sname(self):
+        return 'pinboard'
+
+    def __init__(self, name: str, *queries: str, quote=True):
+        if len(queries) == 1 and isinstance(queries[0], list):
+            queries = queries[0] # TODO ugh.
+        self.name = name
+        if quote:
+            self.queries = list(map(pinboard_quote, queries))
+        else:
+            self.queries = list(queries)
+    # TODO how to make it unique and fs safe??
+
+    @property
+    def repo_name(self) -> str:
+        # TODO FIXME 'pinboard' prefix? and slugify
+        return self.name
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+
 
 # convenient to temporary ignore certain providers via returning None
 def filter_queries(queries, include=None, exclude=None):

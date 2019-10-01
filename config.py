@@ -5,7 +5,7 @@ from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 from kython import flatten
 
 from axol.common import Query, slugify
-from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, filter_queries
+from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, PinboardQ, filter_queries
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 OUTPUTS = BASE_DIR / 'outputs'
@@ -23,36 +23,6 @@ def gen_pintags(query: str) -> List[str]:
         query.replace(" ", "-"),
         query.replace(" ", "_"),
     ])))
-
-
-# TODO protocol?..
-class PinboardQ(Query):
-    @property
-    def searcher(self):
-        from spinboard import Spinboard # type: ignore
-        return Spinboard
-
-    @property
-    def sname(self):
-        return 'pinboard'
-
-    def __init__(self, name: str, *queries: str, quote=True):
-        if len(queries) == 1 and isinstance(queries[0], list):
-            queries = queries[0] # TODO ugh.
-        self.name = name
-        if quote:
-            self.queries = list(map(pinboard_quote, queries))
-        else:
-            self.queries = list(queries)
-    # TODO how to make it unique and fs safe??
-
-    @property
-    def repo_name(self) -> str:
-        # TODO 'pinboard' prefix? slugify??
-        return self.name
-
-    def __repr__(self):
-        return str(self.__dict__)
 
 
 class Subreddit(NamedTuple):
