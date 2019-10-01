@@ -1,14 +1,15 @@
 from pathlib import Path
 from subprocess import check_call
+from pprint import pprint
 from tempfile import TemporaryDirectory
 from typing import Sequence, List
 
 from kython.tui import getch
 
 from .common import Query, slugify, logger
-from .crawl import process_query
+from .crawl import process_query, setup_parser as setup_crawl_parser
 from .report import do_repo
-from .queries import GithubQ, RedditQ, TwitterQ
+from .queries import GithubQ, RedditQ, TwitterQ, filter_queries, Query
 
 
 SUPPORTED = [
@@ -17,22 +18,11 @@ SUPPORTED = [
     TwitterQ,
 ]
 
-def get_sources() -> List[str]:
-    res = []
-    for Cls in SUPPORTED:
-        c = Cls('test', 'query')
-        res.append(c.sname)
-    return res
-
-
-def do_run_one(queries: Sequence[str], source: str, tdir: Path):
-    searchers = [Cls(source,  *queries) for Cls in SUPPORTED]
-    [q] = [s for s in searchers if s.sname == source]
-
+def do_run_one(query: Query, tdir: Path):
     dry = False
-    process_query(q, path=tdir, dry=dry)
+    process_query(query, path=tdir, dry=dry)
 
-    repo = tdir / q.repo_name
+    repo = tdir / query.repo_name
     for d in ('summary', 'rendered'):
         (tdir / d).mkdir(exist_ok=True, parents=True)
     res = do_repo(repo, output_dir=tdir, last=None, summary=True)
@@ -41,21 +31,29 @@ def do_run_one(queries: Sequence[str], source: str, tdir: Path):
     check_call(['xdg-open', str(res)])
 
 
-def do_run(queries: Sequence[str], sources: Sequence[str], tdir: Path):
-    for src in sources:
-        # TODO run in parallel?
-        do_run_one(queries=queries, source=src, tdir=tdir)
+def do_run(queries: Sequence[Query], tdir: Path):
+    for query in queries:
+        # TODO run in parallel? e.g. split by source
+        do_run_one(query=query, tdir=tdir)
 
 
 def setup_parser(p):
+    setup_crawl_parser(p)
     p.add_argument('queries', type=str, nargs='+')
 
 
 def run(args):
     with TemporaryDirectory() as td:
         tdir = Path(td)
+        qs = []
+        for Cls in SUPPORTED:
+            c = Cls('adhoc', *args.queries)
+            qs.append(c)
+        qs = filter_queries(qs, include=args.include, exclude=args.exclude)
+        for q in qs:
+            print(q.sname, qs)
         try:
-            do_run(queries=args.queries, sources=get_sources(), tdir=tdir)
+            do_run(queries=qs, tdir=tdir)
         except Exception as e:
             logger.exception(e)
             raise e

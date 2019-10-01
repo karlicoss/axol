@@ -5,7 +5,7 @@ from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 from kython import flatten
 
 from axol.common import Query, slugify
-from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ
+from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, filter_queries
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 OUTPUTS = BASE_DIR / 'outputs'
@@ -256,16 +256,9 @@ def make_queries() -> Iterator[Query]:
     del G
     del T
 
-# convenient to temporary ignore certain providers via returning None
 def get_queries(include=None, exclude=None):
     queries = list(filter(lambda x: x is not None, make_queries()))
-    if include is not None and exclude is not None:
-        raise RuntimeError('please specify only one of include/exclude')
-    if include is not None:
-        queries = [q for q in queries if q.sname in include]
-    if exclude is not None:
-        queries = [q for q in queries if q.sname not in exclude]
-    return queries
+    return filter_queries(queries, include=include, exclude=exclude)
 
 
 # TODO get rid of this later...

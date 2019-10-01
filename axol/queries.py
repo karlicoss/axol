@@ -93,3 +93,12 @@ class TwitterQ(Query):
         return str(self.__dict__)
 
 
+# convenient to temporary ignore certain providers via returning None
+def filter_queries(queries, include=None, exclude=None):
+    if include is not None and exclude is not None:
+        raise RuntimeError('please specify only one of include/exclude')
+    if include is not None:
+        queries = [q for q in queries if q.sname in include]
+    if exclude is not None:
+        queries = [q for q in queries if q.sname not in exclude]
+    return queries
