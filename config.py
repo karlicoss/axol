@@ -4,8 +4,8 @@ from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 
 from kython import flatten
 
-from axol.common import Query, Filter, slugify
-from axol.queries import GithubQ, pinboard_quote
+from axol.common import Query, slugify
+from axol.queries import GithubQ, pinboard_quote, RedditQ
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 OUTPUTS = BASE_DIR / 'outputs'
@@ -108,31 +108,6 @@ def subreddit(*subs):
 def contains(*items):
     return [Contains(i) for i in items]
 
-# TODO Filter needs to be a more flexible type...
-
-class RedditQ(Query):
-    @property
-    def searcher(self):
-        from reach import Reach # type: ignore
-        return Reach
-
-    @property
-    def sname(self):
-        return 'reddit'
-
-    def __init__(self, qname: str, *queries: str, excluded: Sequence[Filter]=()) -> None:
-        if len(queries) == 1 and isinstance(queries[0], list):
-            queries = queries[0] # TODO ugh.
-        self.qname = qname
-        self.queries = list(map(pinboard_quote, queries))
-        self.excluded = flatten(excluded)
-
-    @property
-    def repo_name(self) -> str:
-        return f'reddit_' + slugify(self.qname)
-
-    def __repr__(self):
-        return str(self.__dict__)
 
 pintags_implicit = object()
 
