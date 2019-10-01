@@ -9,7 +9,7 @@ def pinboard_quote(s: str):
     # shit, single quotes do not work right with pinboard..
     if s.startswith('tag:'):
         return s
-    if s.startswith("'"):
+    if s.startswith("'") or s.startswith('"'):
         return s
     return f'"{s}"'
 
@@ -83,7 +83,7 @@ class TwitterQ(Query):
 
     def __init__(self, qname: str, query: str): # TODO FIXME multiple
         self.qname = qname
-        self.queries = [query]
+        self.queries = list(map(pinboard_quote, [query]))
 
     @property
     def repo_name(self) -> str:
