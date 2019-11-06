@@ -221,6 +221,13 @@ def make_queries() -> Iterator[Query]:
         sa,
         pintags=['scottalexander'],
     )
+
+    bb = 'beepb00p.xyz'
+    yield from qall(
+        bb,
+        bb,
+    )
+    
     del P
     del R
     del G
