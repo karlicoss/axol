@@ -86,6 +86,36 @@ def qall(qname: str, *args, pintags=None) -> Iterator[Query]:
     yield GithubQ(qname, *args)
     # TODO FIXME twitter
 
+def EXCLUDED_SUBREDDITS():
+    return [
+        # TODO just exclude globablly?
+        subreddit(
+            'airsoft', 'mw4', 'CombatFootage',
+            'stalker', 'airsoftmarket',
+            'insurgency', 'MilitaryPorn',
+            'ProjectMilSim', 'RingOfElysium', 'GunPorn',
+            'EscapefromTarkov', 'joinsquad', 'dayz',
+            'ClearBackblast', 'syriancivilwar',
+            'gaming', 'u_tkaqnfkf1',
+            'friendsafari', 'GlobalPowers', 'TheSilphRoad',
+            'LoLeventVoDs',
+            '.*pokemon.*', '.*nintendo.*', '.*gun.*',
+            'nfl', 'hockey', 'PunSpecialForces', 'callofduty', 'modernwarfare',
+            'PunSpecialForces',
+            'combinedarms',
+            'dayrsurvival',
+            'The_Donald',
+            'leagueoflegends',
+            'arma',
+            'nfa',
+            'wargame',
+            '.*conspiracy.*',
+            '.*weapons.*',
+            '.*firearms.*',
+            '.*military.*',
+        ),
+        contains('pokemon', 'ak47', ' guns '),
+    ]
 
 # TODO warn if we got less than expected?
 def make_queries() -> Iterator[Query]:
@@ -142,21 +172,7 @@ def make_queries() -> Iterator[Query]:
         yield R(
             pk,
             'pkm', pkm,
-            excluded=[
-                subreddit(
-                    'airsoft', 'mw4', 'CombatFootage',
-                    'stalker', 'airsoftmarket',
-                    'insurgency', 'MilitaryPorn',
-                    'ProjectMilSim', 'RingOfElysium', 'GunPorn',
-                    'EscapefromTarkov', 'joinsquad', 'dayz',
-                    'ClearBackblast', 'syriancivilwar',
-                    'gaming', 'u_tkaqnfkf1',
-                    'friendsafari', 'GlobalPowers', 'TheSilphRoad',
-                    'LoLeventVoDs',
-                    '.*pokemon.*', '.*nintendo.*', '.*gun.*',
-                ),
-                contains('pokemon', 'ak47', ' guns '),
-            ],
+            excluded=EXCLUDED_SUBREDDITS(),
         )
         yield P(
             pk,
@@ -227,6 +243,7 @@ def make_queries() -> Iterator[Query]:
         bb,
         bb,
     )
+    yield T(bb, bb)
     
     del P
     del R
