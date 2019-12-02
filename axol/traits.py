@@ -3,7 +3,7 @@ from typing import Optional, Type
 
 from kython import classproperty, the
 
-from axol.trait import AbsTrait, pull
+from .trait import AbsTrait, pull
 
 from config import ignored_reddit
 
@@ -41,11 +41,20 @@ class ForTwitter:
 
     @classproperty
     def Target(cls):
-        from axol.twitter import Result
+        from .twitter import Result
         return Result
 
 
-Fors = [ForSpinboard, ForReach, ForTentacle, ForTwitter]
+class ForHackernews:
+    name = 'hackernews'
+
+    @classproperty
+    def Target(cls):
+        from .hackernews import Result
+        return Result
+
+
+Fors = [ForSpinboard, ForReach, ForTentacle, ForTwitter, ForHackernews]
 
 def For(res):
     return the([F for F in Fors if res == F.Target])
@@ -87,10 +96,14 @@ class ReachIgnore(ForReach, IgnoreTrait):
         # TODO eh, I def. need to separate in different files; that way I can have proper autocompletion..
         return ignored_reddit(obj)
 
+# TODO FIXME default impls?
 class TwitterIgnore(ForTwitter, IgnoreTrait):
     pass
 
-IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore, TwitterIgnore)
+class HackernewsIgnore(ForHackernews, IgnoreTrait):
+    pass
+
+IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore, TwitterIgnore, HackernewsIgnore)
 
 
 
@@ -105,5 +118,7 @@ def get_result_type(repo: Path) -> Type:
         return ForTentacle.Target
     elif name.startswith('twitter'):
         return ForTwitter.Target
+    elif name.startswith('hackernews'):
+        return ForHackernews.Target # TODO meh..
     else:
         return ForSpinboard.Target

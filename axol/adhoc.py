@@ -9,7 +9,7 @@ from kython.tui import getch
 from .common import Query, slugify, logger
 from .crawl import process_query, setup_parser as setup_crawl_parser
 from .report import do_repo
-from .queries import GithubQ, RedditQ, PinboardQ, TwitterQ, filter_queries, Query
+from .queries import GithubQ, RedditQ, PinboardQ, TwitterQ, HackernewsQ, filter_queries, Query
 
 
 SUPPORTED = [
@@ -17,6 +17,7 @@ SUPPORTED = [
     RedditQ,
     PinboardQ,
     TwitterQ,
+    HackernewsQ,
 ]
 
 def do_run_one(query: Query, tdir: Path):

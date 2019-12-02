@@ -21,7 +21,7 @@ from kython.kdominate import adhoc_html
 from axol.common import logger
 from axol.storage import Changes, RepoHandle, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
-from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, IgnoreTrait, ignore_result, For
+from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, ForHackernews, IgnoreTrait, ignore_result, For
 from config import OUTPUTS
 
 
@@ -211,8 +211,17 @@ class FormatTwitter(ForTwitter, FormatTrait):
                     T.a('X', user=obj.user, cls='blacklist')
         return res
 
+class FormatHackernews(ForHackernews, FormatTrait):
+    @classmethod
+    def user_link(cls, user: str):
+        return "TODO FIXME"
 
-FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait, FormatTwitter)
+    @classmethod
+    def format(trait, objs) -> Htmlish:
+        return "TODO"
+
+
+FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait, FormatTwitter, FormatHackernews)
 
 
 # TODO hmm. instead percentile would be more accurate?...
@@ -455,8 +464,7 @@ CumulativeBase.reg(TentacleCumulative)
 
 class ReachCumulative(ForReach, CumulativeBase):
     @cproperty
-    def the(self):
-        return the(self.items)
+    def the(self): return the(self.items)
 
     @cproperty
     def ups(self):
@@ -523,6 +531,33 @@ class TwitterCumulative(ForTwitter, CumulativeBase):
 
 
 CumulativeBase.reg(TwitterCumulative)
+
+
+class HackernewsCumulative(ForHackernews, CumulativeBase):
+    @cproperty
+    def the(self):
+        return the(self.items)
+
+    @classproperty
+    def cumkey(cls):
+        return lambda x: id(x) # TODO FIXME ???
+
+    @classproperty
+    def sortkey(cls):
+        invwhen  = invkey(lambda c: c.when)
+        return lambda c: (invwhen(c), )
+
+    def format(self):
+        return self.FTrait.format_one(self.the)
+
+    @classmethod
+    def sources_summary(cls, items):
+        res = T.div("TODO")
+        return res
+
+
+
+CumulativeBase.reg(HackernewsCumulative)
 
 # https://github.com/Knio/dominate/issues/63
 # eh, looks like it's the intended way..

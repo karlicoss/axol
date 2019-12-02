@@ -120,15 +120,12 @@ def test_adhoc(tmp_path):
 import pytest
 
 def searchers_gen():
-    from .queries import GithubQ, PinboardQ, TwitterQ, RedditQ
-    yield from [GithubQ, PinboardQ, TwitterQ, RedditQ]
+    from .queries import GithubQ, PinboardQ, TwitterQ, RedditQ, HackernewsQ
+    yield from [GithubQ, PinboardQ, TwitterQ, RedditQ, HackernewsQ]
 
 @pytest.mark.parametrize('searcher', searchers_gen())
 def test_queries(tmp_path, searcher):
     tdir = tmp_path
     q = searcher('test', '"unlikely query"')
     process_query(q, dry=False, path=tdir)
-
-
-
 

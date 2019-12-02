@@ -75,7 +75,7 @@ class RedditQ(Query):
 class TwitterQ(Query):
     @property
     def searcher(self):
-        from axol.twitter import TwitterSearch
+        from .twitter import TwitterSearch
         return TwitterSearch
 
     @property
@@ -121,6 +121,30 @@ class PinboardQ(Query):
 
     def __repr__(self):
         return str(self.__dict__)
+
+class BaseQuery(Query):
+    def __init__(self, qname: str, query: str): # TODO FIXME multiple
+        self.qname = qname
+        self.queries = list(map(pinboard_quote, [query]))
+
+    @property
+    def repo_name(self) -> str:
+        return self.sname + '_' + slugify(self.qname)
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+
+class HackernewsQ(BaseQuery):
+    @property
+    def searcher(self):
+        from .hackernews import HackernewsSearch
+        return HackernewsSearch
+
+    @property
+    def sname(self):
+        # TODO FIXME make it a variable?
+        return 'hackernews'
 
 
 
