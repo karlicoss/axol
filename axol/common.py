@@ -24,7 +24,7 @@ Filter = Any
 
 class Query(Protocol):
     searcher: Type[Any]
-    queries: List[str]
+    queries: List[str] # TODO FIXME assert on empty list?
     excluded: Sequence[Filter]
     @property
     def repo_name(self) -> str: ...

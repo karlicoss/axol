@@ -18,6 +18,7 @@ def pinboard_quote(s: str):
 class GithubQ(Query):
     @property
     def searcher(self):
+        # TODO eh. don't think it's good API
         from tentacle import Tentacle # type: ignore
         return Tentacle
 

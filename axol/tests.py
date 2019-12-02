@@ -107,8 +107,11 @@ def test_adhoc(tmp_path):
     # TODO not sure if needs some sort of limit? and maybe lower timeout
     # TODO qname is temporary?
     # TODO not sure if should keep separate storages separate? Or maybe story query alongside?
-    queries = ['quantified mind']
-    axol.adhoc.do_run(queries=queries, sources=['github'], tdir=td)
+    from .queries import GithubQ
+
+    query = GithubQ('qmind', 'quantified mind')
+    
+    axol.adhoc.do_run(queries=[query], tdir=td)
 
     [js] = list(td.rglob('*.json'))
     assert len(json.loads(js.read_text())) > 0
