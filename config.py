@@ -5,7 +5,7 @@ from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 from kython import flatten
 
 from axol.common import Query, slugify
-from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, PinboardQ, filter_queries
+from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, PinboardQ, HackernewsQ, filter_queries
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 OUTPUTS = BASE_DIR / 'outputs'
@@ -85,6 +85,8 @@ def qall(qname: str, *args, pintags=None) -> Iterator[Query]:
     yield PinboardQ(qname, *args, *ptags)
     yield GithubQ(qname, *args)
     # TODO FIXME twitter
+    # TODO FIXME hackernews
+    # eh, doesn't work on Algolia: "personal knowledge" OR "personal information"
 
 def EXCLUDED_SUBREDDITS():
     return [
@@ -126,6 +128,7 @@ def make_queries() -> Iterator[Query]:
     R = RedditQ
     G = GithubQ
     T = TwitterQ
+    H = HackernewsQ
 
     yield from qall(
         'bret victor',
@@ -147,6 +150,10 @@ def make_queries() -> Iterator[Query]:
             emind,
             f'"{emind}"',
         )
+        yield H(
+            emind,
+            f'"{emind}"',
+        )
 
     if True:
         ll = 'lifelogging'
@@ -156,6 +163,10 @@ def make_queries() -> Iterator[Query]:
             pintags=[pintags_implicit, 'lifelog']
         )
         yield T(
+            ll,
+            ll,
+        )
+        yield H(
             ll,
             ll,
         )
@@ -193,6 +204,12 @@ def make_queries() -> Iterator[Query]:
             pk,
             f'"{pkm}"',
         )
+        yield H(
+            pk,
+            f'"personal knowledge"',
+            # TODO FIXME use "personal knowledge" everywhere?
+            # TODO FIXME use 'personal information'??
+        )
 
     qg = 'quantum gravity' # TODO eh, needs quoting?
     yield from qall(
@@ -208,6 +225,10 @@ def make_queries() -> Iterator[Query]:
             pintags=[pintags_implicit, 'quantifiedself'],
         )
         yield T(
+            qs,
+            '"quantified self"',
+        )
+        yield H(
             qs,
             '"quantified self"',
         )
@@ -247,11 +268,13 @@ def make_queries() -> Iterator[Query]:
         bb,
     )
     yield T(bb, bb)
+    yield H(bb, bb)
     
     del P
     del R
     del G
     del T
+    del H
 
 def get_queries(include=None, exclude=None):
     queries = list(filter(lambda x: x is not None, make_queries()))
