@@ -86,3 +86,11 @@ body {
 	  top: 0px;
 	  height: 100%;
 }
+
+.text {
+    padding-left: 1em;
+}
+
+.hackernews .text p {
+    margin: 0; /* hack because hackernews stuff comes as html */
+}

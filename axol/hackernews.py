@@ -13,14 +13,12 @@ class Result(NamedTuple):
     uid: str
     when: datetime
     user: str
-    points: int
     url: str
     title: str
     text: str
 
-    # TODO story_text??
-    # TODO comment_text
-    # TODO FIXME num_comments?
+    points: int
+    comments: int
 
     @property
     def link(self) -> str:
@@ -47,14 +45,18 @@ class HackernewsSearch:
             ct = r['comment_text']
             assert not (st is not None and ct is not None)
             text = st or ct or ''
+            nc = r['num_comments']
+            nc = -1 if nc is None else nc
+
             yield Result(
                 uid=r['objectID'],
                 when=dt,
                 user=r['author'],
-                points=p,
                 url=r['url'],
                 title=r['title'],
                 text=text,
+                points=p,
+                comments=nc,
             )
 
     def search(self, query: str, limit=None) -> List[Result]:

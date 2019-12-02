@@ -110,6 +110,7 @@ class SpinboardFormat(ForSpinboard, FormatTrait):
                             with T.td(colspan=3):
                                 T.span(obj.description, cls='description')
                     with T.tr():
+                        # TODO wtf is min??
                         with T.td(cls='min'):
                             T.a(f'{fdate(obj.when)}', href=obj.blink, cls='permalink timestamp')
                         with T.td(cls='min'):
@@ -164,7 +165,7 @@ class TentacleTrait(ForTentacle, FormatTrait):
 
     @classmethod
     def user_link(cls, user: str):
-        return T.a(user, href=f'https://github.com/{user}', clas='user')
+        return T.a(user, href=f'https://github.com/{user}', cls='user')
 
     @classmethod
     def format(trait, objs, *args, **kwargs) -> Htmlish:
@@ -211,14 +212,37 @@ class FormatTwitter(ForTwitter, FormatTrait):
                     T.a('X', user=obj.user, cls='blacklist')
         return res
 
+def hn(s):
+    return f'https://news.ycombinator.com{s}'
+
 class FormatHackernews(ForHackernews, FormatTrait):
     @classmethod
     def user_link(cls, user: str):
-        return "TODO FIXME"
+        return T.a(user, href=hn(f'/user?id={user}'), cls='user')
 
     @classmethod
     def format(trait, objs) -> Htmlish:
-        return "TODO"
+        res = T.div(cls='hackernews')
+        with adhoc_html('hackernews', cb=lambda ch: res.add(*ch)):
+            for _, obj in objs:
+                if obj.url is not None:
+                    T.div(T.a(obj.title, href=obj.url))
+                T.div(raw(obj.text), cls='text') # eh, it's html
+                with T.div():
+                    extra = []
+                    if obj.points > 0:
+                        extra.append(f'🠅{obj.points}')
+                    if obj.comments > 0:
+                        extra.append(f'🗬{obj.comments}')
+                    T.b(' '.join(extra))
+                    T.a(
+                        obj.when.strftime('%Y-%m-%d %H:%M'),
+                        href=obj.link,
+                        cls='permalink', # TODO FIXME not sure if should use 'timestamp' class??
+                    )
+                    text(' by ')
+                    trait.user_link(user=obj.user)
+        return res
 
 
 FormatTrait.reg(ReachFormat, SpinboardFormat, TentacleTrait, FormatTwitter, FormatHackernews)
@@ -526,7 +550,7 @@ class TwitterCumulative(ForTwitter, CumulativeBase):
 
     @classmethod
     def sources_summary(cls, items):
-        res = T.div("TODO")
+        res = T.div("TODO sources summary")
         return res
 
 
@@ -552,7 +576,7 @@ class HackernewsCumulative(ForHackernews, CumulativeBase):
 
     @classmethod
     def sources_summary(cls, items):
-        res = T.div("TODO")
+        res = T.div("TODO sources summary")
         return res
 
 
