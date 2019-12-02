@@ -99,7 +99,7 @@ def test_crawl(tmp_path):
 
 
 def test_adhoc(tmp_path):
-    td = Path(tmp_path)
+    td = tmp_path
 
     # TODO eh, could render separately...
     # TODO just output htmls as it goes
@@ -117,6 +117,17 @@ def test_adhoc(tmp_path):
     assert len(json.loads(js.read_text())) > 0
     # TODO html??
 
+import pytest
+
+def searchers_gen():
+    from .queries import GithubQ, PinboardQ, TwitterQ, RedditQ
+    yield from [GithubQ, PinboardQ, TwitterQ, RedditQ]
+
+@pytest.mark.parametrize('searcher', searchers_gen())
+def test_queries(tmp_path, searcher):
+    tdir = tmp_path
+    q = searcher('test', '"unlikely query"')
+    process_query(q, dry=False, path=tdir)
 
 
 
