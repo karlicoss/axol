@@ -263,13 +263,14 @@ def make_queries() -> Iterator[Query]:
     )
 
     bb = 'beepb00p.xyz'
-    yield from qall(
-        bb,
-        bb,
-    )
+    # TODO FIXME ugh. how to make qall nicer to use??
+    # TODO FIXME make sure qall and these oneoff things don't overlap
+    yield R(bb, bb, 'domain:beepb00p.xyz')
+    yield P(bb, bb)
+    yield G(bb, bb)
     yield T(bb, bb)
     yield H(bb, bb)
-    
+
     del P
     del R
     del G
