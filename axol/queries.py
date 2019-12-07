@@ -7,8 +7,12 @@ from .common import Query, slugify, Filter
 
 def pinboard_quote(s: str):
     # shit, single quotes do not work right with pinboard..
+    # TODO meeeeh
     if s.startswith('tag:'):
         return s
+    if s.startswith('domain:'):
+        return s
+    # TODO only quote if it's got whitespace? not even sure about that...
     if s.startswith("'") or s.startswith('"'):
         return s
     return f'"{s}"'
