@@ -103,6 +103,7 @@ class TwitterIgnore(ForTwitter, IgnoreTrait):
 class HackernewsIgnore(ForHackernews, IgnoreTrait):
     pass
 
+# TODO FIXME could register at the time of inheritance?
 IgnoreTrait.reg(SpinboardIgnore, TentacleIgnore, ReachIgnore, TwitterIgnore, HackernewsIgnore)
 
 

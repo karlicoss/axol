@@ -566,10 +566,15 @@ class HackernewsCumulative(ForHackernews, CumulativeBase):
     def cumkey(cls):
         return lambda x: id(x) # TODO FIXME ???
 
+    @cproperty
+    def interactions(self):
+        th = the(self.items)
+        return th.points + th.comments
+
     @classproperty
     def sortkey(cls):
         invwhen  = invkey(lambda c: c.when)
-        return lambda c: (invwhen(c), )
+        return lambda c: (-c.interactions, invwhen(c))
 
     def format(self):
         return self.FTrait.format_one(self.the)
