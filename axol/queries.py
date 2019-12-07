@@ -8,9 +8,13 @@ from .common import Query, slugify, Filter
 def pinboard_quote(s: str):
     # shit, single quotes do not work right with pinboard..
     # TODO meeeeh
+    # TODO FIXME set of allowed prefixes?
     if s.startswith('tag:'):
         return s
     if s.startswith('domain:'):
+        return s
+    if any(s.startswith(c) for c in ('issues:', 'code:')):
+        # TODO FIMXE need to quote second part???
         return s
     # TODO only quote if it's got whitespace? not even sure about that...
     if s.startswith("'") or s.startswith('"'):

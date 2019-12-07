@@ -134,6 +134,7 @@ def make_queries() -> Iterator[Query]:
         'bret victor',
         'bret victor',
     )
+    # TODO FIXME merge queries after that? not sure..
 
     yield from qall(
         'arbtt',
@@ -265,9 +266,9 @@ def make_queries() -> Iterator[Query]:
     bb = 'beepb00p.xyz'
     # TODO FIXME ugh. how to make qall nicer to use??
     # TODO FIXME make sure qall and these oneoff things don't overlap
-    yield R(bb, bb, 'domain:beepb00p.xyz')
+    yield R(bb, bb, 'domain:' + bb)
     yield P(bb, bb)
-    yield G(bb, bb)
+    yield G(bb, bb, 'code:' + bb, 'issues:' + bb)
     yield T(bb, bb)
     yield H(bb, bb)
 
