@@ -272,6 +272,15 @@ def make_queries() -> Iterator[Query]:
     yield T(bb, bb)
     yield H(bb, bb)
 
+    mypy = 'mypy'
+    yield from qall(
+        mypy,
+        mypy,
+        pintags=['mypy'],
+    )
+    yield T(mypy, mypy) # TODO not sure about twitter..
+    yield H(mypy, mypy)
+
     del P
     del R
     del G
