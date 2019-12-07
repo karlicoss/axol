@@ -29,7 +29,7 @@ def process_query(q: Query, dry: bool, path: Path):
     rh.commit(jsons)
 
 
-def process_all(dry=False, include=None, exclude=None):
+def process_all(dry=False, include=None, exclude=None, name=None):
     ok = True
     def reg_error(err):
         nonlocal ok
@@ -40,7 +40,7 @@ def process_all(dry=False, include=None, exclude=None):
             logger.error(err)
         ok = False
 
-    for q in get_queries(include=include, exclude=exclude):
+    for q in get_queries(include=include, exclude=exclude, name=name):
         try:
             process_query(q, dry=dry, path=OUTPUTS)
         except Exception as e:
@@ -51,13 +51,14 @@ def process_all(dry=False, include=None, exclude=None):
         sys.exit(1)
 
 def run(args):
-    process_all(args.dry, include=args.include, exclude=args.exclude)
+    process_all(args.dry, include=args.include, exclude=args.exclude, name=args.name)
 
 
 def setup_parser(p):
     p.add_argument('--dry', action='store_true')
     p.add_argument('--include', action='append')
     p.add_argument('--exclude', action='append')
+    p.add_argument('--name', type=str, required=False)
     # TODO ugh.
     # p.add_argument('repos', nargs='*')
 

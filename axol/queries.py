@@ -153,11 +153,13 @@ class HackernewsQ(BaseQuery):
 
 
 # convenient to temporary ignore certain providers via returning None
-def filter_queries(queries, include=None, exclude=None):
+def filter_queries(queries, include=None, exclude=None, name=None):
     if include is not None and exclude is not None:
         raise RuntimeError('please specify only one of include/exclude')
     if include is not None:
         queries = [q for q in queries if q.sname in include]
     if exclude is not None:
         queries = [q for q in queries if q.sname not in exclude]
+    if name is not None:
+        queries = [q for q in queries if q.qname == name]
     return queries

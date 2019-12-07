@@ -277,9 +277,9 @@ def make_queries() -> Iterator[Query]:
     del T
     del H
 
-def get_queries(include=None, exclude=None):
+def get_queries(include=None, exclude=None, name=None):
     queries = list(filter(lambda x: x is not None, make_queries()))
-    return filter_queries(queries, include=include, exclude=exclude)
+    return filter_queries(queries, include=include, exclude=exclude, name=name)
 
 
 # TODO get rid of this later...
