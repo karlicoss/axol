@@ -448,7 +448,7 @@ class SpinboardCumulative(ForSpinboard, CumulativeBase):
     def sources_summary(cls, items):
         res = T.div()
         res.add(T.div(T.b('Tag summary:')))
-        for src, cnt in cls.sources_stats(items, key=lambda i: i.ntags):
+        for src, cnt in cls.sources_stats(items, key=lambda i: i.ntags): # TODO ntags?
             x = T.div()
             x.add(cls.FTrait.tag_link(tag=src))
             x.add(f': {cnt}')
@@ -515,13 +515,12 @@ class ReachCumulative(ForReach, CumulativeBase):
 
     @classmethod
     def sources_summary(cls, items):
-        res = T.div()
-        for sub, cnt in cls.sources_stats(items, key=lambda i: i.subreddit):
-            x = T.div()
-            x.add(cls.FTrait.subreddit_link(sub))
-            x.add(f': {cnt}')
-            res.add(x)
-        return res
+        # TODO FIXME clearly looks it could be generic..
+        key = lambda i: i.subreddit
+        for sub, cnt in cls.sources_stats(items, key=key):
+            with T.div():
+                cls.FTrait.user_link(sub)
+                text(f': {cnt}')
 
 CumulativeBase.reg(ReachCumulative)
 
@@ -550,8 +549,12 @@ class TwitterCumulative(ForTwitter, CumulativeBase):
 
     @classmethod
     def sources_summary(cls, items):
-        res = T.div("TODO sources summary")
-        return res
+        # TODO FIXME need adhoc thing?
+        key = lambda i: i.user
+        for sub, cnt in cls.sources_stats(items, key=key):
+            with T.div():
+                cls.FTrait.user_link(sub)
+                text(f': {cnt}')
 
 
 CumulativeBase.reg(TwitterCumulative)
@@ -581,8 +584,12 @@ class HackernewsCumulative(ForHackernews, CumulativeBase):
 
     @classmethod
     def sources_summary(cls, items):
-        res = T.div("TODO sources summary")
-        return res
+        # TODO eh. sort in reverse?
+        key = lambda i: i.user
+        for sub, cnt in cls.sources_stats(items, key=key):
+            with T.div():
+                cls.FTrait.user_link(sub)
+                text(f': {cnt}')
 
 
 
@@ -621,7 +628,9 @@ def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
         T.h3("This is axol search summary")
         T.div("You can use 'hide' function in JS (chrome debugger) to hide certain tags/subreddits/users")
         T.h4("Sources summary")
-        Cumulative.sources_summary(everything)
+        # TODO wrap in div?
+        with T.div():
+            Cumulative.sources_summary(everything)
         for cc in cumulatives:
             T.div(cc.format(), cls='item')
 
