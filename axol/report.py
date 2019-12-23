@@ -737,6 +737,7 @@ def setup_parser(p):
     p.add_argument('--with-user-summary', action='store_true')
     p.add_argument('--last', type=int, default=None)
     p.add_argument('--output-dir', type=Path, default=BASE_DIR)
+    p.add_argument('--serial', action='store_true')
 
 
 # TODO for starters, just send last few days digest..
@@ -796,8 +797,9 @@ def run(args):
     errors: List[str] = []
 
     from kython.koncurrent import DummyExecutor
-    pool = DummyExecutor()
-    if len(storages) > 1: # just to siplify debugging
+    if args.serial:
+        pool = DummyExecutor()
+    else:
         pool = ProcessPoolExecutor()
     with pool:
         # TODO this is just pool map??
