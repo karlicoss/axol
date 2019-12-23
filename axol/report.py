@@ -676,8 +676,12 @@ def render_latest(repo: Path, digest, rendered: Path):
                 fe = fg.add_entry()
                 id_ = z.uid # TODO?
                 fe.id(id_)
-                fe.title(z.title)
+                title = z.title or '<no title>' # meh
+                fe.title(title)
                 fe.link(href=z.link)
+                # TODO not sure which date to use...
+                fe.published(published=d)
+                # TODO updated??
         atomfeed = fg.atom_str(pretty=True)
         atomdir = rendered / 'atom'
         atomdir.mkdir(parents=True, exist_ok=True)
