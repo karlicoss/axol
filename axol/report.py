@@ -662,6 +662,27 @@ def render_latest(repo: Path, digest, rendered: Path):
     items2 = [grp for  _, grp in group_by_key(items, key=lambda p: f'{p[1].link}').items()]
     # TODO sort within each group?
 
+    rss = True
+    if rss:
+        # pip3 install feedgen
+        from feedgen.feed import FeedGenerator # type: ignore
+        fg = FeedGenerator()
+        # TODO memorize items?
+        fg.title(name)
+        fg.id('axol/' + name)
+        for d, zz in digest.changes.items():
+            for z in zz:
+                # TODO not sure which date should use? I gues crawling date makes more sense..
+                fe = fg.add_entry()
+                id_ = z.uid # TODO?
+                fe.id(id_)
+                fe.title(z.title)
+                fe.link(href=z.link)
+        atomfeed = fg.atom_str(pretty=True)
+        atomdir = rendered / 'atom'
+        atomdir.mkdir(parents=True, exist_ok=True)
+        (atomdir / (name + '.xml')).write_bytes(atomfeed)
+
     with doc:
         with T.div(id='sidebar'):
             T.label('Blacklisted:', for_='blacklisted')
@@ -698,7 +719,7 @@ def render_latest(repo: Path, digest, rendered: Path):
         #     pass
 
     # TODO perhaps needs to be iterative...
-    rf = rendered.joinpath(name + '.html')
+    rf = rendered / (name + '.html')
     with rf.open('w') as fo:
         fo.write(str(doc))
     return rf
