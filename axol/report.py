@@ -694,7 +694,7 @@ def render_latest(repo: Path, digest, rendered: Path):
         odd = True
         for d, items in sorted(group_by_key(items2, key=lambda p: min(x[0] for x in p)).items(), reverse=True):
             odd = not odd
-            logger.info('%s: dumping %d items', d, len(items))
+            logger.info('%s %s: dumping %d items', name, d, len(items))
             with T.div(cls='day-changes'):
                 with T.div():
                     T.b(fdate(d))
@@ -861,6 +861,29 @@ def test_all(tmp_path):
 def write_index(storages, output_dir: Path):
     now = datetime.now()
     doc = dominate.document(title=f'axol index for {[s.name for s in storages]}, rendered at {fdate(now)}')
+
+    rss = True
+    if rss:
+        outlines = []
+        for storage in storages:
+            name = storage.name
+            htmlUrl = 'https://whatever'
+            url = f'https://unstable.beepb00p.xyz/atom/{name}.xml'
+            outlines.append(f'<outline title="{name}" text="{name}" xmlUrl="{url}" htmlUrl="{htmlUrl}"></outline>')
+        outliness = "\n".join(outlines)
+        XML = f"""
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+    <body>
+        <outline text="All">
+                {outliness}
+        </outline>
+    </body>
+</opml>
+        """
+        (output_dir / 'rendered' / 'atom' / 'feeds.opml').write_text(XML)
+
+
     with doc.head:
         T.style(STYLE)
 
