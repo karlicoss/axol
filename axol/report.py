@@ -670,7 +670,8 @@ def render_latest(repo: Path, digest, rendered: Path):
         # TODO memorize items?
         fg.title(name)
         fg.id('axol/' + name)
-        for d, zz in digest.changes.items():
+        for d, zz in islice(digest.changes.items(), 1, None):
+            logger.info('%s %s: atom, dumping %d items', name, d, len(zz))
             for z in zz:
                 # TODO not sure which date should use? I gues crawling date makes more sense..
                 fe = fg.add_entry()
