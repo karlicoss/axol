@@ -691,7 +691,6 @@ def render_latest(repo: Path, digest, rendered: Path):
                 continue
             for zz in litems:
                 fe = fg.add_entry()
-                # TODO also check for ignored here?..
                 # TODO not sure about css?
                 # TODO not sure which date should use? I gues crawling date makes more sense..
                 _d, z = zz[0] # TODO meh!
@@ -704,15 +703,26 @@ def render_latest(repo: Path, digest, rendered: Path):
                 # TODO not sure if it's a reasonable date to use...
                 fe.published(published=d)
                 fe.author(author={'name': z.user}) # TODO maybe, concat users?
-                content = Format.format(zz)
-                fe.content(content=content.render(), type='CDATA')
-                # fe.summary(summary="SUP!!!")
+
+                ignored = Ignore.ignore_group(zz)
+                if ignored is not None:
+                    # TODO not sure if it highlights with read or something?
+                    content = ignored
+                else:
+                    content = Format.format(zz)
+                fe.content(content=str(content), type='CDATA')
                 # fe.updated(updated=NOW)
 
                 # TODO assemble a summary similar to HTML?
                 # fe.summary()
-                # updated probably unnecessary?
         atomfeed = fg.atom_str(pretty=True)
+
+        # eh, my feed reader (miniflux) can't handle it if it's 'cdata'
+        # not sure which one is right
+        # ugh, that didn't work because escaping desicion is based on CDATA attribute...
+        atomfeed = atomfeed.replace(b'type="CDATA"', b'type="html"')
+        # fe._FeedEntry__atom_content['type'] = 'html'
+
         atomdir = rendered / 'atom'
         atomdir.mkdir(parents=True, exist_ok=True)
         (atomdir / (name + '.xml')).write_bytes(atomfeed)
