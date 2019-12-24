@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import re
 import sys
 import logging
 from collections import Counter
@@ -710,7 +711,13 @@ def render_latest(repo: Path, digest, rendered: Path):
                     content = ignored
                 else:
                     content = Format.format(zz)
-                fe.content(content=str(content), type='CDATA')
+
+                # eh, XML was complaining at some non-utf characters
+                content = str(content)
+
+                # https://stackoverflow.com/a/25920392/706389 make lxml happy...
+                content = re.sub(u'[^\u0020-\uD7FF\u0009\u000A\u000D\uE000-\uFFFD\U00010000-\U0010FFFF]+', '', content)
+                fe.content(content=content, type='CDATA')
                 # fe.updated(updated=NOW)
 
                 # TODO assemble a summary similar to HTML?
