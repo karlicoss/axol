@@ -43,7 +43,7 @@ class FormatTrait(AbsTrait):
 
     @classmethod
     def title(cls, objs):
-        return max((o.title for _, o in objs), key=lambda t: len(t))
+        return max((o.title for _, o in objs), key=lambda t: 0 if t is None else len(t))
 
     @classmethod
     def link(cls, objs):
@@ -649,7 +649,8 @@ def render_latest(repo: Path, digest, rendered: Path):
     Format = FormatTrait.for_(rtype)
     Ignore = IgnoreTrait.for_(rtype)
 
-    NOW = datetime.now()
+    import pytz
+    NOW = datetime.now(tz=pytz.utc)
 
     name = repo.name
     doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
@@ -689,22 +690,25 @@ def render_latest(repo: Path, digest, rendered: Path):
                 first = False
                 continue
             for zz in litems:
+                fe = fg.add_entry()
+                # TODO also check for ignored here?..
+                # TODO not sure about css?
                 # TODO not sure which date should use? I gues crawling date makes more sense..
                 _d, z = zz[0] # TODO meh!
+                id_ = z.uid # TODO FIXME!!
 
-                fe = fg.add_entry()
-                id_ = z.uid # TODO?
                 fe.id(id_)
-                title = z.title or '<no title>' # meh
+                title = Format.title(zz) or '<no title>' # meh
                 fe.title(title)
-                fe.link(href=z.link)
+                fe.link(href=Format.link(zz))
                 # TODO not sure if it's a reasonable date to use...
                 fe.published(published=d)
-                fe.author(author={'name': z.user})
-                # TODO content? just use format??
-                # TODO also check for ignored here?..
-                # print(Format.format(z))
-                # print(z)
+                fe.author(author={'name': z.user}) # TODO maybe, concat users?
+                content = Format.format(zz)
+                fe.content(content=content.render(), type='CDATA')
+                # fe.summary(summary="SUP!!!")
+                # fe.updated(updated=NOW)
+
                 # TODO assemble a summary similar to HTML?
                 # fe.summary()
                 # updated probably unnecessary?
