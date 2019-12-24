@@ -10,7 +10,7 @@ from pathlib import Path
 from pprint import pprint
 from subprocess import check_call, check_output
 from typing import (Any, Dict, Iterator, List, NamedTuple, Optional, Sequence,
-    Tuple, Type, Union)
+                    Tuple, Type, Union, Mapping)
 
 import dominate
 import dominate.tags as T
@@ -639,6 +639,9 @@ def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
         fo.write(str(doc))
     return sf
 
+
+Item = Any # meh
+
 def render_latest(repo: Path, digest, rendered: Path):
     logger.info('processing %s', repo)
 
@@ -658,9 +661,16 @@ def render_latest(repo: Path, digest, rendered: Path):
         T.link(rel='stylesheet', href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.min.css")
         T.script(src='https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.js') # TODO use min?
 
-    items = chain.from_iterable(((d, x) for x in zz) for d, zz in digest.changes.items())
-    items2 = [grp for  _, grp in group_by_key(items, key=lambda p: f'{p[1].link}').items()]
+    citems: Iterator[Tuple[datetime, Item]] = chain.from_iterable(((d, x) for x in zz) for d, zz in digest.changes.items())
+    # group according to link, so we can display already occuring items along with newer occurences
+    items2: List[Sequence[Tuple[datetime, Item]]] = [grp for  _, grp in group_by_key(citems, key=lambda p: f'{p[1].link}').items()]
     # TODO sort within each group?
+
+    def min_dt(group: Sequence[Tuple[datetime, Item]]) -> datetime:
+        return min(g[0] for g in group)
+
+    # TODO ok, this is def too many types here...
+    items3: Mapping[datetime, List[Sequence[Tuple[datetime, Item]]]] = group_by_key(items2, key=min_dt)
 
     rss = True
     if rss:
@@ -670,19 +680,34 @@ def render_latest(repo: Path, digest, rendered: Path):
         # TODO memorize items?
         fg.title(name)
         fg.id('axol/' + name)
-        for d, zz in islice(digest.changes.items(), 1, None):
-            logger.info('%s %s: atom, dumping %d items', name, d, len(zz))
-            for z in zz:
+        first = True
+        for d, items in sorted(items3.items()):
+            litems = list(items)
+            logger.info('%s %s: atom, dumping %d items', name, d, len(litems))
+            if first:
+                logger.info("SKIPPING first batch to prevent RSS bloat")
+                first = False
+                continue
+            for zz in litems:
                 # TODO not sure which date should use? I gues crawling date makes more sense..
+                _d, z = zz[0] # TODO meh!
+
                 fe = fg.add_entry()
                 id_ = z.uid # TODO?
                 fe.id(id_)
                 title = z.title or '<no title>' # meh
                 fe.title(title)
                 fe.link(href=z.link)
-                # TODO not sure which date to use...
+                # TODO not sure if it's a reasonable date to use...
                 fe.published(published=d)
-                # TODO updated??
+                fe.author(author={'name': z.user})
+                # TODO content? just use format??
+                # TODO also check for ignored here?..
+                # print(Format.format(z))
+                # print(z)
+                # TODO assemble a summary similar to HTML?
+                # fe.summary()
+                # updated probably unnecessary?
         atomfeed = fg.atom_str(pretty=True)
         atomdir = rendered / 'atom'
         atomdir.mkdir(parents=True, exist_ok=True)
@@ -697,13 +722,14 @@ def render_latest(repo: Path, digest, rendered: Path):
 
 
         odd = True
-        for d, items in sorted(group_by_key(items2, key=lambda p: min(x[0] for x in p)).items(), reverse=True):
+        for d, items in sorted(items3.items(), reverse=True):
+            litems = list(items)
             odd = not odd
-            logger.info('%s %s: dumping %d items', name, d, len(items))
+            logger.info('%s %s: dumping %d items', name, d, len(litems))
             with T.div(cls='day-changes'):
                 with T.div():
                     T.b(fdate(d))
-                    T.span(f'{len(items)} items')
+                    T.span(f'{len(litems)} items')
 
                 with T.div(cls=f'day-changes-inner {"odd" if odd else "even"}'):
                     for i in items:
