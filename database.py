@@ -20,14 +20,14 @@ def run(db_root: Path, *, repo: str):
     git_repo = root / 'outputs' / repo; assert git_repo.is_dir()
     rh = RepoHandle(git_repo)
 
-    # TODO assert repo doesnt exist
     db_path = db_root / (repo + '.sqlite')
+    assert not db_path.exists(), db_path # this is only for first time conversion
 
     log.info('using database %s', db_path)
 
 
     import sqlalchemy
-    from sqlalchemy import Table, Column
+    from sqlalchemy import Table, Column, func
 
     engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
     connection = engine.connect()
@@ -44,7 +44,7 @@ def run(db_root: Path, *, repo: str):
         Column(DT  , sqlalchemy.String),
         Column(BLOB, sqlalchemy.String),
         # NOTE: using unique index for blob doesn't give any benefit?
-        # TODO migh worth it for DT, UID? or primary key?
+        # TODO later, might worth it for DT, UID? or primary key?
     )
     results.create(connection, checkfirst=True)
 
@@ -61,12 +61,9 @@ def run(db_root: Path, *, repo: str):
     for snapshot in rh.iter_versions():
         sha, dt, jsons = snapshot
         # TODO that should probably be extracted? to support new results as well
-        # TODO log query as well?
         log.info('processing %s %s (%d results)', sha, dt, len(jsons))
 
         # TODO not sure when I should handle ignored? maybe prune later?
-        # TODO what is 'formatted'?? I guess it was for stable git changes
-        # TODO update db
 
         # iterative still makes sense, since insert_many splits
         dtstr = dt.isoformat()
@@ -121,12 +118,15 @@ def run(db_root: Path, *, repo: str):
         for chunk in ichunks(iter_unique(), n=chunk_size):
             connection.execute(results.insert(), chunk)
 
-        # TODO total count maybe?
+
+        [(total,)] = connection.execute(func.count(results))
+
         logline = f'''
 query     : {query}
 results   : {len(jsons)}
 duplicates: {duplicates}
 updates   : {updates}
+total     : {total}
         '''.strip()
 
         log.info(' '.join(logline.splitlines()))

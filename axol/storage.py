@@ -150,8 +150,11 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
         # if first:
         if len(added) == 0:
             continue
+
+        # TODO what is 'formatted'?? I guess it was for stable git changes
         formatted = list(sorted(added, key=lambda e: e.when, reverse=True))
         # not sure if should keep revision here at all..
+        #
         changes.add(dd, formatted)
         # TODO link to user
         # TODO user weight?? count is fine I suppose...
