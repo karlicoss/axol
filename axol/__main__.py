@@ -25,5 +25,6 @@ def main():
     else:
         raise RuntimeError(args.mode)
 
+
 if __name__ == '__main__':
     main()

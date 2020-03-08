@@ -122,10 +122,12 @@ class RepoHandle:
                 j = json.loads(cc)
             yield (rev, dd, j)
 
-
+# TODO shit, Json means Jsons really...
 class DbRepoHandle:
     # TODO rename repo to db?
     def __init__(self, repo: Path) -> None:
+        if '/outputs/' in str(repo): # TODO temporary hack for migration period..
+            repo = Path(str(repo).replace('/outputs/', '/databases/') + '.sqlite')
         self.repo = repo; assert self.repo.is_file()
         self.logger = logger
 
@@ -141,9 +143,8 @@ class DbRepoHandle:
         for dts, group in groupby(cursor, key=lambda row: row[1]): # TODO meh, hardcoded..
             revision = dts # meh
             dt = datetime.fromisoformat(dts)
-            for g in group:
-                (_, _, j) = g
-                yield (revision, dt, j)
+            jsons = [json.loads(g[2]) for g in group]
+            yield revision, dt, jsons
 
 
 # TODO I guess need to compare here?
@@ -183,6 +184,7 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
     from_json = Trait.from_json
 
     rh = RepoHandle(repo)
+    # rh = DbRepoHandle(repo)
     # ustats = get_user_stats(jsons, rtype=rtype)
     ustats = None
 
