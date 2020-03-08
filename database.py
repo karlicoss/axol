@@ -54,19 +54,27 @@ def run(db_root: Path):
         dtstr = dt.isoformat()
 
         duplicates = 0
+        updates    = 0
+
         def iter_unique():
             for j in jsons:
                 # ordereddict isn't super necessary on python 3.6+, but just in case..
                 json_sorted = OrderedDict(sorted(j.items()))
                 blob = json.dumps(json_sorted)
 
+                uid = j['uid']
                 db_dict = {
-                    UID : j['uid'],
+                    UID : uid,
                     'dt': dtstr,
                     BLOB: blob,
                 }
-                found = list(results.find(**{BLOB: blob}))
-                if len(found) == 0:
+                existing = list(results.find(**{BLOB: blob}))
+                if len(existing) == 0:
+                    same_uid = list(results.find(**{UID: uid}))
+                    if len(same_uid) > 0:
+                        nonlocal updates
+                        updates += 1
+
                     yield db_dict
                 else:
                     nonlocal duplicates
@@ -79,7 +87,10 @@ def run(db_root: Path):
 query     : {query}
 results   : {len(jsons)}
 duplicates: {duplicates}
+updates   : {updates}
         '''.strip()
+
+        log.info(' '.join(logline.splitlines()))
         logs.insert({
             'dt' : dtstr,
             'log': logline,
