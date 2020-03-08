@@ -42,7 +42,9 @@ def run(db_root: Path, *, repo: str):
         meta,
         Column(UID , sqlalchemy.String),
         Column(DT  , sqlalchemy.String),
-        Column(BLOB, sqlalchemy.String), # TODO blob type??
+        Column(BLOB, sqlalchemy.String),
+        # NOTE: using unique index for blob doesn't give any benefit?
+        # TODO migh worth it for DT, UID?
     )
     results.create(connection, checkfirst=True)
     # TODO FIXME close connection
@@ -129,8 +131,10 @@ updates   : {updates}
         #     'dt' : dtstr,
         #     'log': logline,
         # })
+        # TODO size might be innacurate during the connection?
         log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
 
+    connection.close()
     # breakpoint()
 
 
