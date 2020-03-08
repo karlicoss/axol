@@ -129,3 +129,52 @@ def test_queries(tmp_path, searcher):
     q = searcher('test', '"unlikely query"')
     process_query(q, dry=False, path=tdir)
 
+
+
+def astext(html: Path) -> str:
+    from subprocess import check_output
+    return check_output(['html2text', str(html)]).decode('utf8')
+
+
+# TODO fragile...
+def test_all(tmp_path):
+    tdir = Path(tmp_path)
+    from config import OUTPUTS
+    repo = OUTPUTS / 'bret_victor'
+    digest = get_digest(repo)
+    from .report import render_latest
+    render_latest(repo, digest=digest, rendered=tdir)
+    out = tdir / 'bret_victor.html'
+
+    ht = out.read_text()
+
+    assert 'http://worrydream.com/MagicInk/' in ht
+    assert 'http://enjalot.com/' in ht
+
+
+    text = astext(out).splitlines()
+    def tcontains(x):
+        for line in text:
+            if x in line:
+                return True
+        return False
+
+    assert tcontains('09 Jul 2019 13:10')
+    assert tcontains('07_Jul_2019_04:45 by barronwebster')
+    assert tcontains('#computing #interaction #reading')
+
+
+def test_digest():
+    from config import OUTPUTS
+    dd = get_digest(OUTPUTS / 'bret_victor')
+    from itertools import chain
+    everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
+    assert len(everything) == len({x.uid for x in everything})
+
+
+
+def test_repo_handle():
+    from .storage import RepoHandle
+    from config import OUTPUTS
+    hh = RepoHandle(OUTPUTS / 'bret_victor')
+    assert len(list(hh.iter_versions())) > 5

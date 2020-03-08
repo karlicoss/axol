@@ -882,36 +882,6 @@ if __name__ == '__main__':
 
 # TODO need to plot some nice dashboard..
 
-def astext(html: Path) -> str:
-    from subprocess import check_output
-    return check_output(['html2text', str(html)]).decode('utf8')
-
-
-def test_all(tmp_path):
-    tdir = Path(tmp_path)
-    repo = OUTPUTS / 'bret_victor'
-    digest = get_digest(repo)
-    render_latest(repo, digest=digest, rendered=tdir)
-    out = tdir / 'bret_victor.html'
-
-    ht = out.read_text()
-
-    assert 'http://worrydream.com/MagicInk/' in ht
-    assert 'http://enjalot.com/' in ht
-
-
-    text = astext(out).splitlines()
-    def tcontains(x):
-        for line in text:
-            if x in line:
-                return True
-        return False
-
-    assert tcontains('Tue 18 Jun 2019 13:10')
-    assert tcontains('Fri_14_Jun_2019_14:33 by pmf')
-    assert tcontains('tags: bret_victor javascript mar12 visualization')
-
-
 def write_index(storages, output_dir: Path):
     now = datetime.now()
     doc = dominate.document(title=f'axol index for {[s.name for s in storages]}, rendered at {fdate(now)}')

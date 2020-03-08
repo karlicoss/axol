@@ -77,13 +77,6 @@ class RepoHandle:
                 j = json.loads(cc)
             yield (rev, dd, j)
 
-
-def test_repo_handle():
-    from config import OUTPUTS
-    hh = RepoHandle(OUTPUTS / 'bret_victor')
-    assert len(list(hh.iter_versions())) > 5
-
-
 # TODO I guess need to compare here?
 class Collector:
     def __init__(self):
@@ -168,14 +161,6 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
 #                # TODO I guess keep latest revision in a state??
 
     return changes
-
-
-def test_digest():
-    from config import OUTPUTS
-    dd = get_digest(OUTPUTS / 'bret_victor')
-    from itertools import chain
-    everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
-    assert len(everything) == len({x.uid for x in everything})
 
 
 def slugify_in(path: str, dir: Path):
