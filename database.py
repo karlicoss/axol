@@ -145,13 +145,18 @@ def main():
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('repo')
+    p.add_argument('--to', type=Path, default=None)
     args = p.parse_args()
     repo = args.repo
 
-    with TemporaryDirectory() as tdir:
-        td = Path(tdir)
-        # TODO FIXME log actual query that was used
-        run(td, repo=repo)
+    # TODO FIXME log actual query that was used
+    to = args.to
+    if to is None:
+        with TemporaryDirectory() as tdir:
+            run(Path(tdir), repo=repo)
+    else:
+        assert to.is_dir()
+        run(to, repo=repo)
 
 
 if __name__ == '__main__':
