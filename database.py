@@ -47,27 +47,33 @@ def run(db_root: Path):
         #
         # TODO update db
 
-        for_db = []
-        for j in jsons:
-            # ordereddict isn't super necessary on python 3.6+, but just in case..
-            json_sorted = OrderedDict(sorted(j.items()))
-            blob = json.dumps(json_sorted)
+        # iterative still makes sense, since insert_many splits
 
-            dtstr = dt.isoformat()
-            db_dict = {
-                UID : j['uid'],
-                'dt': dtstr,
-                BLOB: blob,
-            }
-            found = list(results.find(**{BLOB: blob}))
-            if len(found) == 0:
-                for_db.append(db_dict)
+        duplicates = 0
+        def iter_unique():
+            for j in jsons:
+                # ordereddict isn't super necessary on python 3.6+, but just in case..
+                json_sorted = OrderedDict(sorted(j.items()))
+                blob = json.dumps(json_sorted)
+
+                dtstr = dt.isoformat()
+                db_dict = {
+                    UID : j['uid'],
+                    'dt': dtstr,
+                    BLOB: blob,
+                }
+                found = list(results.find(**{BLOB: blob}))
+                if len(found) == 0:
+                    yield db_dict
+                else:
+                    nonlocal duplicates
+                    duplicates += 1
 
         # ok, insert_many is quite a bit faster
-        results.insert_many(for_db)
+        results.insert_many(iter_unique())
 
         # TODO log to db?
-        log.info('filtered out %d/%d duplicates', len(jsons) - len(for_db), len(jsons))
+        log.info('filtered out %d/%d duplicates', duplicates, len(jsons))
 
 
 
