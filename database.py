@@ -44,25 +44,28 @@ def run(db_root: Path, *, repo: str):
         Column(DT  , sqlalchemy.String),
         Column(BLOB, sqlalchemy.String),
         # NOTE: using unique index for blob doesn't give any benefit?
-        # TODO migh worth it for DT, UID?
+        # TODO migh worth it for DT, UID? or primary key?
     )
     results.create(connection, checkfirst=True)
-    # TODO FIXME close connection
 
-    # TODO ugh. can't use multiple columns...
-    # primary_id=UID, primary_type=db.types.text)
-    # logs    = db.get_table('logs')
+    DT_COL  = 'dt'
+    LOG_COL = 'log'
+    logs = Table(
+        'logs',
+        meta,
+        Column(DT_COL , sqlalchemy.String),
+        Column(LOG_COL, sqlalchemy.String),
+    )
+    logs.create(connection, checkfirst=True)
 
     for snapshot in rh.iter_versions():
         sha, dt, jsons = snapshot
-        # TODO that should probably be extracted? to support live database as well
+        # TODO that should probably be extracted? to support new results as well
         # TODO log query as well?
         log.info('processing %s %s (%d results)', sha, dt, len(jsons))
 
         # TODO not sure when I should handle ignored? maybe prune later?
-
         # TODO what is 'formatted'?? I guess it was for stable git changes
-        #
         # TODO update db
 
         # iterative still makes sense, since insert_many splits
@@ -118,7 +121,7 @@ def run(db_root: Path, *, repo: str):
         for chunk in ichunks(iter_unique(), n=chunk_size):
             connection.execute(results.insert(), chunk)
 
-        # TODO total maybe?
+        # TODO total count maybe?
         logline = f'''
 query     : {query}
 results   : {len(jsons)}
@@ -127,15 +130,15 @@ updates   : {updates}
         '''.strip()
 
         log.info(' '.join(logline.splitlines()))
-        # logs.insert({
-        #     'dt' : dtstr,
-        #     'log': logline,
-        # })
+        connection.execute(logs.insert(), [{
+            DT_COL : dtstr,
+            LOG_COL: logline,
+        }])
         # TODO size might be innacurate during the connection?
+
         log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
 
     connection.close()
-    # breakpoint()
 
 
 def main():
