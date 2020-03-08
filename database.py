@@ -5,7 +5,7 @@ from itertools import islice
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-# from axol.common import setup_paths
+from axol.common import ichunks
 from axol.storage import RepoHandle
 
 from kython.klogging2 import LazyLogger
@@ -25,23 +25,33 @@ def run(db_root: Path, *, repo: str):
 
     log.info('using database %s', db_path)
 
-    import dataset # type: ignore
-    db = dataset.connect(f'sqlite:///{db_path}')
 
-    UID = 'uid'
+    import sqlalchemy
+    from sqlalchemy import Table, Column
+
+    engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
+    connection = engine.connect()
+    meta = sqlalchemy.MetaData(connection)
+
+    UID  = 'uid'
+    DT   = 'dt'
     BLOB = 'blob'
 
-    results = db.get_table('results')
+    results = Table(
+        'results',
+        meta,
+        Column(UID , sqlalchemy.String),
+        Column(DT  , sqlalchemy.String),
+        Column(BLOB, sqlalchemy.String), # TODO blob type??
+    )
+    results.create(connection, checkfirst=True)
+    # TODO FIXME close connection
+
     # TODO ugh. can't use multiple columns...
     # primary_id=UID, primary_type=db.types.text)
-    logs    = db.get_table('logs')
+    # logs    = db.get_table('logs')
 
-
-    # TODO ugh. use sqlalchemy? would be nice to verify the schema...
-
-    LIMIT = 5 # NOCOMMIT just for debugging
-
-    for snapshot in islice(rh.iter_versions(), LIMIT):
+    for snapshot in rh.iter_versions():
         sha, dt, jsons = snapshot
         # TODO that should probably be extracted? to support live database as well
         # TODO log query as well?
@@ -68,20 +78,30 @@ def run(db_root: Path, *, repo: str):
                 uid = j['uid']
                 db_dict = {
                     UID : uid,
-                    'dt': dtstr,
+                    DT  : dtstr,
                     BLOB: blob,
                 }
-                # with duplicate detection:
-                # ./database.py github_lifelogging  12.59s user 2.41s system 77% cpu 19.248 total
-                # without duplicate detection:
-                # ./database.py github_lifelogging  3.17s  user 2.27s system 38% cpu 14.020 total
-                # eh. it's not massively faster
+                # dataset:
+                # - with duplicate detection:
+                #   ./database.py github_lifelogging  12.59s user 2.41s system 77% cpu 19.248 total
+                # - no duplicate detection:
+                #   ./database.py github_lifelogging  3.17s  user 2.27s system 38% cpu 14.020 total
+                #   eh. it's not massively faster
+                # sqlalchemy:
+                # - with duplicate detection
+                #   ./database.py github_lifelogging  9.87s  user 1.70s system 94% cpu 12.186 total
+                # - no duplicate detection
+                #   ./database.py github_lifelogging  2.67s  user 1.91s system 48% cpu 9.469 total
 
                 # TODO maybe on conflict ignore?
-                existing = list(results.find(**{BLOB: blob}))
+                existing = list(connection.execute(results.select().where(
+                    results.c.blob == blob,
+                )))
                 if len(existing) == 0:
-                    # TODO ok, slowdown from doing updates computation is pretty minimal (less than 5%)
-                    same_uid = list(results.find(**{UID: uid}))
+                    # ok, slowdown from doing updates computation is pretty minimal (less than 5%)
+                    same_uid = list(connection.execute(results.select().where(
+                        results.c.uid == uid,
+                    )))
                     if len(same_uid) > 0:
                         nonlocal updates
                         updates += 1
@@ -91,10 +111,12 @@ def run(db_root: Path, *, repo: str):
                     nonlocal duplicates
                     duplicates += 1
 
-        # ok, insert_many is quite a bit faster
-        results.insert_many(iter_unique())
-        # , chunk_size=10000) # that didn't help much. not sure what's the major source of sloweness
 
+        chunk_size = 1000
+        for chunk in ichunks(iter_unique(), n=chunk_size):
+            connection.execute(results.insert(), chunk)
+
+        # TODO total maybe?
         logline = f'''
 query     : {query}
 results   : {len(jsons)}
@@ -103,12 +125,12 @@ updates   : {updates}
         '''.strip()
 
         log.info(' '.join(logline.splitlines()))
-        logs.insert({
-            'dt' : dtstr,
-            'log': logline,
-        })
-    # TODO log db size after each?
-    log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
+        # logs.insert({
+        #     'dt' : dtstr,
+        #     'log': logline,
+        # })
+        log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
+
     # breakpoint()
 
 
