@@ -26,6 +26,7 @@ def run(db_root: Path, *, repo: str):
     log.info('using database %s', db_path)
 
 
+    # TODO reuse storage.DbHelper
     import sqlalchemy
     from sqlalchemy import Table, Column, func
 
@@ -75,6 +76,7 @@ def run(db_root: Path, *, repo: str):
             for j in jsons:
                 # ordereddict isn't super necessary on python 3.6+, but just in case..
                 json_sorted = OrderedDict(sorted(j.items()))
+                # TODO hmm. maybe use cachew mappings here?
                 blob = json.dumps(json_sorted)
 
                 uid = j['uid']
@@ -157,6 +159,9 @@ def main():
     else:
         assert to.is_dir()
         run(to, repo=repo)
+
+
+# TODO implement a test for idempotence?
 
 
 if __name__ == '__main__':

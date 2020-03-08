@@ -5,12 +5,56 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
+from itertools import groupby
 from subprocess import DEVNULL, check_output, run
 from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar, Any
 
 from axol.common import logger, slugify
 from axol.jsonify import JsonTrait
 from axol.traits import get_result_type, ignore_result
+
+
+import sqlalchemy
+from sqlalchemy import Table, Column, func
+
+
+class DbHelper:
+    def __init__(self, db_path: Path) -> None:
+        self.engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
+        self.connection = self.engine.connect()
+        meta = sqlalchemy.MetaData(self.connection)
+
+        UID  = 'uid'
+        DT   = 'dt'
+        BLOB = 'blob'
+
+        # TODO read only mode?
+        self.results = Table(
+            'results',
+            meta,
+            Column(UID , sqlalchemy.String),
+            Column(DT  , sqlalchemy.String),
+            Column(BLOB, sqlalchemy.String),
+            # NOTE: using unique index for blob doesn't give any benefit?
+            # TODO later, might worth it for DT, UID? or primary key?
+        )
+        self.results.create(self.connection, checkfirst=True)
+
+        DT_COL  = 'dt'
+        LOG_COL = 'log'
+        self.logs = Table(
+            'logs',
+            meta,
+            Column(DT_COL , sqlalchemy.String),
+            Column(LOG_COL, sqlalchemy.String),
+        )
+        self.logs.create(self.connection, checkfirst=True)
+
+
+    def close(self):
+        # TODO engine?
+        self.connection.close()
+   
 
 
 Revision = str
@@ -21,7 +65,7 @@ class RepoHandle:
         self.repo = repo
         self.logger = logger
 
-    def check_output(self, *args):
+    def _check_output(self, *args):
         cmd = [
             'git', f'--git-dir={self.repo}/.git', *args
         ]
@@ -44,11 +88,11 @@ class RepoHandle:
             raise last
 
 
-    def get_revisions(self) -> List[Tuple[str, datetime]]:
+    def _get_revisions(self) -> List[Tuple[str, datetime]]:
         """
         returns in order of ascending timestamp
         """
-        ss = list(reversed(self.check_output(
+        ss = list(reversed(self._check_output(
             'log',
             '--pretty=format:%h %ad',
             '--no-patch',
@@ -58,24 +102,48 @@ class RepoHandle:
             return datetime.strptime(ds, '%a %b %d %H:%M:%S %Y %z')
         return [(l.split()[0], pdate(l)) for l in ss]
 
-    def get_content(self, rev: str) -> str:
-        return self.check_output(
+    def _get_content(self, rev: str) -> str:
+        return self._check_output(
             'show',
             rev + ':content.json',
         ).decode('utf8')
 
     def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Json]]:
-        revs = self.get_revisions()
+        revs = self._get_revisions()
         if last is not None:
             revs = revs[-last: ]
         for rev, dd in revs:
             self.logger.debug('processing %s %s', rev, dd)
-            cc = self.get_content(rev)
+            cc = self._get_content(rev)
             if len(cc.strip()) == 0:
                 j: Json = {}
             else:
                 j = json.loads(cc)
             yield (rev, dd, j)
+
+
+class DbRepoHandle:
+    # TODO rename repo to db?
+    def __init__(self, repo: Path) -> None:
+        self.repo = repo; assert self.repo.is_file()
+        self.logger = logger
+
+    def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Json]]:
+        assert last is None # not sure if I need it??
+        # TODO make up revisions??
+        # TODO how to open in read only mode?
+        dbh = DbHelper(db_path=self.repo)
+
+        results = dbh.results
+
+        cursor = dbh.connection.execute(results.select().order_by(results.c.dt))
+        for dts, group in groupby(cursor, key=lambda row: row[1]): # TODO meh, hardcoded..
+            revision = dts # meh
+            dt = datetime.fromisoformat(dts)
+            for g in group:
+                (_, _, j) = g
+                yield (revision, dt, j)
+
 
 # TODO I guess need to compare here?
 class Collector:
