@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from collections import OrderedDict
+from itertools import islice
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -12,15 +13,15 @@ from kython.klogging2 import LazyLogger
 log = LazyLogger('axol')
 
 
-def run(db_root: Path):
-    query = 'arbtt' # TODO
+def run(db_root: Path, *, repo: str):
+    query = repo # TODO
 
     root = Path(__file__).absolute().parent
-    git_repo = root / 'outputs/arbtt'; assert git_repo.is_dir()
+    git_repo = root / 'outputs' / repo; assert git_repo.is_dir()
     rh = RepoHandle(git_repo)
 
     # TODO assert repo doesnt exist
-    db_path = db_root / 'arbtt.sqlite'
+    db_path = db_root / (repo + '.sqlite')
 
     log.info('using database %s', db_path)
 
@@ -38,7 +39,9 @@ def run(db_root: Path):
 
     # TODO ugh. use sqlalchemy? would be nice to verify the schema...
 
-    for snapshot in rh.iter_versions():
+    LIMIT = 5 # NOCOMMIT just for debugging
+
+    for snapshot in islice(rh.iter_versions(), LIMIT):
         sha, dt, jsons = snapshot
         # TODO that should probably be extracted? to support live database as well
         # TODO log query as well?
@@ -70,6 +73,7 @@ def run(db_root: Path):
                 }
                 existing = list(results.find(**{BLOB: blob}))
                 if len(existing) == 0:
+                    # TODO ok, slowdown from doing updates computation is pretty minimal (less than 5%)
                     same_uid = list(results.find(**{UID: uid}))
                     if len(same_uid) > 0:
                         nonlocal updates
@@ -82,6 +86,7 @@ def run(db_root: Path):
 
         # ok, insert_many is quite a bit faster
         results.insert_many(iter_unique())
+        # , chunk_size=10000) # that didn't help much. not sure what's the major source of sloweness
 
         logline = f'''
 query     : {query}
@@ -95,14 +100,22 @@ updates   : {updates}
             'dt' : dtstr,
             'log': logline,
         })
+    # TODO log db size after each?
     log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
-    breakpoint()
+    # breakpoint()
 
 
 def main():
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('repo')
+    args = p.parse_args()
+    repo = args.repo
+
     with TemporaryDirectory() as tdir:
         td = Path(tdir)
-        run(td)
+        # TODO FIXME log actual query that was used
+        run(td, repo=repo)
 
 
 if __name__ == '__main__':
