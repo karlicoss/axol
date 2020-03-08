@@ -71,6 +71,13 @@ def run(db_root: Path, *, repo: str):
                     'dt': dtstr,
                     BLOB: blob,
                 }
+                # with duplicate detection:
+                # ./database.py github_lifelogging  12.59s user 2.41s system 77% cpu 19.248 total
+                # without duplicate detection:
+                # ./database.py github_lifelogging  3.17s  user 2.27s system 38% cpu 14.020 total
+                # eh. it's not massively faster
+
+                # TODO maybe on conflict ignore?
                 existing = list(results.find(**{BLOB: blob}))
                 if len(existing) == 0:
                     # TODO ok, slowdown from doing updates computation is pretty minimal (less than 5%)
