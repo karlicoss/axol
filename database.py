@@ -16,14 +16,19 @@ log = LazyLogger('axol')
 from sqlalchemy import func
 
 
-def run(db_root: Path, *, repo: str):
+def run(db: Path, *, repo: Path):
+    assert db.suffix == '.sqlite' # just in case..
     query = repo # TODO
 
     root = Path(__file__).absolute().parent
-    git_repo = root / 'outputs' / repo; assert git_repo.is_dir()
+    if repo.is_absolute():
+        git_repo = repo
+    else:
+        git_repo = root / 'outputs' / repo
+    assert git_repo.is_dir()
     rh = RepoHandle(git_repo)
 
-    db_path = db_root / (repo + '.sqlite')
+    db_path = db
     assert not db_path.exists(), db_path # this is only for first time conversion
 
     log.info('using database %s', db_path)
@@ -122,7 +127,7 @@ total     : {total}
 def main():
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument('repo')
+    p.add_argument('repo', type=Path)
     p.add_argument('--to', type=Path, default=None)
     args = p.parse_args()
     repo = args.repo
@@ -131,9 +136,8 @@ def main():
     to = args.to
     if to is None:
         with TemporaryDirectory() as tdir:
-            run(Path(tdir), repo=repo)
+            run(Path(tdir) / (repo.name + '.sqlite'), repo=repo)
     else:
-        assert to.is_dir()
         run(to, repo=repo)
 
 
