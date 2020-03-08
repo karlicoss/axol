@@ -20,7 +20,7 @@ from kython import classproperty, cproperty, flatten, the
 from kython.kdominate import adhoc_html
 
 from axol.common import logger
-from axol.storage import Changes, RepoHandle, get_digest, get_result_type
+from axol.storage import Changes, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
 from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, ForHackernews, IgnoreTrait, ignore_result, For
 from config import OUTPUTS
