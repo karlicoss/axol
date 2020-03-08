@@ -26,8 +26,11 @@ def run(db_root: Path):
     db = dataset.connect(f'sqlite:///{db_path}')
 
     UID = 'uid'
+    BLOB = 'blob'
     # TODO results??
     results = db.get_table('results')
+    # TODO 'log' table??
+
     # TODO ugh. can't use multiple columns...
     # primary_id=UID, primary_type=db.types.text)
 
@@ -48,17 +51,24 @@ def run(db_root: Path):
         for j in jsons:
             # ordereddict isn't super necessary on python 3.6+, but just in case..
             json_sorted = OrderedDict(sorted(j.items()))
-            jsonstr = json.dumps(json_sorted)
+            blob = json.dumps(json_sorted)
 
             dtstr = dt.isoformat()
-            for_db.append({
-                UID   : j['uid'],
-                'dt'  : dtstr,
-                'blob': jsonstr,
-            })
+            db_dict = {
+                UID : j['uid'],
+                'dt': dtstr,
+                BLOB: blob,
+            }
+            found = list(results.find(**{BLOB: blob}))
+            if len(found) == 0:
+                for_db.append(db_dict)
 
-        # ok, for_db is quite a bit faster
+        # ok, insert_many is quite a bit faster
         results.insert_many(for_db)
+
+        # TODO log to db?
+        log.info('filtered out %d/%d duplicates', len(jsons) - len(for_db), len(jsons))
+
 
 
 def main():
