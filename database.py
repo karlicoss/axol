@@ -13,6 +13,8 @@ log = LazyLogger('axol')
 
 
 def run(db_root: Path):
+    query = 'arbtt' # TODO
+
     root = Path(__file__).absolute().parent
     git_repo = root / 'outputs/arbtt'; assert git_repo.is_dir()
     rh = RepoHandle(git_repo)
@@ -27,18 +29,19 @@ def run(db_root: Path):
 
     UID = 'uid'
     BLOB = 'blob'
-    # TODO results??
-    results = db.get_table('results')
-    # TODO 'log' table??
 
+    results = db.get_table('results')
     # TODO ugh. can't use multiple columns...
     # primary_id=UID, primary_type=db.types.text)
+    logs    = db.get_table('logs')
+
 
     # TODO ugh. use sqlalchemy? would be nice to verify the schema...
 
-
     for snapshot in rh.iter_versions():
         sha, dt, jsons = snapshot
+        # TODO that should probably be extracted? to support live database as well
+        # TODO log query as well?
         log.info('processing %s %s (%d results)', sha, dt, len(jsons))
 
         # TODO not sure when I should handle ignored? maybe prune later?
@@ -48,6 +51,7 @@ def run(db_root: Path):
         # TODO update db
 
         # iterative still makes sense, since insert_many splits
+        dtstr = dt.isoformat()
 
         duplicates = 0
         def iter_unique():
@@ -56,7 +60,6 @@ def run(db_root: Path):
                 json_sorted = OrderedDict(sorted(j.items()))
                 blob = json.dumps(json_sorted)
 
-                dtstr = dt.isoformat()
                 db_dict = {
                     UID : j['uid'],
                     'dt': dtstr,
@@ -72,9 +75,17 @@ def run(db_root: Path):
         # ok, insert_many is quite a bit faster
         results.insert_many(iter_unique())
 
-        # TODO log to db?
-        log.info('filtered out %d/%d duplicates', duplicates, len(jsons))
-
+        logline = f'''
+query     : {query}
+results   : {len(jsons)}
+duplicates: {duplicates}
+        '''.strip()
+        logs.insert({
+            'dt' : dtstr,
+            'log': logline,
+        })
+    log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
+    breakpoint()
 
 
 def main():
