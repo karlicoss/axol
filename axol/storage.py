@@ -19,34 +19,35 @@ from sqlalchemy import Table, Column, func
 
 
 class DbHelper:
+    UID  = 'uid'
+    DT   = 'dt'
+    BLOB = 'blob'
+
+    DT_COL  = 'dt'
+    LOG_COL = 'log'
+
     def __init__(self, db_path: Path) -> None:
         self.engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
         self.connection = self.engine.connect()
         meta = sqlalchemy.MetaData(self.connection)
 
-        UID  = 'uid'
-        DT   = 'dt'
-        BLOB = 'blob'
-
         # TODO read only mode?
         self.results = Table(
             'results',
             meta,
-            Column(UID , sqlalchemy.String),
-            Column(DT  , sqlalchemy.String),
-            Column(BLOB, sqlalchemy.String),
+            Column(self.UID , sqlalchemy.String),
+            Column(self.DT  , sqlalchemy.String),
+            Column(self.BLOB, sqlalchemy.String),
             # NOTE: using unique index for blob doesn't give any benefit?
             # TODO later, might worth it for DT, UID? or primary key?
         )
         self.results.create(self.connection, checkfirst=True)
 
-        DT_COL  = 'dt'
-        LOG_COL = 'log'
         self.logs = Table(
             'logs',
             meta,
-            Column(DT_COL , sqlalchemy.String),
-            Column(LOG_COL, sqlalchemy.String),
+            Column(self.DT_COL , sqlalchemy.String),
+            Column(self.LOG_COL, sqlalchemy.String),
         )
         self.logs.create(self.connection, checkfirst=True)
 

@@ -6,11 +6,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from axol.common import ichunks
-from axol.storage import RepoHandle
+from axol.storage import RepoHandle, DbHelper
 
 from kython.klogging2 import LazyLogger
 
 log = LazyLogger('axol')
+
+
+from sqlalchemy import func
 
 
 def run(db_root: Path, *, repo: str):
@@ -26,38 +29,11 @@ def run(db_root: Path, *, repo: str):
     log.info('using database %s', db_path)
 
 
-    # TODO reuse storage.DbHelper
-    import sqlalchemy
-    from sqlalchemy import Table, Column, func
+    dbh = DbHelper(db_path=db_path)
+    connection = dbh.connection
+    logs = dbh.logs
+    results = dbh.results
 
-    engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
-    connection = engine.connect()
-    meta = sqlalchemy.MetaData(connection)
-
-    UID  = 'uid'
-    DT   = 'dt'
-    BLOB = 'blob'
-
-    results = Table(
-        'results',
-        meta,
-        Column(UID , sqlalchemy.String),
-        Column(DT  , sqlalchemy.String),
-        Column(BLOB, sqlalchemy.String),
-        # NOTE: using unique index for blob doesn't give any benefit?
-        # TODO later, might worth it for DT, UID? or primary key?
-    )
-    results.create(connection, checkfirst=True)
-
-    DT_COL  = 'dt'
-    LOG_COL = 'log'
-    logs = Table(
-        'logs',
-        meta,
-        Column(DT_COL , sqlalchemy.String),
-        Column(LOG_COL, sqlalchemy.String),
-    )
-    logs.create(connection, checkfirst=True)
 
     for snapshot in rh.iter_versions():
         sha, dt, jsons = snapshot
@@ -81,9 +57,9 @@ def run(db_root: Path, *, repo: str):
 
                 uid = j['uid']
                 db_dict = {
-                    UID : uid,
-                    DT  : dtstr,
-                    BLOB: blob,
+                    dbh.UID : uid,
+                    dbh.DT  : dtstr,
+                    dbh.BLOB: blob,
                 }
                 # dataset:
                 # - with duplicate detection:
@@ -133,14 +109,14 @@ total     : {total}
 
         log.info(' '.join(logline.splitlines()))
         connection.execute(logs.insert(), [{
-            DT_COL : dtstr,
-            LOG_COL: logline,
+            dbh.DT_COL : dtstr,
+            dbh.LOG_COL: logline,
         }])
         # TODO size might be innacurate during the connection?
 
         log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
 
-    connection.close()
+    dbh.close()
 
 
 def main():

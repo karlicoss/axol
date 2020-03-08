@@ -172,9 +172,16 @@ def test_digest():
     assert len(everything) == len({x.uid for x in everything})
 
 
-
 def test_repo_handle():
     from .storage import RepoHandle
     from config import OUTPUTS
     hh = RepoHandle(OUTPUTS / 'bret_victor')
+    assert len(list(hh.iter_versions())) > 5
+
+
+def test_db_repo_handle():
+    from .storage import DbRepoHandle
+    from config import DATABASES
+    from pathlib import Path
+    hh = DbRepoHandle(Path(DATABASES / 'arbtt.sqlite'))
     assert len(list(hh.iter_versions())) > 5
