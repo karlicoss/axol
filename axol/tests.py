@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import time
+from subprocess import check_output
 
 from axol.common import Query, logger
 from axol.crawl import process_query
@@ -18,6 +19,14 @@ def test_repohandle(tmp_path):
     rh.commit(jsons)
     # TODO then run storage and check digests?
 
+
+def test_dbwriter(tmp_path):
+    td = Path(tmp_path)
+    dw = DbWriter(td / 'test.sqlite')
+    jsons = [{'uid': str(i)} for i in range(10)]
+    dw.commit(jsons, query='test')
+    time.sleep(0.5)
+    dw.commit(jsons, query='test')
 
 
 testrange = list(range(15))
