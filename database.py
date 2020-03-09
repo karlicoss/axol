@@ -10,7 +10,7 @@ from axol.storage import RepoHandle, DbHelper
 
 from kython.klogging2 import LazyLogger
 
-log = LazyLogger('axol')
+log = LazyLogger('axol.database', level='debug')
 
 
 from sqlalchemy import func
@@ -53,6 +53,12 @@ def run(db: Path, *, repo: Path):
         duplicates = 0
         updates    = 0
 
+        # meh, but querying a database 10K times can't be fast enough I guess
+        from sqlalchemy import select
+        existing_blobs = {
+            row[0] for row in connection.execute(select([results.c.blob]))
+        }
+
         def iter_unique():
             for j in jsons:
                 # ordereddict isn't super necessary on python 3.6+, but just in case..
@@ -78,12 +84,21 @@ def run(db: Path, *, repo: Path):
                 # - no duplicate detection
                 #   ./database.py github_lifelogging  2.67s  user 1.91s system 48% cpu 9.469 total
 
+
+                # sqlalchemy:
+                # - with duplicate detection
+                #   oh wow, it takes _really_ long time; didn't even bother waiting to finish
+                # - no duplicate detection
+                #   ./database.py /L/coding/axol/outputs/twitter_lifelogging  6.01s user 0.85s system 67% cpu 10.145 total
+                # - duplicate detection with a hashset
+                #   ./database.py /L/coding/axol/outputs/twitter_lifelogging  7.39s user 0.91s system 102% cpu 8.128 total
+                #   TODO might need to watch out for memory?..
+
                 # TODO maybe on conflict ignore?
-                existing = list(connection.execute(results.select().where(
-                    results.c.blob == blob,
-                )))
-                if len(existing) == 0:
-                    # ok, slowdown from doing updates computation is pretty minimal (less than 5%)
+                existing = blob in existing_blobs
+                if not existing:
+                    # TODO right, this is still quite slow on 100K resuts
+                    # TODO compute via single query somehow??
                     same_uid = list(connection.execute(results.select().where(
                         results.c.uid == uid,
                     )))
