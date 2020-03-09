@@ -160,11 +160,11 @@ def astext(html: Path) -> str:
 def test_all(tmp_path):
     tdir = Path(tmp_path)
     from config import OUTPUTS
-    repo = OUTPUTS / 'bret_victor'
+    repo = OUTPUTS / 'pinboard_bret_victor'
     digest = get_digest(repo)
     from .report import render_latest
     render_latest(repo, digest=digest, rendered=tdir)
-    out = tdir / 'bret_victor.html'
+    out = tdir / 'pinboard_bret_victor.html'
 
     ht = out.read_text()
 
