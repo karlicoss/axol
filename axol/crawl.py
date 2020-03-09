@@ -6,9 +6,10 @@ import sys
 
 from kython.klogging import setup_logzero
 
-from axol.common import logger, Query
-from axol.jsonify import to_json
-from axol.storage import RepoWriteHandle
+from .common import logger, Query, slugify
+from .jsonify import to_json
+from .storage import RepoWriteHandle
+from .database import DbWriter
 
 from config import get_queries, OUTPUTS
 
@@ -25,8 +26,11 @@ def process_query(q: Query, dry: bool, path: Path):
     results = searcher.search_all(qs)
     jsons = [to_json(r) for r in results]
 
-    rh = RepoWriteHandle.create(q.repo_name, base=path)
-    rh.commit(jsons)
+
+    dbstem = slugify(q.repo_name) # TODO FIXME slugify_in?
+    db_path = path / (dbstem + '.sqlite')
+    dbw = DbWriter(db_path=db_path)
+    dbw.commit(jsons, query=str(qs))
 
 
 def process_all(dry=False, include=None, exclude=None, name=None):

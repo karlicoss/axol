@@ -5,6 +5,7 @@ import time
 from axol.common import Query, logger
 from axol.crawl import process_query
 from axol.storage import RepoWriteHandle, get_digest
+from axol.database import DbWriter, DbReader
 import axol.adhoc
 
 

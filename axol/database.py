@@ -6,8 +6,9 @@ from itertools import islice, groupby
 from pathlib import Path
 from typing import Optional, Iterator, Tuple, Dict, Iterable
 
-from .common import ichunks
+from .common import ichunks, Query
 
+import pytz
 import sqlalchemy # type: ignore
 from sqlalchemy import Table, Column # type: ignore
 from sqlalchemy import func, select, text # type: ignore
@@ -88,15 +89,23 @@ class DbReader:
 
 
 class DbWriter:
-
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
 
 
-    def commit(self, *, sha: str, dt: datetime, jsons: Jsons, query: str) -> None:
+    def commit(self, jsons: Jsons, query: str) -> None:
+        dt = datetime.now(tz=pytz.utc)
+        return self._commit(
+            sha='<DEPRECATED>', # TODO
+            dt=dt,
+            jsons=jsons,
+            query=query,
+        )
+
+
+    # TODO could return stats?
+    def _commit(self, *, sha: str, dt: datetime, jsons: Jsons, query: str) -> None:
         db = DbHelper(db_path=self.db_path)
-        # TODO thinkj about sha/dt??
-        # TODO that should probably be extracted? to support new results as well
         pre_total = len(jsons) if isinstance(jsons, list) else -1
         log.info('processing %s %s (%s results)', sha, dt, pre_total)
 
@@ -213,7 +222,8 @@ def convert_old(db: Path, *, repo: Path):
     else:
         git_repo = root / 'outputs' / repo
     assert git_repo.is_dir(), git_repo
-    rh = RepoHandle(git_repo)
+    # TODO this will be removed anyway...
+    rh = RepoHandle(git_repo) # type: ignore
 
     db_path = db
     assert not db_path.exists(), db_path # this is only for first time conversion
@@ -223,5 +233,5 @@ def convert_old(db: Path, *, repo: Path):
     for snapshot in rh.iter_versions():
         sha, dt, jsons = snapshot
         writer = DbWriter(db_path=db_path)
-        writer.commit(sha=sha, dt=dt, jsons=jsons, query=query)
+        writer._commit(sha=sha, dt=dt, jsons=jsons, query=query)
 # TODO implement a test for idempotence?
