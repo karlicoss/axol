@@ -106,8 +106,8 @@ class DbWriter:
     # TODO could return stats?
     def _commit(self, *, sha: str, dt: datetime, jsons: Jsons, query: str) -> None:
         db = DbHelper(db_path=self.db_path)
-        pre_total = len(jsons) if isinstance(jsons, list) else -1
-        log.info('processing %s %s (%s results)', sha, dt, pre_total)
+        pre_batchsize = len(jsons) if isinstance(jsons, list) else -1
+        log.info('processing %s %s (%s results)', sha, dt, pre_batchsize)
 
         # TODO not sure when I should handle ignored? maybe prune later?
 
@@ -121,11 +121,11 @@ class DbWriter:
             row[0] for row in db.connection.execute(select([db.results.c.blob]))
         }
 
-        total = 0
+        batchsize = 0
         def iter_unique():
-            nonlocal total
+            nonlocal batchsize
             for j in jsons:
-                total += 1
+                batchsize += 1
                 # ordereddict isn't super necessary on python 3.6+, but just in case..
                 json_sorted = OrderedDict(sorted(j.items()))
                 # TODO hmm. maybe use cachew mappings here?
@@ -194,7 +194,7 @@ GROUP BY A.uid;
 
         logline = f'''
 query     : {query}
-results   : {total}
+batchsize : {batchsize}
 duplicates: {duplicates}
 updates   : {updates}
 total     : {total}
@@ -209,29 +209,3 @@ total     : {total}
 
         log.info('database %s, size %.2f Mb', self.db_path, self.db_path.stat().st_size / 10 ** 6)
         db.close()
-
-
-# TODO can remove this later
-def convert_old(db: Path, *, repo: Path):
-    assert db.suffix == '.sqlite' # just in case..
-    query = repo.name # TODO use proper query??
-
-    root = Path(__file__).absolute().parent.parent
-    if repo.is_absolute():
-        git_repo = repo
-    else:
-        git_repo = root / 'outputs' / repo
-    assert git_repo.is_dir(), git_repo
-    # TODO this will be removed anyway...
-    rh = RepoHandle(git_repo) # type: ignore
-
-    db_path = db
-    assert not db_path.exists(), db_path # this is only for first time conversion
-
-    log.info('using database %s', db_path)
-
-    for snapshot in rh.iter_versions():
-        sha, dt, jsons = snapshot
-        writer = DbWriter(db_path=db_path)
-        writer._commit(sha=sha, dt=dt, jsons=jsons, query=query)
-# TODO implement a test for idempotence?
