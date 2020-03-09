@@ -112,8 +112,8 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
     Trait = JsonTrait.for_(rtype)
     from_json = Trait.from_json
 
-    rh = RepoHandle(repo)
-    # rh = DbReader(repo)
+    # rh = RepoHandle(repo)
+    rh = DbReader(repo)
     # TODO need to update pinboard?
     # ustats = get_user_stats(jsons, rtype=rtype)
     ustats = None

@@ -78,33 +78,41 @@ def test_crawl(tmp_path):
     td = Path(tmp_path)
 
     trp = td / 'test_repo'
+    db = trp.with_suffix('.sqlite')
+
     q = TestQ('query1', 'query2')
     process_query(q=q, dry=True, path=td)
-    assert not trp.exists()
+    assert not db.exists() # dry run, shouldn't create anything
+   
 
     # TODO eh, global trait is kind of meh?
     # maybe makes more sense to do lru cache and configuring
-    def contents():
-        return json.loads((trp / 'content.json').read_text())
+    def len_contents():
+        assert db.is_file(), db # precondition
+        res = check_output([
+            'sqlite3',
+            db,
+            'select count(distinct uid) from results',
+        ]).decode('utf8').strip()
+        return int(res)
 
     process_query(q=q, dry=False, path=td)
-    assert len(contents()) == 20
+    assert len_contents() == 15
 
-    # TODO FIXME because of git time. ugh
-    time.sleep(2)
+    # TODO meh, sleeps because of timestamping..
+    time.sleep(1)
     testrange.clear(); testrange.extend([10, 11, 12, 17, 18])
     process_query(q=q, dry=False, path=td)
 
-    time.sleep(2)
+    time.sleep(1)
     process_query(q=q, dry=False, path=td)
     # this should be ignored in digest?
 
-    # TODO eh?? FIXME duplication of things across queries?
-    assert len(contents()) == 10
+    assert len_contents() == 17 # added 17 and 18
 
     # TODO split in other test
 
-    digest = get_digest(trp)
+    digest = get_digest(db)
     assert [p[1] for p in sorted((k, len(v)) for k, v in digest.changes.items())] == [15, 2]
 
 

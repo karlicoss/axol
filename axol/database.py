@@ -66,7 +66,7 @@ class DbReader:
     def __init__(self, repo: Path) -> None:
         if '/outputs/' in str(repo): # TODO temporary hack for migration period..
             repo = Path(str(repo).replace('/outputs/', '/databases/') + '.sqlite')
-        self.repo = repo; assert self.repo.is_file()
+        self.repo = repo; assert self.repo.is_file(), self.repo
         self.logger = log
 
 
