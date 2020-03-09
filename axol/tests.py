@@ -74,6 +74,16 @@ class TestQ(Query):
         return 'test_repo'
 
 
+def count(db: Path) -> int:
+    assert db.is_file(), db # precondition
+    res = check_output([
+        'sqlite3',
+        db,
+        'select count(distinct uid) from results',
+    ]).decode('utf8').strip()
+    return int(res)
+
+
 def test_crawl(tmp_path):
     td = Path(tmp_path)
 
@@ -87,17 +97,9 @@ def test_crawl(tmp_path):
 
     # TODO eh, global trait is kind of meh?
     # maybe makes more sense to do lru cache and configuring
-    def len_contents():
-        assert db.is_file(), db # precondition
-        res = check_output([
-            'sqlite3',
-            db,
-            'select count(distinct uid) from results',
-        ]).decode('utf8').strip()
-        return int(res)
 
     process_query(q=q, dry=False, path=td)
-    assert len_contents() == 15
+    assert count(db) == 15
 
     # TODO meh, sleeps because of timestamping..
     time.sleep(1)
@@ -108,7 +110,7 @@ def test_crawl(tmp_path):
     process_query(q=q, dry=False, path=td)
     # this should be ignored in digest?
 
-    assert len_contents() == 17 # added 17 and 18
+    assert count(db) == 17 # added 17 and 18
 
     # TODO split in other test
 
@@ -131,8 +133,8 @@ def test_adhoc(tmp_path):
     
     axol.adhoc.do_run(queries=[query], tdir=td)
 
-    [js] = list(td.rglob('*.json'))
-    assert len(json.loads(js.read_text())) > 0
+    [db] = list(td.rglob('*.sqlite'))
+    assert count(db) > 0
     # TODO html??
 
 import pytest

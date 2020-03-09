@@ -27,7 +27,8 @@ def do_run_one(query: Query, tdir: Path):
     repo = tdir / query.repo_name
     for d in ('summary', 'rendered'):
         (tdir / d).mkdir(exist_ok=True, parents=True)
-    res = do_repo(repo, output_dir=tdir, last=None, summary=True)
+    # TODO rename from do_repo?
+    res = do_repo(repo.with_suffix('.sqlite'), output_dir=tdir, last=None, summary=True)
     print(f"Rendered summary: {res}")
     print("Opening in browser....")
     check_call(['xdg-open', str(res)])
