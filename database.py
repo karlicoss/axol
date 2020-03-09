@@ -97,6 +97,9 @@ def run(db: Path, *, repo: Path):
                 # TODO maybe on conflict ignore?
                 existing = blob in existing_blobs
                 if not existing:
+                    # eh, don't like this vvvv, but on the other hand that saves us from duplicates in the input data
+                    existing_blobs.add(blob)
+
                     # TODO right, this is still quite slow on 100K resuts
                     # TODO compute via single query somehow??
                     same_uid = list(connection.execute(results.select().where(
@@ -110,12 +113,30 @@ def run(db: Path, *, repo: Path):
                 else:
                     nonlocal duplicates
                     duplicates += 1
-
-
         chunk_size = 1000
         for chunk in ichunks(iter_unique(), n=chunk_size):
             connection.execute(results.insert(), chunk)
 
+        from sqlalchemy import text
+        # ugh. I'm too lazy to figure this out in sqlalchemy...
+        groups = list(connection.execute(text('''
+SELECT A.uid, COUNT(*) FROM
+results AS A
+JOIN
+results AS B
+ON  A.dt  = :dtstr
+AND A.uid = B.uid
+GROUP BY A.uid;
+        '''), dtstr=dtstr))
+        updates2 = 0
+        for (_, gsize) in groups:
+            if gsize > 1:
+                updates2 += 1
+        # TODO hmm. maybe possible for diplicate uids in one batch??
+
+        if updates != updates2:
+            print(dtstr)
+            breakpoint()
 
         [(total,)] = connection.execute(func.count(results))
 
@@ -124,6 +145,7 @@ query     : {query}
 results   : {len(jsons)}
 duplicates: {duplicates}
 updates   : {updates}
+updates2  : {updates2}
 total     : {total}
         '''.strip()
 
