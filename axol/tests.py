@@ -186,7 +186,7 @@ def test_all(tmp_path):
 
 def test_digest():
     from config import OUTPUTS
-    dd = get_digest(OUTPUTS / 'bret_victor')
+    dd = get_digest(OUTPUTS / 'pinboard_bret_victor')
     from itertools import chain
     everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
     assert len(everything) == len({x.uid for x in everything})
