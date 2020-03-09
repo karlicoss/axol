@@ -10,7 +10,7 @@ from axol.storage import RepoHandle, DbHelper
 
 from kython.klogging2 import LazyLogger
 
-log = LazyLogger('axol.database', level='debug')
+log = LazyLogger('axol.database', level='info')
 
 
 from sqlalchemy import func

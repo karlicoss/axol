@@ -121,5 +121,8 @@ def get_result_type(repo: Path) -> Type:
         return ForTwitter.Target
     elif name.startswith('hackernews'):
         return ForHackernews.Target # TODO meh..
+    elif name.startswith('pinboard'):
+        return ForSpinboard.Target
     else:
+        # TODO remove this?
         return ForSpinboard.Target

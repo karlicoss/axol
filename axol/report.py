@@ -23,7 +23,7 @@ from axol.common import logger
 from axol.storage import Changes, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
 from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, ForHackernews, IgnoreTrait, ignore_result, For
-from config import OUTPUTS
+from config import OUTPUTS, DATABASES
 
 
 # TODO need some sort of starting_from??
@@ -609,7 +609,7 @@ def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
     Cumulative = CumulativeBase.for_(rtype)
 
     NOW = datetime.now()
-    name = repo.name
+    name = repo.stem
 
     everything = flatten([ch for ch in digest.changes.values()])
 
@@ -635,6 +635,7 @@ def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
         for cc in cumulatives:
             T.div(cc.format(), cls='item')
 
+    rendered.mkdir(exist_ok=True, parents=True)
     sf = rendered.joinpath(name + '.html')
     with sf.open('w') as fo:
         fo.write(str(doc))
@@ -653,7 +654,7 @@ def render_latest(repo: Path, digest, rendered: Path):
     import pytz
     NOW = datetime.now(tz=pytz.utc)
 
-    name = repo.name
+    name = repo.stem
     doc = dominate.document(title=f'axol results for {name}, rendered at {fdate(NOW)}')
 
     with doc.head:
@@ -812,7 +813,7 @@ class Storage(NamedTuple):
 
     @property
     def name(self) -> str:
-        return self.path.name
+        return self.path.stem
 
     @property
     def source(self) -> str:
