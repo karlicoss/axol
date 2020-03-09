@@ -5,61 +5,14 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from itertools import groupby
 from subprocess import DEVNULL, check_output, run
 from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar, Any, Iterable
 
-from axol.common import logger, slugify
-from axol.jsonify import JsonTrait
-from axol.traits import get_result_type, ignore_result
+from .common import logger, slugify
+from .jsonify import JsonTrait
+from .traits import get_result_type, ignore_result
+from .database import Revision, Json, Jsons, DbReader
 
-
-import sqlalchemy
-from sqlalchemy import Table, Column, func
-
-
-class DbHelper:
-    UID  = 'uid'
-    DT   = 'dt'
-    BLOB = 'blob'
-
-    DT_COL  = 'dt'
-    LOG_COL = 'log'
-
-    def __init__(self, db_path: Path) -> None:
-        self.engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
-        self.connection = self.engine.connect()
-        meta = sqlalchemy.MetaData(self.connection)
-
-        # TODO read only mode?
-        self.results = Table(
-            'results',
-            meta,
-            Column(self.UID , sqlalchemy.String),
-            Column(self.DT  , sqlalchemy.String),
-            Column(self.BLOB, sqlalchemy.String),
-            # NOTE: using unique index for blob doesn't give any benefit?
-            # TODO later, might worth it for DT, UID? or primary key?
-        )
-        self.results.create(self.connection, checkfirst=True)
-
-        self.logs = Table(
-            'logs',
-            meta,
-            Column(self.DT_COL , sqlalchemy.String),
-            Column(self.LOG_COL, sqlalchemy.String),
-        )
-        self.logs.create(self.connection, checkfirst=True)
-
-
-    def close(self):
-        # TODO engine?
-        self.connection.close()
-   
-
-
-Revision = str
-Json = Dict
 
 class RepoHandle:
     def __init__(self, repo: Path) -> None:
@@ -122,32 +75,6 @@ class RepoHandle:
                 j = json.loads(cc)
             yield (rev, dd, j)
 
-# TODO shit, Json means Jsons really...
-Jsons = Iterable[Json]
-
-class DbRepoHandle:
-    # TODO rename repo to db?
-    def __init__(self, repo: Path) -> None:
-        if '/outputs/' in str(repo): # TODO temporary hack for migration period..
-            repo = Path(str(repo).replace('/outputs/', '/databases/') + '.sqlite')
-        self.repo = repo; assert self.repo.is_file()
-        self.logger = logger
-
-    def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Jsons]]:
-        assert last is None # not sure if I need it??
-        # TODO make up revisions??
-        # TODO how to open in read only mode?
-        dbh = DbHelper(db_path=self.repo)
-
-        results = dbh.results
-
-        cursor = dbh.connection.execute(results.select().order_by(results.c.dt))
-        for dts, group in groupby(cursor, key=lambda row: row[1]): # TODO meh, hardcoded..
-            revision = dts # meh
-            dt = datetime.fromisoformat(dts)
-            jsons = [json.loads(g[2]) for g in group]
-            yield revision, dt, jsons
-
 
 # TODO I guess need to compare here?
 class Collector:
@@ -186,7 +113,8 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
     from_json = Trait.from_json
 
     rh = RepoHandle(repo)
-    # rh = DbRepoHandle(repo)
+    # rh = DbReader(repo)
+    # TODO need to update pinboard?
     # ustats = get_user_stats(jsons, rtype=rtype)
     ustats = None
 

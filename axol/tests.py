@@ -179,9 +179,9 @@ def test_repo_handle():
     assert len(list(hh.iter_versions())) > 5
 
 
-def test_db_repo_handle():
-    from .storage import DbRepoHandle
+def test_db_reader():
+    from .database import DbReader
     from config import DATABASES
     from pathlib import Path
-    hh = DbRepoHandle(Path(DATABASES / 'arbtt.sqlite'))
+    hh = DbReader(Path(DATABASES / 'pinboard_arbtt.sqlite'))
     assert len(list(hh.iter_versions())) > 5
