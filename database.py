@@ -51,7 +51,6 @@ def run(db: Path, *, repo: Path):
         dtstr = dt.isoformat()
 
         duplicates = 0
-        updates    = 0
 
         # meh, but querying a database 10K times can't be fast enough I guess
         from sqlalchemy import select
@@ -88,27 +87,20 @@ def run(db: Path, *, repo: Path):
                 # sqlalchemy:
                 # - with duplicate detection
                 #   oh wow, it takes _really_ long time; didn't even bother waiting to finish
-                # - no duplicate detection
+                # - no duplicate detection, no updates
                 #   ./database.py /L/coding/axol/outputs/twitter_lifelogging  6.01s user 0.85s system 67% cpu 10.145 total
-                # - duplicate detection with a hashset
+                # - duplicate detection with a hashset, no updates
                 #   ./database.py /L/coding/axol/outputs/twitter_lifelogging  7.39s user 0.91s system 102% cpu 8.128 total
                 #   TODO might need to watch out for memory?..
+                # - duplicates with a hashet, single query update
+                #   ./database.py /L/coding/axol/outputs/twitter_lifelogging  6.61s user 0.82s system 92% cpu 8.049 total
+                #   O
 
                 # TODO maybe on conflict ignore?
                 existing = blob in existing_blobs
                 if not existing:
                     # eh, don't like this vvvv, but on the other hand that saves us from duplicates in the input data
                     existing_blobs.add(blob)
-
-                    # TODO right, this is still quite slow on 100K resuts
-                    # TODO compute via single query somehow??
-                    same_uid = list(connection.execute(results.select().where(
-                        results.c.uid == uid,
-                    )))
-                    if len(same_uid) > 0:
-                        nonlocal updates
-                        updates += 1
-
                     yield db_dict
                 else:
                     nonlocal duplicates
@@ -117,8 +109,9 @@ def run(db: Path, *, repo: Path):
         for chunk in ichunks(iter_unique(), n=chunk_size):
             connection.execute(results.insert(), chunk)
 
-        from sqlalchemy import text
+        # compute updates; while it's possible to figure out later, nice to have it for logging
         # ugh. I'm too lazy to figure this out in sqlalchemy...
+        from sqlalchemy import text
         groups = list(connection.execute(text('''
 SELECT A.uid, COUNT(*) FROM
 results AS A
@@ -128,16 +121,10 @@ ON  A.dt  = :dtstr
 AND A.uid = B.uid
 GROUP BY A.uid;
         '''), dtstr=dtstr))
-        updates2 = 0
+        updates = 0
         for (_, gsize) in groups:
             if gsize > 1:
-                updates2 += 1
-        # TODO hmm. maybe possible for diplicate uids in one batch??
-
-        if updates != updates2:
-            print(dtstr)
-            breakpoint()
-
+                updates += 1
         [(total,)] = connection.execute(func.count(results))
 
         logline = f'''
@@ -145,7 +132,6 @@ query     : {query}
 results   : {len(jsons)}
 duplicates: {duplicates}
 updates   : {updates}
-updates2  : {updates2}
 total     : {total}
         '''.strip()
 
