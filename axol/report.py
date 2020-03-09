@@ -23,7 +23,7 @@ from axol.common import logger
 from axol.storage import Changes, get_digest, get_result_type
 from axol.trait import AbsTrait, pull
 from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, ForHackernews, IgnoreTrait, ignore_result, For
-from config import OUTPUTS, DATABASES
+from config import DATABASES
 
 
 # TODO need some sort of starting_from??
@@ -821,13 +821,13 @@ class Storage(NamedTuple):
 
 
 def get_all_storages() -> Sequence[Storage]:
-    return[Storage(path=x) for x in sorted(OUTPUTS.iterdir()) if x.is_dir()]
+    return[Storage(path=x) for x in sorted(DATABASES.iterdir())] # TODO endswith sqlite?
 
 
 def run(args):
     res: List[Storage]
     if len(args.repos) > 0:
-        repos = [Storage(OUTPUTS.joinpath(r)) for r in args.repos]
+        repos = [Storage(DATABASES / r) for r in args.repos]
     else:
         repos = get_all_storages()
 

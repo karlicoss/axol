@@ -11,7 +11,7 @@ from .jsonify import to_json
 from .storage import RepoWriteHandle
 from .database import DbWriter
 
-from config import get_queries, OUTPUTS
+from config import get_queries, DATABASES
 
 
 def process_query(q: Query, dry: bool, path: Path):
@@ -46,7 +46,7 @@ def process_all(dry=False, include=None, exclude=None, name=None):
 
     for q in get_queries(include=include, exclude=exclude, name=name):
         try:
-            process_query(q, dry=dry, path=OUTPUTS)
+            process_query(q, dry=dry, path=DATABASES)
         except Exception as e:
             reg_error(e)
 
