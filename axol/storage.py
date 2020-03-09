@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from itertools import groupby
 from subprocess import DEVNULL, check_output, run
-from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar, Any
+from typing import Dict, Generic, Iterator, List, Tuple, Type, TypeVar, Any, Iterable
 
 from axol.common import logger, slugify
 from axol.jsonify import JsonTrait
@@ -123,6 +123,8 @@ class RepoHandle:
             yield (rev, dd, j)
 
 # TODO shit, Json means Jsons really...
+Jsons = Iterable[Json]
+
 class DbRepoHandle:
     # TODO rename repo to db?
     def __init__(self, repo: Path) -> None:
@@ -131,7 +133,7 @@ class DbRepoHandle:
         self.repo = repo; assert self.repo.is_file()
         self.logger = logger
 
-    def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Json]]:
+    def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Jsons]]:
         assert last is None # not sure if I need it??
         # TODO make up revisions??
         # TODO how to open in read only mode?

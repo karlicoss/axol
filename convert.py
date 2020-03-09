@@ -17,7 +17,7 @@ def map_repo(git: Path) -> Path:
 def doit(git: Path, db: Path):
     import subprocess
     subprocess.check_call([
-        './database.py',
+        './convert_one.py',
         git,
         '--to', db
     ])

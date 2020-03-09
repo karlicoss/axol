@@ -1,49 +1,34 @@
 #!/usr/bin/env python3
 import json
+from datetime import datetime
 from collections import OrderedDict
 from itertools import islice
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from typing import Optional
 
-from axol.common import ichunks
-from axol.storage import RepoHandle, DbHelper
+from .common import ichunks
+from .storage import RepoHandle, DbHelper, Jsons
 
 from kython.klogging2 import LazyLogger
 
 log = LazyLogger('axol.database', level='info')
 
 
-from sqlalchemy import func
+from sqlalchemy import func, select, text # type: ignore
 
 
-def run(db: Path, *, repo: Path):
-    assert db.suffix == '.sqlite' # just in case..
-    query = repo # TODO
+class DbWriter:
 
-    root = Path(__file__).absolute().parent
-    if repo.is_absolute():
-        git_repo = repo
-    else:
-        git_repo = root / 'outputs' / repo
-    assert git_repo.is_dir()
-    rh = RepoHandle(git_repo)
-
-    db_path = db
-    assert not db_path.exists(), db_path # this is only for first time conversion
-
-    log.info('using database %s', db_path)
+    def __init__(self, db_path: Path) -> None:
+        self.db_path = db_path
 
 
-    dbh = DbHelper(db_path=db_path)
-    connection = dbh.connection
-    logs = dbh.logs
-    results = dbh.results
-
-
-    for snapshot in rh.iter_versions():
-        sha, dt, jsons = snapshot
+    def commit(self, *, sha: str, dt: datetime, jsons: Jsons, query: str) -> None:
+        db = DbHelper(db_path=self.db_path)
+        # TODO thinkj about sha/dt??
         # TODO that should probably be extracted? to support new results as well
-        log.info('processing %s %s (%d results)', sha, dt, len(jsons))
+        pre_total = len(jsons) if isinstance(jsons, list) else -1
+        log.info('processing %s %s (%s results)', sha, dt, pre_total)
 
         # TODO not sure when I should handle ignored? maybe prune later?
 
@@ -53,13 +38,15 @@ def run(db: Path, *, repo: Path):
         duplicates = 0
 
         # meh, but querying a database 10K times can't be fast enough I guess
-        from sqlalchemy import select
         existing_blobs = {
-            row[0] for row in connection.execute(select([results.c.blob]))
+            row[0] for row in db.connection.execute(select([db.results.c.blob]))
         }
 
+        total = 0
         def iter_unique():
+            nonlocal total
             for j in jsons:
+                total += 1
                 # ordereddict isn't super necessary on python 3.6+, but just in case..
                 json_sorted = OrderedDict(sorted(j.items()))
                 # TODO hmm. maybe use cachew mappings here?
@@ -67,9 +54,9 @@ def run(db: Path, *, repo: Path):
 
                 uid = j['uid']
                 db_dict = {
-                    dbh.UID : uid,
-                    dbh.DT  : dtstr,
-                    dbh.BLOB: blob,
+                    db.UID : uid,
+                    db.DT  : dtstr,
+                    db.BLOB: blob,
                 }
                 # dataset:
                 # - with duplicate detection:
@@ -107,12 +94,11 @@ def run(db: Path, *, repo: Path):
                     duplicates += 1
         chunk_size = 1000
         for chunk in ichunks(iter_unique(), n=chunk_size):
-            connection.execute(results.insert(), chunk)
+            db.connection.execute(db.results.insert(), chunk)
 
         # compute updates; while it's possible to figure out later, nice to have it for logging
         # ugh. I'm too lazy to figure this out in sqlalchemy...
-        from sqlalchemy import text
-        groups = list(connection.execute(text('''
+        groups = list(db.connection.execute(text('''
 SELECT A.uid, COUNT(*) FROM
 results AS A
 JOIN
@@ -125,47 +111,47 @@ GROUP BY A.uid;
         for (_, gsize) in groups:
             if gsize > 1:
                 updates += 1
-        [(total,)] = connection.execute(func.count(results))
+        [(total,)] = db.connection.execute(func.count(db.results))
 
         logline = f'''
 query     : {query}
-results   : {len(jsons)}
+results   : {total}
 duplicates: {duplicates}
 updates   : {updates}
 total     : {total}
         '''.strip()
 
         log.info(' '.join(logline.splitlines()))
-        connection.execute(logs.insert(), [{
-            dbh.DT_COL : dtstr,
-            dbh.LOG_COL: logline,
+        db.connection.execute(db.logs.insert(), [{
+            db.DT_COL : dtstr,
+            db.LOG_COL: logline,
         }])
         # TODO size might be innacurate during the connection?
 
-        log.info('database %s, size %.2f Mb', db_path, db_path.stat().st_size / 10 ** 6)
+        log.info('database %s, size %.2f Mb', self.db_path, self.db_path.stat().st_size / 10 ** 6)
+        db.close()
 
-    dbh.close()
 
+# TODO can remove this later
+def convert_old(db: Path, *, repo: Path):
+    assert db.suffix == '.sqlite' # just in case..
+    query = repo # TODO use name/proper query??
 
-def main():
-    import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument('repo', type=Path)
-    p.add_argument('--to', type=Path, default=None)
-    args = p.parse_args()
-    repo = args.repo
-
-    # TODO FIXME log actual query that was used
-    to = args.to
-    if to is None:
-        with TemporaryDirectory() as tdir:
-            run(Path(tdir) / (repo.name + '.sqlite'), repo=repo)
+    root = Path(__file__).absolute().parent.parent
+    if repo.is_absolute():
+        git_repo = repo
     else:
-        run(to, repo=repo)
+        git_repo = root / 'outputs' / repo
+    assert git_repo.is_dir(), git_repo
+    rh = RepoHandle(git_repo)
 
+    db_path = db
+    assert not db_path.exists(), db_path # this is only for first time conversion
 
+    log.info('using database %s', db_path)
+
+    for snapshot in rh.iter_versions():
+        sha, dt, jsons = snapshot
+        writer = DbWriter(db_path=db_path)
+        writer.commit(sha=sha, dt=dt, jsons=jsons, query=query)
 # TODO implement a test for idempotence?
-
-
-if __name__ == '__main__':
-    main()
