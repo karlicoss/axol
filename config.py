@@ -10,6 +10,7 @@ from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, PinboardQ, 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 OUTPUTS = BASE_DIR / 'outputs'
 DATABASES = BASE_DIR / 'databases'
+RESULTS = DATABASES # TODO deprecate 'databases'?
 
 def pintag(query: str) -> str:
     # https://pinboard.in/howto/#tags

@@ -5,19 +5,9 @@ from subprocess import check_output
 
 from axol.common import Query, logger
 from axol.crawl import process_query
-from axol.storage import RepoWriteHandle, get_digest
+from axol.storage import get_digest
 from axol.database import DbWriter, DbReader
 import axol.adhoc
-
-
-def test_repohandle(tmp_path):
-    td = Path(tmp_path)
-    rh = RepoWriteHandle.create('test', base=td)
-    jsons = [{i: str(i) for i in range(10)}]
-    rh.commit(jsons)
-    time.sleep(0.5)
-    rh.commit(jsons)
-    # TODO then run storage and check digests?
 
 
 def test_dbwriter(tmp_path):
@@ -137,7 +127,7 @@ def test_adhoc(tmp_path):
     assert count(db) > 0
     # TODO html??
 
-import pytest
+import pytest # type: ignore
 
 def searchers_gen():
     from .queries import GithubQ, PinboardQ, TwitterQ, RedditQ, HackernewsQ
@@ -159,8 +149,8 @@ def astext(html: Path) -> str:
 # TODO fragile...
 def test_all(tmp_path):
     tdir = Path(tmp_path)
-    from config import OUTPUTS
-    repo = OUTPUTS / 'pinboard_bret_victor'
+    from config import RESULTS
+    repo = RESULTS / 'pinboard_bret_victor.sqlite'
     digest = get_digest(repo)
     from .report import render_latest
     render_latest(repo, digest=digest, rendered=tdir)
@@ -185,23 +175,15 @@ def test_all(tmp_path):
 
 
 def test_digest():
-    from config import OUTPUTS
-    dd = get_digest(OUTPUTS / 'pinboard_bret_victor')
+    from config import RESULTS
+    dd = get_digest(RESULTS / 'pinboard_bret_victor.sqlite')
     from itertools import chain
     everything = list(chain.from_iterable(v for _, v in dd.changes.items()))
     assert len(everything) == len({x.uid for x in everything})
 
 
-def test_repo_handle():
-    from .storage import RepoHandle
-    from config import OUTPUTS
-    hh = RepoHandle(OUTPUTS / 'bret_victor')
-    assert len(list(hh.iter_versions())) > 5
-
-
 def test_db_reader():
-    from .database import DbReader
-    from config import DATABASES
+    from config import RESULTS
     from pathlib import Path
-    hh = DbReader(Path(DATABASES / 'pinboard_arbtt.sqlite'))
+    hh = DbReader(Path(RESULTS / 'pinboard_arbtt.sqlite'))
     assert len(list(hh.iter_versions())) > 5
