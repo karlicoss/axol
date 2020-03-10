@@ -8,8 +8,14 @@ from axol.common import Query, slugify
 from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, PinboardQ, HackernewsQ, filter_queries
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
-DATABASES = BASE_DIR / 'databases'
-RESULTS = DATABASES # TODO deprecate 'databases'?
+# TODO come up with better names?
+DATABASES   = BASE_DIR / 'databases'
+RESULTS     = DATABASES # TODO deprecate 'databases'?
+REPORTS_DIR = BASE_DIR / 'reports'
+
+from private_config import *
+
+# TODO later just remove config from version control?
 
 def pintag(query: str) -> str:
     # https://pinboard.in/howto/#tags

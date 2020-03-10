@@ -779,12 +779,13 @@ def render_latest(repo: Path, digest, rendered: Path):
 
 
 def setup_parser(p):
-    from config import BASE_DIR
+    from config import BASE_DIR, REPORTS_DIR
     p.add_argument('repos', nargs='*')
     p.add_argument('--with-summary', action='store_true')
     p.add_argument('--with-user-summary', action='store_true')
     p.add_argument('--last', type=int, default=None)
-    p.add_argument('--output-dir', type=Path, default=BASE_DIR)
+    # TODO rename output_dir?
+    p.add_argument('--output-dir', type=Path, default=REPORTS_DIR)
     p.add_argument('--serial', action='store_true')
 
 
@@ -836,6 +837,8 @@ def run(args):
 
     storages = repos
     odir = args.output_dir
+
+    odir.mkdir(exist_ok=True)
 
     if args.with_user_summary:
         user_summary(repos, output_dir=args.output_dir)
