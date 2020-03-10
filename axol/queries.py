@@ -112,10 +112,10 @@ class PinboardQ(Query):
     def sname(self):
         return 'pinboard'
 
-    def __init__(self, name: str, *queries: str, quote=True):
+    def __init__(self, qname: str, *queries: str, quote=True):
         if len(queries) == 1 and isinstance(queries[0], list):
             queries = queries[0] # TODO ugh.
-        self.name = name
+        self.qname = qname
         if quote:
             self.queries = list(map(pinboard_quote, queries))
         else:
@@ -124,8 +124,7 @@ class PinboardQ(Query):
 
     @property
     def repo_name(self) -> str:
-        # TODO FIXME 'pinboard' prefix? and slugify
-        return self.name
+        return self.sname + '_' + slugify(self.qname)
 
     def __repr__(self):
         return str(self.__dict__)
