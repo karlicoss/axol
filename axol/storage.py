@@ -14,68 +14,7 @@ from .traits import get_result_type, ignore_result
 from .database import Revision, Json, Jsons, DbReader
 
 
-class RepoHandle:
-    def __init__(self, repo: Path) -> None:
-        self.repo = repo
-        self.logger = logger
-
-    def _check_output(self, *args):
-        cmd = [
-            'git', f'--git-dir={self.repo}/.git', *args
-        ]
-        last = None
-        for _ in range(10):
-            try:
-                return check_output(cmd)
-            except OSError as e:
-                raise e
-                last = e
-                if 'Cannot allocate memory' in str(e):
-                    self.logger.debug(' '.join(cmd))
-                    self.logger.error('cannot allocate memory... trying GC and again')
-                    gc.collect()
-                    time.sleep(2)
-                else:
-                    raise e
-        else:
-            assert last is not None
-            raise last
-
-
-    def _get_revisions(self) -> List[Tuple[str, datetime]]:
-        """
-        returns in order of ascending timestamp
-        """
-        ss = list(reversed(self._check_output(
-            'log',
-            '--pretty=format:%h %ad',
-            '--no-patch',
-        ).decode('utf8').splitlines()))
-        def pdate(l):
-            ds = ' '.join(l.split()[1:])
-            return datetime.strptime(ds, '%a %b %d %H:%M:%S %Y %z')
-        return [(l.split()[0], pdate(l)) for l in ss]
-
-    def _get_content(self, rev: str) -> str:
-        return self._check_output(
-            'show',
-            rev + ':content.json',
-        ).decode('utf8')
-
-    def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Json]]:
-        revs = self._get_revisions()
-        if last is not None:
-            revs = revs[-last: ]
-        for rev, dd in revs:
-            self.logger.debug('processing %s %s', rev, dd)
-            cc = self._get_content(rev)
-            if len(cc.strip()) == 0:
-                j: Json = {}
-            else:
-                j = json.loads(cc)
-            yield (rev, dd, j)
-
-
+# TODO FIXME should rely on a DB here
 # TODO I guess need to compare here?
 class Collector:
     def __init__(self):
@@ -112,7 +51,6 @@ def get_digest(repo: Path, last=None) -> Changes[R]:
     Trait = JsonTrait.for_(rtype)
     from_json = Trait.from_json
 
-    # rh = RepoHandle(repo)
     rh = DbReader(repo)
     # TODO need to update pinboard?
     # ustats = get_user_stats(jsons, rtype=rtype)
@@ -171,47 +109,3 @@ def slugify_in(path: str, dir: Path):
         if res not in dd:
             return res
         path = path + '_'
-
-
-# TODO reuse RepoHandle? not sure..
-class RepoWriteHandle:
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.logger = logger
-
-    @classmethod
-    def create(cls, name: str, base: Path):
-        dname = slugify(name) # TODO FIXME slugify_in?
-        rpath = base.joinpath(dname)
-        rpath.mkdir(exist_ok=True)
-        return RepoWriteHandle(rpath)
-
-    def assert_clean(self):
-        if self._git('rev-parse', 'HEAD', stderr=DEVNULL).returncode == 0:
-            self._git('diff', '--exit-code').check_returncode()
-        else:
-            self.logger.info('%s: empty repo!', self.path)
-
-    def _git(self, *cmd, **kwargs):
-        return run([
-            'git',
-            *cmd,
-        ], cwd=str(self.path), **kwargs)
-
-    def commit(self, jj):
-        self._git('init', '--quiet').check_returncode()
-        self.assert_clean()
-
-        cpath = self.path.joinpath('content.json')
-        before = None
-        if cpath.exists():
-            with cpath.open('r') as fo:
-                jb = json.load(fo)
-                before = len(jb)
-
-        with cpath.open('w') as fo:
-            json.dump(jj, fo, ensure_ascii=False, indent=1, sort_keys=True)
-        self._git('add', 'content.json')
-        self._git('commit', '-m', f'updated content ({before} -> {len(jj)} entries)', '--allow-empty').check_returncode()
-        self.assert_clean()
-# TODO make sure names are unique??

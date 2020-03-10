@@ -8,7 +8,6 @@ from kython.klogging import setup_logzero
 
 from .common import logger, Query, slugify
 from .jsonify import to_json
-from .storage import RepoWriteHandle
 from .database import DbWriter
 
 from config import get_queries, DATABASES
