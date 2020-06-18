@@ -1,0 +1,16 @@
+git+https://github.com/karlicoss/kython.git
+typing_extensions
+python-dateutil
+backoff
+requests
+pytz
+sqlalchemy
+dominate
+getch
+feedgen
+
+beautifulsoup4
+PyGithub
+praw
+twitterscraper
+python-hn
