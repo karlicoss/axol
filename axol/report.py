@@ -890,6 +890,7 @@ def write_index(storages, output_dir: Path):
     now = datetime.now()
     doc = dominate.document(title=f'axol index for {[s.name for s in storages]}, rendered at {fdate(now)}')
 
+    # TODO don't need this anymore?
     rss = True
     if rss:
         outlines = []

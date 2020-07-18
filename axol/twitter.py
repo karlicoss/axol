@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import List, Dict, NamedTuple, Optional, Iterator
+import json
+from pathlib import Path
 import logging
+from typing import List, NamedTuple, Iterable
 
 
 def get_logger():
@@ -23,58 +25,39 @@ class Result(NamedTuple):
         return self.link
 
 
-
-# TODO move this to scrapy_singlefile (and rename to 'adhoc'??)
-# _items = []
-#
-# class AppendToList(object):
-#     def process_item(self, item, spider):
-#         _items.append(item)
-#
-# def scrapy_search(query: str):
-#     assert len(_items) == 0
-#
-#     from scrapy.crawler import CrawlerProcess # type: ignore
-#     from kython import import_from
-#     scrape = import_from('/L/zzz_syncthing/tmp/TweetScraper', 'TweetScraper')
-#     print(dir(scrape))
-#     from TweetScraper.spiders.TweetCrawler import TweetScraper
-#
-#     process = CrawlerProcess({
-#         'ITEM_PIPELINES': {__name__ + '.AppendToList': 100},
-#         'USER_AGENT': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
-#         'LOG_LEVEL': 'DEBUG',
-#         'DUPEFILTER_DEBUG': True,
-#     })
-#     process.crawl(TweetScraper, query=query)
-#     process.start() # blocking
-#     # TODO FIXME inject some callback into reactor?
-#     try:
-#         return [i for i in _items]
-#     finally:
-#         _items.clear()
-
-# TODO FIXME if zero results, means we're banned?
 class TwitterSearch:
     def __init__(self) -> None:
         self.logger = get_logger()
-        # TODO FIXME delay?
-        # self.d
 
-    def iter_search(self, query, limit=None) -> Iterator[Result]:
-        from twitterscraper import query_tweets # type: ignore
-        # TODO FIXME not sure if we can be iterative here..
-        for i in sorted(query_tweets(query, limit=limit, poolsize=2)): # TODO not sure about poolsize, hopefully it prevents hammering twitter?
-            yield Result(
-                uid =i.id,
-                when=i.timestamp, # no tz, apparently local scraping tz?
-                link=i.url,
-                text=i.text,
-                user=i.user, # TOOD not sure if need to keep user_id
-                replies=i.replies,
-                retweets=i.retweets,
-                likes=i.likes,
-            )
+    def iter_search(self, query, limit=None) -> Iterable[Result]:
+        import twint # type: ignore
+
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as td:
+            tdir = Path(td)
+            tfile = tdir / 'results.json'
+            c = twint.Config()
+            c.Search = query
+            c.Hide_output = True
+            c.Store_json = True
+            c.Output = str(tfile)
+            twint.run.Search(c)
+            # TODO limit, perhaps?
+
+            # TODO how should they be sorted?
+            # TODO actually iterative version would be nice..
+
+            for t in map(json.loads, tfile.read_text().splitlines()):
+                yield Result(
+                    uid=str(t['id']),
+                    when=datetime.fromtimestamp(t['created_at'] / 1000), # todo not sure what's the tz... but the payload also has timezone info?
+                    link    =t['link'], # TODO generate from id and user?
+                    text    =t['tweet'],
+                    user    =t['username'],
+                    replies =t['replies_count'],
+                    retweets=t['retweets_count'],
+                    likes   =t['likes_count'],
+                )
 
     def search(self, query: str, limit=None) -> List[Result]:
         # TODO FIXME do I need to sort anything?

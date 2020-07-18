@@ -9,8 +9,8 @@ dominate
 getch
 feedgen
 
-beautifulsoup4
-PyGithub
-praw
-twitterscraper
-python-hn
+beautifulsoup4 # pinboard
+PyGithub       # github
+praw           # reddit
+twint          # twitter
+python-hn      # hackernews
