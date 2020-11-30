@@ -285,7 +285,7 @@ def make_queries() -> Iterator[Query]:
         mypy,
         pintags=['mypy'],
     )
-    yield T(mypy, mypy) # TODO not sure about twitter..
+    # yield T(mypy, mypy) # TODO not sure about twitter..
     yield H(mypy, mypy)
 
     del P

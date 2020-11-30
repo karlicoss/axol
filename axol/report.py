@@ -185,8 +185,12 @@ class TentacleTrait(ForTentacle, FormatTrait):
         return res
         # TODO indicate how often is user showing up?
 
-def tw(s):
-    return f'https://twitter.com{s}'
+def tw(s: str) -> str:
+    if s.startswith('http'):
+        return s
+    else:
+        # todo not sure if needed?
+        return f'https://twitter.com{s}'
 
 
 class FormatTwitter(ForTwitter, FormatTrait):

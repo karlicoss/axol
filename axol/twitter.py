@@ -1,9 +1,22 @@
 from datetime import datetime
 import json
 from pathlib import Path
+import re
 import logging
 from typing import List, NamedTuple, Iterable
 
+
+# sorry I don't know these languages
+# FIXME make configurable... start with global and maybe later support per query
+IGNORE_LANGUAGES = {
+    'ja',
+    'fr',
+    'in',
+    'it',
+    'pt',
+    'es',
+}
+# https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 
 def get_logger():
     return logging.getLogger('twisearch')
@@ -51,7 +64,6 @@ class TwitterSearch:
         self.logger = get_logger()
 
     def iter_search(self, query, limit=None) -> Iterable[Result]:
-
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as td: # , twint_debug_logging():
             import twint # type: ignore
@@ -62,19 +74,60 @@ class TwitterSearch:
             c.Hide_output = True
             c.Store_json = True
             c.Output = str(tfile)
+            # c.Limit = 1000 # useful for debugging
             twint.run.Search(c)
             # TODO limit, perhaps?
 
             # TODO how should they be sorted?
             # TODO actually iterative version would be nice..
 
+            # FIXME should be more defensive, i.e. each tweet
             for t in map(json.loads, tfile.read_text().splitlines()):
+                user = t['username']
+                text = t['tweet']
+                lang = t.get('language')
+
+                if lang in IGNORE_LANGUAGES:
+                    continue
+
+                # TODO would be nice to apply this both to the db (at least before rendering)
+                # so could work retrospectively
+
+                # one annoying thing is that if the username contains the query, it's gonna return all results
+                # still annoying that it's even retrieved... not sure what to do with it; again, iterative search would help
+                # seems that even twitter staff suggest to postfilter
+                # https://twittercommunity.com/t/exclude-username-when-searching/10653/3
+                sq = query.strip("'").strip('""').lower()
+                # TODO cli interface should be exact by default? not sure
+                if ' ' not in sq: # hacky way to check that it's single worded?
+                    # TODO log this? gonna be too spammy, maybe once per user
+                    # NOTE: in reply, the usernames *are* in the tweet body, so need to check metdata:
+                    reply_to_s = ' '.join(x.get('screen_name', '') + '_' + x.get('name', '') for x in t.get('reply_to', []))
+                    if any(sq in x.lower() for x in (
+                            user,
+                            t.get('name', ''),
+                            reply_to_s,
+                        )):
+                            continue
+                            # todo warn somehow? maybe at least a summary
+                    # NOTE ^^ aaand.. this is still not enough because if the user was deleted it's not ending up in 'reply_to'...
+                    if re.search(fr'@[0-9a-z_]*{re.escape(sq)}', text.lower()):
+                        continue
+
+                    # shit. it's really quite fuzzy, e.g. 'memex' might match the username 'mem_ex'. jesus!
+                    if sq not in text.lower():
+                        continue
+
+                when = datetime.strptime(
+                    t['created_at'][:len('2020-11-30 01:24:27')] + ' ' + t['timezone'],
+                    '%Y-%m-%d %H:%M:%S %z',
+                )
                 yield Result(
                     uid=str(t['id']),
-                    when=datetime.fromtimestamp(t['created_at'] / 1000), # todo not sure what's the tz... but the payload also has timezone info?
+                    when=when,
                     link    =t['link'], # TODO generate from id and user?
-                    text    =t['tweet'],
-                    user    =t['username'],
+                    text    =text,
+                    user    =user,
                     replies =t['replies_count'],
                     retweets=t['retweets_count'],
                     likes   =t['likes_count'],

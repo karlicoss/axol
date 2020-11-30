@@ -61,6 +61,7 @@ def run(args):
             logger.exception(e)
             raise e
         finally:
+            # TODO don't do under userinterrupt?
             print("Press any key when ready")
             getch()
 
