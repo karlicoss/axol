@@ -3,9 +3,10 @@ import argparse
 import re
 import sys
 import logging
+import warnings
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import islice, chain
 from pathlib import Path
 from pprint import pprint
@@ -348,6 +349,16 @@ def invkey(kk):
     return cmp_to_key(icmp)
 
 
+# todo jeez.. why did that happen??
+
+def when_key_tz_hack(x):
+    when: datetime = x.when
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+        # TODO warn?
+    return when
+
+
 class CumulativeBase(AbsTrait):
     def __init__(self, items: List) -> None:
         self.items = items
@@ -546,7 +557,7 @@ class TwitterCumulative(ForTwitter, CumulativeBase):
 
     @classproperty
     def sortkey(cls):
-        invwhen  = invkey(lambda c: c.when)
+        invwhen  = invkey(when_key_tz_hack)
         return lambda c: (-c.interactions, invwhen(c))
 
     def format(self):
@@ -790,7 +801,8 @@ def setup_parser(p):
     p.add_argument('--last', type=int, default=None)
     # TODO rename output_dir?
     p.add_argument('--output-dir', type=Path, default=REPORTS_DIR)
-    p.add_argument('--serial', action='store_true')
+    # TODO control via env variable instead? how to pass it to compose?
+    p.add_argument('--serial', action='store_true', help='Do not use multithreading (useful for debugging)')
 
 
 # TODO for starters, just send last few days digest..

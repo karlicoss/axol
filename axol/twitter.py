@@ -43,6 +43,7 @@ from contextlib import contextmanager
 def twint_debug_logging():
     # shit. twint uses logging module methods (so everything ends up in a root logger..)
     # os.environ['TWINT_DEBUG'] = 'debug' # in addition this writes to a file and you can't override this
+    # TODO ugh. twint logger is very spammy, I'm not even sure what to filter...
     lvl = logging.DEBUG
     logger = logging.getLogger()
     orig_lvl = logger.level
@@ -64,6 +65,7 @@ class TwitterSearch:
         self.logger = get_logger()
 
     def iter_search(self, query, limit=None) -> Iterable[Result]:
+        # TODO for cli, should allow individual params, e.g. --limit. maybe via click?
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as td: # , twint_debug_logging():
             import twint # type: ignore
