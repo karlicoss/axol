@@ -69,6 +69,9 @@ def Dummy(*args, **kwargs):
     return None
 
 
+def E(x): # 'exact'
+    return f'"{x}"'
+
 # PinboardQ = Dummy # TODO till I fix the (apparently) banned host issue
 # RedditQ = Dummy
 # GithubQ = Dummy
@@ -185,6 +188,7 @@ def make_queries() -> Iterator[Query]:
         openbci,
         pintags=[pintags_implicit, 'bci'],
     )
+    yield H(openbci, openbci)
 
     # TODO not sue about eeg? where to put it?
 
@@ -241,14 +245,21 @@ def make_queries() -> Iterator[Query]:
             '"quantified self"',
         )
 
-    # TODO probably, no github?
+    ###
     tc = 'ted chiang'
-    yield from qall(
-        tc,
-        tc,
-        pintags=['tedchiang'],
-    )
+    yield from qall(tc,   tc, pintags=['tedchiang'])
+    yield         T(tc, E(tc))
+    yield         H(tc, E(tc))
+    ###
 
+    ###
+    egan = 'greg egan'
+    yield from qall(egan,   egan, pintags=['gregegan'])
+    yield         T(egan, E(egan))
+    yield         H(egan, E(egan))
+    ###
+
+    ###
     if True:
         ar = 'argonov'
         yield from qall(
@@ -256,19 +267,21 @@ def make_queries() -> Iterator[Query]:
             'виктор аргонов', # TODO eh, needs quoting?
         )
         yield T(ar, '"виктор аргонов"')
+    ###
 
+    ###
     sr = 'spaced repetition'
-    yield from qall(
-        sr,
-        sr,
-    )
+    yield from qall(sr,   sr)
+    yield         H(sr, E(sr))
+    ###
 
+    ###
     sa = 'scott alexander'
-    yield from qall(
-        sa,
-        sa,
-        pintags=['scottalexander'],
-    )
+    if True:
+        # too much stuff from pinboard... maybe keep github? 
+        # yield from qall(sa, sa, pintags=['scottalexander'])
+        yield H(sa, E(sa))
+    ###
 
     bb = 'beepb00p.xyz'
     # TODO FIXME ugh. how to make qall nicer to use??
@@ -287,6 +300,49 @@ def make_queries() -> Iterator[Query]:
     )
     # yield T(mypy, mypy) # TODO not sure about twitter..
     yield H(mypy, mypy)
+
+
+    ###
+    memex = 'memex'
+    yield from qall(
+        memex,
+        memex,
+        pintags=[memex],
+    )
+    yield T(memex, memex)
+    yield H(memex, memex)
+    ###
+
+    ###
+    kedr = 'kedr livanskiy'
+    yield from qall(kedr,   kedr )
+   #mm, twitter is quite spammy.. https://twitter.com/search?q=kedr%20livanskiy&f=live
+   #yield         T(kedr, E(kedr))
+    yield         H(kedr, E(kedr))
+    ###
+
+    ###
+    exobrain = 'exobrain'
+    yield from qall(exobrain, exobrain, pintags=[exobrain])
+    yield         T(exobrain, exobrain)
+    yield         H(exobrain, exobrain)
+    ###
+
+    ###
+    hotz = 'george hotz'
+    yield from qall(hotz,   hotz )
+    yield         T(hotz, E(hotz))
+    yield         H(hotz, E(hotz))
+    ###
+
+
+    ###
+    ghk = 'github.com/karlicoss'
+    yield from qall(ghk, ghk)
+    yield         T(ghk, ghk)
+    yield         H(ghk, ghk)
+    ### 
+
 
     del P
     del R

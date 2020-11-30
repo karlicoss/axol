@@ -43,11 +43,15 @@ def process_all(dry=False, include=None, exclude=None, name=None):
             logger.error(err)
         ok = False
 
+    one = False
     for q in get_queries(include=include, exclude=exclude, name=name):
+        one = True
         try:
             process_query(q, dry=dry, path=DATABASES)
         except Exception as e:
             reg_error(e)
+    if not one:
+        reg_error(RuntimeError('No queries matched!'))
 
     if not ok:
         logger.error("Had errors during processing!")
@@ -61,7 +65,7 @@ def setup_parser(p):
     p.add_argument('--dry', action='store_true')
     p.add_argument('--include', action='append')
     p.add_argument('--exclude', action='append')
-    p.add_argument('--name', type=str, required=False)
+    p.add_argument('--name', type=str, required=False, help='name as specified in config.py')
     # TODO ugh.
     # p.add_argument('repos', nargs='*')
 
