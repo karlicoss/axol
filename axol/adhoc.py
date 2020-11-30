@@ -46,7 +46,7 @@ def setup_parser(p):
 
 
 def run(args):
-    with TemporaryDirectory() as td:
+    with TemporaryDirectory(dir='/tmp/axol') as td: # TODO 
         tdir = Path(td)
         qs = []
         for Cls in SUPPORTED:

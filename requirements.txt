@@ -12,5 +12,7 @@ feedgen
 beautifulsoup4 # pinboard
 PyGithub       # github
 praw           # reddit
-twint          # twitter
 python-hn      # hackernews
+# twint          # twitter
+# use git version, twint often breaks because of twitter api
+git+git://github.com/twintproject/twint@a45a8ac#egg=twint

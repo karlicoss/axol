@@ -25,15 +25,36 @@ class Result(NamedTuple):
         return self.link
 
 
+from contextlib import contextmanager
+@contextmanager
+def twint_debug_logging():
+    # shit. twint uses logging module methods (so everything ends up in a root logger..)
+    # os.environ['TWINT_DEBUG'] = 'debug' # in addition this writes to a file and you can't override this
+    lvl = logging.DEBUG
+    logger = logging.getLogger()
+    orig_lvl = logger.level
+    try:
+        logger.setLevel(lvl)
+        formatter = logging.Formatter('%(levelname)s:%(asctime)s:%(name)s:%(message)s')
+        handler = logging.StreamHandler()
+        handler.setLevel(lvl)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        yield
+    finally:
+        logger.setLevel(orig_lvl)
+        logger.removeHandler(handler)
+
+
 class TwitterSearch:
     def __init__(self) -> None:
         self.logger = get_logger()
 
     def iter_search(self, query, limit=None) -> Iterable[Result]:
-        import twint # type: ignore
 
         from tempfile import TemporaryDirectory
-        with TemporaryDirectory() as td:
+        with TemporaryDirectory() as td: # , twint_debug_logging():
+            import twint # type: ignore
             tdir = Path(td)
             tfile = tdir / 'results.json'
             c = twint.Config()

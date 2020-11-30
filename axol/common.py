@@ -9,11 +9,13 @@ from kython.klogging import LazyLogger
 
 
 def setup_paths() -> None:
+    from pathlib import Path
+    d = Path(__file__).absolute().parent.parent
     import sys
     sys.path.extend([
-        '/L/coding/tentacle',
-        '/L/coding/spinboard',
-        '/L/coding/reach',
+        str(d / 'tentacle_repo' ),
+        str(d / 'spinboard_repo'),
+        str(d / 'reach_repo'    ),
     ])
 setup_paths()
 
