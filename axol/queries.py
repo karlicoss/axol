@@ -1,9 +1,9 @@
 from typing import Sequence
 
-from kython import flatten
-
 from .common import Query, slugify, Filter
 # TODO Filter needs to be a more flexible type...
+
+from more_itertools import flatten
 
 def pinboard_quote(s: str):
     # shit, single quotes do not work right with pinboard..
@@ -70,7 +70,7 @@ class RedditQ(Query):
             queries = queries[0] # TODO ugh.
         self.qname = qname
         self.queries = list(map(pinboard_quote, queries))
-        self.excluded = flatten(excluded)
+        self.excluded = list(flatten(excluded))
 
     @property
     def repo_name(self) -> str:

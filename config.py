@@ -2,10 +2,10 @@ from pathlib import Path
 import re
 from typing import List, Iterator, NamedTuple, Type, Any, Sequence
 
-from kython import flatten
-
 from axol.common import Query, slugify
 from axol.queries import GithubQ, pinboard_quote, RedditQ, TwitterQ, PinboardQ, HackernewsQ, filter_queries
+
+from more_itertools import flatten
 
 BASE_DIR = Path(__file__).absolute().parent; assert BASE_DIR.exists()
 # TODO come up with better names?

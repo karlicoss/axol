@@ -4,8 +4,6 @@ from pathlib import Path
 import logging
 import sys
 
-from kython.klogging import setup_logzero
-
 from .common import logger, Query, slugify
 from .jsonify import to_json
 from .database import DbWriter
@@ -13,7 +11,7 @@ from .database import DbWriter
 from config import get_queries, DATABASES
 
 
-def process_query(q: Query, dry: bool, path: Path):
+def process_query(q: Query, dry: bool, path: Path) -> None:
     logger.info('crawler: processing %s', q)
     searcher = q.searcher()
     qs = q.queries
@@ -32,7 +30,7 @@ def process_query(q: Query, dry: bool, path: Path):
     dbw.commit(jsons, query=str(qs))
 
 
-def process_all(dry=False, include=None, exclude=None, name=None):
+def process_all(dry=False, include=None, exclude=None, name=None) -> None:
     ok = True
     def reg_error(err):
         nonlocal ok
@@ -61,7 +59,7 @@ def run(args):
     process_all(args.dry, include=args.include, exclude=args.exclude, name=args.name)
 
 
-def setup_parser(p):
+def setup_parser(p) -> None:
     p.add_argument('--dry', action='store_true')
     p.add_argument('--include', action='append')
     p.add_argument('--exclude', action='append')
@@ -70,9 +68,7 @@ def setup_parser(p):
     # p.add_argument('repos', nargs='*')
 
 
-def main():
-    setup_logzero(logging.getLogger('spinboard'), level=logging.DEBUG)
-
+def main() -> None:
     p = argparse.ArgumentParser()
     setup_parser(p)
     args = p.parse_args()

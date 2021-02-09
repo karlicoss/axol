@@ -1,13 +1,10 @@
 import logging
 import re
 from itertools import islice
-from typing import Any, Callable, List, Sequence, Type, TypeVar, Iterable, Iterator
-from typing_extensions import Protocol
+from typing import Any, Callable, List, Sequence, Type, TypeVar, Iterable, Iterator, Protocol
 
 
-from kython.klogging import LazyLogger
-
-
+# FIXME get rid of this
 def setup_paths() -> None:
     from pathlib import Path
     d = Path(__file__).absolute().parent.parent
@@ -19,6 +16,8 @@ def setup_paths() -> None:
     ])
 setup_paths()
 
+
+from .core.klogging import LazyLogger
 logger = LazyLogger('axol', level=logging.INFO)
 
 
@@ -43,7 +42,7 @@ def slugify(s: str):
 
 T = TypeVar('T')
 
-
+# TODO more_itertools?
 def ichunks(l: Iterable[T], n: int) -> Iterator[List[T]]:
     it: Iterator[T] = iter(l)
     while True:

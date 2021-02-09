@@ -1,6 +1,6 @@
 from typing import Dict, Type, Dict, Any
 
-from kython import classproperty
+from .core.common import classproperty
 
 
 # TODO mm, that should only be stored in target trait!!!

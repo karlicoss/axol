@@ -12,7 +12,6 @@ import pytz
 import sqlalchemy # type: ignore
 from sqlalchemy import Table, Column # type: ignore
 from sqlalchemy import func, select, text # type: ignore
-from kython.klogging2 import LazyLogger
 
 
 Revision = str
@@ -20,7 +19,8 @@ Json = Dict
 Jsons = Iterable[Json]
 
 
-log = LazyLogger('axol.database', level='info')
+from .core.klogging import LazyLogger
+logger = LazyLogger('axol.database', level='info')
 
 
 class DbHelper:
@@ -68,7 +68,6 @@ class DbReader:
         if '/outputs/' in str(repo): # TODO temporary hack for migration period..
             repo = Path(str(repo).replace('/outputs/', '/databases/') + '.sqlite')
         self.repo = repo; assert self.repo.is_file(), self.repo
-        self.logger = log
 
 
     def iter_versions(self, last=None) -> Iterator[Tuple[Revision, datetime, Jsons]]:
@@ -108,7 +107,7 @@ class DbWriter:
     def _commit(self, *, sha: str, dt: datetime, jsons: Jsons, query: str) -> None:
         db = DbHelper(db_path=self.db_path)
         pre_batchsize = len(jsons) if isinstance(jsons, list) else -1
-        log.info('processing %s %s (%s results)', sha, dt, pre_batchsize)
+        logger.info('processing %s %s (%s results)', sha, dt, pre_batchsize)
 
         # TODO not sure when I should handle ignored? maybe prune later?
 
@@ -201,12 +200,12 @@ updates   : {updates}
 total     : {total}
         '''.strip()
 
-        log.info(' '.join(logline.splitlines()))
+        logger.info(' '.join(logline.splitlines()))
         db.connection.execute(db.logs.insert(), [{
             db.DT_COL : dtstr,
             db.LOG_COL: logline,
         }])
         # TODO size might be innacurate during the connection?
 
-        log.info('database %s, size %.2f Mb', self.db_path, self.db_path.stat().st_size / 10 ** 6)
+        logger.info('database %s, size %.2f Mb', self.db_path, self.db_path.stat().st_size / 10 ** 6)
         db.close()

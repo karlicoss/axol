@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Optional, Type
 
-from kython import classproperty, the
-
 from .trait import AbsTrait, pull
+from .core.common import classproperty, the
 
 from config import ignored_reddit
 

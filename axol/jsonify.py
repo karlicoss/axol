@@ -3,8 +3,8 @@
 from datetime import datetime
 from typing import Type
 
-from kython import classproperty
-from kython.kjson import Json, ToFromJson
+from .core.common import classproperty, Json
+from .core.kjson import ToFromJson
 
 from .traits import ForSpinboard, ForReach, ForTentacle, ForTwitter, ForHackernews
 from .trait import AbsTrait, pull

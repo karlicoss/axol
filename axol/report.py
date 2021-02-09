@@ -14,17 +14,24 @@ from subprocess import check_call, check_output
 from typing import (Any, Dict, Iterator, List, NamedTuple, Optional, Sequence,
                     Tuple, Type, Union, Mapping)
 
+from .core.common import classproperty, the
+from .core.kdominate import adhoc_html
+
+from .common import logger
+from .storage import Changes, get_digest, get_result_type
+from .trait import AbsTrait, pull
+from .traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, ForHackernews, IgnoreTrait, ignore_result, For
+
 import dominate
 import dominate.tags as T
 from dominate.util import raw, text
-from kython import classproperty, cproperty, flatten, the
-from kython.kdominate import adhoc_html
+from more_itertools import flatten
 
-from axol.common import logger
-from axol.storage import Changes, get_digest, get_result_type
-from axol.trait import AbsTrait, pull
-from axol.traits import ForReach, ForSpinboard, ForTentacle, ForTwitter, ForHackernews, IgnoreTrait, ignore_result, For
 from config import DATABASES
+
+from functools import cached_property
+cproperty = cached_property # meh, some legacy uses
+
 
 
 # TODO need some sort of starting_from??
@@ -321,11 +328,12 @@ JS = (Path(__file__).parent / 'js/report.js').read_text()
 #
 # });
 
+from .core.common import group_by_key
 
+# TODO shit. should use promnesia.cannon instead??
+# maybe promnesia could also return if it recognized the URL 'completely' or just guessed
+from .core.kurl import normalise
 
-
-from kython import group_by_key
-from kython.url import normalise
 from functools import lru_cache
 from collections import Counter
 
@@ -626,7 +634,7 @@ def render_summary(repo: Path, digest: Changes[Any], rendered: Path) -> Path:
     NOW = datetime.now()
     name = repo.stem
 
-    everything = flatten([ch for ch in digest.changes.values()])
+    everything = list(flatten([ch for ch in digest.changes.values()]))
 
     before = len(everything)
 
@@ -863,8 +871,9 @@ def run(args):
     # maybe some sort of rolling log using the whole terminal screen?
     errors: List[str] = []
 
-    from kython.koncurrent import DummyExecutor
     if args.serial:
+        # todo ugh, figure out how to do it easier... 
+        from kython.koncurrent import DummyExecutor
         pool = DummyExecutor()
     else:
         pool = ProcessPoolExecutor()
@@ -966,7 +975,7 @@ def user_summary_for(rtype, storages, output_path: Path):
         digests = pp.map(get_digest, [s.path for s in storages])
 
     for s, digest in zip(storages, digests):
-        everything = flatten([ch for ch in digest.changes.values()])
+        everything = list(flatten([ch for ch in digest.changes.values()]))
         for user, items in group_by_key(everything, key=lambda x: x.user).items():
             reg(user, s.name, len(items))
 

@@ -4,8 +4,6 @@ from pprint import pprint
 from tempfile import TemporaryDirectory
 from typing import Sequence, List
 
-from kython.tui import getch
-
 from .common import Query, slugify, logger
 from .crawl import process_query, setup_parser as setup_crawl_parser
 from .report import do_repo
@@ -62,10 +60,5 @@ def run(args):
             raise e
         finally:
             # TODO don't do under userinterrupt?
-            print("Press any key when ready")
-            getch()
-
-
-
-
-
+            print("Press Enter when ready")
+            input()
