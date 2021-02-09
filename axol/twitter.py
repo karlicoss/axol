@@ -1,3 +1,14 @@
+# Twitter brakes scrapers all the time...
+# twint is pretty broken at the moment too
+#
+# * this doesn't work: pip3 install --user 'git+https://github.com/bisguzar/twitter-scraper.git'
+#   from twitter_scraper import get_tweets
+#   - couldn't search in russian:
+#     UnicodeEncodeError: 'latin-1' codec can't encode characters in position 21-26: ordinal not in range(256
+#   - and apart from that, search doesn't work anyway...
+#     https://github.com/bisguzar/twitter-scraper/issues/168
+
+
 from datetime import datetime
 import json
 from pathlib import Path
@@ -5,6 +16,10 @@ import re
 import logging
 from typing import List, NamedTuple, Iterable
 
+
+from axol.core.klogging import LazyLogger
+
+logger = LazyLogger('axol.twitter')
 
 # sorry I don't know these languages
 # FIXME make configurable... start with global and maybe later support per query
@@ -17,10 +32,6 @@ IGNORE_LANGUAGES = {
     'es',
 }
 # https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
-
-def get_logger():
-    return logging.getLogger('twisearch')
-
 
 class Result(NamedTuple):
     uid: str
@@ -61,9 +72,6 @@ def twint_debug_logging():
 
 
 class TwitterSearch:
-    def __init__(self) -> None:
-        self.logger = get_logger()
-
     def iter_search(self, query, limit=None) -> Iterable[Result]:
         # TODO for cli, should allow individual params, e.g. --limit. maybe via click?
         from tempfile import TemporaryDirectory
@@ -145,10 +153,17 @@ class TwitterSearch:
         return self.search(query=queries[0], limit=limit)
 
 
-def main():
+def test() -> None:
     ts = TwitterSearch()
-    for r in ts.search('"виктор аргонов"', limit=10):
+    res = list(ts.search('"виктор аргонов"', limit=10))
+    # todo think about quoting? probably should quote by default?
+    for r in res:
         print(r)
+    assert len(res) == 10
+
+
+def main() -> None:
+    test()
 
 
 if __name__ == '__main__':
