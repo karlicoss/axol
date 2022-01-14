@@ -190,7 +190,7 @@ GROUP BY A.uid;
         for (_, gsize) in groups:
             if gsize > 1:
                 updates += 1
-        [(total,)] = db.connection.execute(func.count(db.results))
+        [(total,)] = db.connection.execute(select([func.count()]).select_from(db.results))
 
         logline = f'''
 query     : {query}
