@@ -19,4 +19,4 @@ python-hn      # hackernews
 
 # twint          # twitter
 # use git version, twint often breaks because of twitter api
-git+git://github.com/twintproject/twint@master#egg=twint
+git+https://github.com/twintproject/twint@master#egg=twint
