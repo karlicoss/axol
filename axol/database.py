@@ -57,8 +57,8 @@ class DbHelper:
         meta.create_all(self.engine, checkfirst=True)
 
     def close(self):
-        # TODO engine?
         self.connection.close()
+        self.engine.dispose()
 
 
 class DbReader:
@@ -118,7 +118,7 @@ class DbWriter:
 
         # meh, but querying a database 10K times can't be fast enough I guess
         existing_blobs = {
-            row[0] for row in db.connection.execute(select([db.results.c.blob]))
+            row[0] for row in db.connection.execute(select(db.results.c.blob))
         }
 
         batchsize = 0
@@ -185,12 +185,12 @@ results AS B
 ON  A.dt  = :dtstr
 AND A.uid = B.uid
 GROUP BY A.uid;
-        '''), dtstr=dtstr))
+        '''), [dict(dtstr=dtstr)]))
         updates = 0
         for (_, gsize) in groups:
             if gsize > 1:
                 updates += 1
-        [(total,)] = db.connection.execute(select([func.count()]).select_from(db.results))
+        [(total,)] = db.connection.execute(select(func.count()).select_from(db.results))
 
         logline = f'''
 query     : {query}
@@ -208,4 +208,5 @@ total     : {total}
         # TODO size might be innacurate during the connection?
 
         logger.info('database %s, size %.2f Mb', self.db_path, self.db_path.stat().st_size / 10 ** 6)
+        db.connection.commit()
         db.close()
