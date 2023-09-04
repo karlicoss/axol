@@ -9,9 +9,9 @@ from typing import Optional, Iterator, Tuple, Dict, Iterable
 from .common import ichunks, Query
 
 import pytz
-import sqlalchemy # type: ignore
-from sqlalchemy import Table, Column # type: ignore
-from sqlalchemy import func, select, text # type: ignore
+import sqlalchemy
+from sqlalchemy import Table, Column
+from sqlalchemy import func, select, text
 
 
 Revision = str
@@ -34,7 +34,7 @@ class DbHelper:
     def __init__(self, db_path: Path) -> None:
         self.engine = sqlalchemy.create_engine(f'sqlite:///{db_path}')
         self.connection = self.engine.connect()
-        meta = sqlalchemy.MetaData(self.connection)
+        meta = sqlalchemy.MetaData()
 
         # TODO read only mode?
         self.results = Table(
@@ -46,7 +46,6 @@ class DbHelper:
             # NOTE: using unique index for blob doesn't give any benefit?
             # TODO later, might worth it for DT, UID? or primary key?
         )
-        self.results.create(self.connection, checkfirst=True)
 
         self.logs = Table(
             'logs',
@@ -54,7 +53,8 @@ class DbHelper:
             Column(self.DT_COL , sqlalchemy.String),
             Column(self.LOG_COL, sqlalchemy.String),
         )
-        self.logs.create(self.connection, checkfirst=True)
+
+        meta.create_all(self.engine, checkfirst=True)
 
     def close(self):
         # TODO engine?

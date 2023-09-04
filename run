@@ -1,3 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash
+set -eux
 cd "$(dirname "$0")"
 exec python3 -m axol "$@"
