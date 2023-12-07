@@ -33,27 +33,43 @@ class HackernewsSearch:
     def iter_search(self, query: str, limit=None) -> Iterator[Result]:
         from hn import search_by_date # pip3 install python-hn
 
+        ## ugh. hasn't been updated for a while
+        from hn.utils import AVAILABLE_DATE_FORMATS
+        fff = '%Y-%m-%dT%H:%M:%SZ'
+        if fff not in AVAILABLE_DATE_FORMATS:
+            AVAILABLE_DATE_FORMATS.append(fff)
+        ##
+
         results = search_by_date(query)
         # By default, all the different "post types" will be included: stories, comments, polls, etc.
 
         for r in results:
             crs = r['created_at']
-            dt = datetime.strptime(crs, '%Y-%m-%dT%H:%M:%S.%f%z')
+            crs = crs.replace('Z', '+00:00')  # TODO should be working without this after python 3.10
+            dt = datetime.fromisoformat(crs)
             p = r['points']
             p = -1 if p is None else p
-            st = r['story_text']
-            ct = r['comment_text']
-            assert not (st is not None and ct is not None)
+            st = r.get('story_text')
+            ct = r.get('comment_text')  # can be missing
+            assert not (st is not None and ct is not None), r
             text = st or ct or ''
-            nc = r['num_comments']
+            nc = r.get('num_comments')
             nc = -1 if nc is None else nc
+
+            url = r.get('story_url') or r.get('url')
+            if url is None:
+                story_id = r['story_id']
+                url = r'https://news.ycombinator.com/item?id={story_id}'  # meh, but sometimes missing
+
+            title = r.get('story_title') or r.get('title')
+            assert title is not None, r
 
             yield Result(
                 uid=r['objectID'],
                 when=dt,
                 user=r['author'],
-                url=r['url'],
-                title=r['title'],
+                url=url,
+                title=title,
                 text=text,
                 points=p,
                 comments=nc,
