@@ -47,7 +47,7 @@ class HackernewsSearch:
             crs = r['created_at']
             crs = crs.replace('Z', '+00:00')  # TODO should be working without this after python 3.10
             dt = datetime.fromisoformat(crs)
-            p = r['points']
+            p = r.get('points')
             p = -1 if p is None else p
             st = r.get('story_text')
             ct = r.get('comment_text')  # can be missing
