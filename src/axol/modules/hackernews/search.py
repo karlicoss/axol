@@ -1,16 +1,21 @@
-REQUIRES = ['python-hn']
-
 from typing import Iterator
 
-
+import click
 from loguru import logger
-import hn
+import hn  # type: ignore[import-untyped]
+
+# TODO don't remember what type of imports I decided is best?
+# absolute imports in modules??
+from axol.core.common import CrawlResult, Uid
+
+
+REQUIRES = ['python-hn']
 
 
 def fix_date_format() -> None:
     ## ugh. hasn't been updated for a while
     ## TODO maybe use algolia api directly?
-    from hn.utils import AVAILABLE_DATE_FORMATS
+    from hn.utils import AVAILABLE_DATE_FORMATS  # type: ignore[import-untyped]
     _date_format = '%Y-%m-%dT%H:%M:%SZ'
     if _date_format not in AVAILABLE_DATE_FORMATS:
         AVAILABLE_DATE_FORMATS.append(_date_format)
@@ -18,7 +23,7 @@ fix_date_format()
 
 
 # TODO would be nice to use some existing query language?
-def search(query: str) -> Iterator:
+def search(query: str) -> Iterator[CrawlResult]:
     # https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax/#how-to-use
     # ok, so single quotes definitely don't work the same way double quotes are
     assert "'" not in query, query
@@ -34,9 +39,9 @@ def search(query: str) -> Iterator:
         r.pop('_tags', None)
         ##
 
+        uid = r['objectID']
+        assert isinstance(uid, Uid)  # just in case
         # FIXME think about post-filtering? dunno
-
-        # TODO for uuid, should use objectID -- also a permalink to comment/story
 
         entity_types = []
         if 'comment_text' in r:
@@ -49,7 +54,7 @@ def search(query: str) -> Iterator:
         # should probably still insert it but handle at parsing time
         assert len(entity_types) == 1, (entity_types, r)
 
-        yield r
+        yield uid, r
 
 
 def test() -> None:
@@ -79,9 +84,6 @@ def test() -> None:
 
 
 # TODO move main stuff to common?
-import click
-
-
 @click.group()
 def main() -> None:
     pass

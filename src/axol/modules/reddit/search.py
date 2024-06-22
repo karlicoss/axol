@@ -1,10 +1,12 @@
-REQUIRES = ['praw']
-
 from typing import Any, Iterator
 
+import click
 from loguru import logger
-import praw
-from praw.models import PollData, PollOption, Redditor, Submission, Subreddit
+import praw  # type: ignore[import-untyped]
+from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
+
+
+REQUIRES = ['praw']
 
 
 def debug_praw() -> None:
@@ -104,10 +106,6 @@ def search(query: str) -> Iterator[Json]:
             yield jsonify(r)
 
 
-# TODO move main stuff to common?
-import click
-
-
 @click.group()
 def main() -> None:
     pass
@@ -125,6 +123,8 @@ def cmd_test() -> None:
 def cmd_search(query: str) -> None:
     total = 0
     for r in search(query): # f'"{query}"'):
+        # TODO yield query and uid alongside?
+        # since it'll need to be in db
         print(r)
         total += 1
     logger.info(f'[reddit] fetched {total} results')
@@ -133,4 +133,8 @@ def cmd_search(query: str) -> None:
 if __name__ == '__main__':
     main()
 
-# FIXME maybe search should be named after
+# TODO maybe search should be named after specific search provier? like praw
+# or reddit.search.praw/via_praw
+
+# NOTE: seems like for reddit, multiple terms are treated like some sort of fuzzy search?
+# not exactly OR either
