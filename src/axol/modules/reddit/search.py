@@ -62,6 +62,8 @@ def _uid(r: Submission) -> str:
 
 
 def search(query: str) -> Iterator[Json]:
+    logger.info(f'query:{query} -- fetching...')
+
     # FIXME support domain queries?
     assert 'domain:' not in query
     # FIXME add limit support
@@ -103,7 +105,9 @@ def search(query: str) -> Iterator[Json]:
                 continue
             uids[uid] = r
             # FIXME not sure if need to sort here?
-            yield jsonify(r)
+            yield uid, jsonify(r)
+    total = len(uids)
+    logger.info(f'query:{query} -- got {total} results')
 
 
 @click.group()
@@ -138,3 +142,7 @@ if __name__ == '__main__':
 
 # NOTE: seems like for reddit, multiple terms are treated like some sort of fuzzy search?
 # not exactly OR either
+
+
+# FIXME rename 'search.py' to 'crawl.py'? not sure what's best
+# search soulds like read only while crawl writes to the db

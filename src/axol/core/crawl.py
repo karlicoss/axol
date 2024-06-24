@@ -14,7 +14,9 @@ class Config:
     db_path: Path | str  # FIXME derive from crawler/repo 'name'?
 
 
-if __name__ == '__main__':
+
+
+def do_hn():
     config = Config(
         queries=(
             # TODO duplicate query is a good test!
@@ -27,6 +29,22 @@ if __name__ == '__main__':
 
     # TODO move this inside config?
     import axol.modules.hackernews.search as S
+    return config, S
+
+
+def do_reddit():
+    config = Config(
+        queries=(
+            'beepb00p.xyz',
+        ),
+        db_path='reddit.sqlite',
+    )
+    import axol.modules.reddit.search as S
+    return config, S
+
+
+if __name__ == '__main__':
+    config, S = do_reddit()
 
     for query in config.queries:
         query_res = S.search(query)
