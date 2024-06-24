@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Any, Type, TypeVar
+from typing import Any, Iterator, Type, TypeVar
 
 Json = dict[str, Any]
 
 Uid = str
 
-CrawlResult = tuple[Uid, Json]
+SearchResult = tuple[Uid, Json]
+SearchResults = Iterator[SearchResult]
 
 datetime_aware = datetime
 

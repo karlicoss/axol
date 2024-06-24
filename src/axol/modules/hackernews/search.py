@@ -1,12 +1,9 @@
-from typing import Iterator
-
-import click
 from loguru import logger
 import hn  # type: ignore[import-untyped]
 
 # TODO don't remember what type of imports I decided is best?
 # absolute imports in modules??
-from axol.core.common import CrawlResult, Uid
+from axol.core.common import SearchResults, Uid
 
 
 REQUIRES = ['python-hn']
@@ -23,7 +20,7 @@ fix_date_format()
 
 
 # TODO would be nice to use some existing query language?
-def search(query: str) -> Iterator[CrawlResult]:
+def search(query: str) -> SearchResults:
     logger.info(f'query:{query} -- fetching...')
     # https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax/#how-to-use
     # ok, so single quotes definitely don't work the same way double quotes are
@@ -73,30 +70,3 @@ def test() -> None:
 
     # TODO hmm getting different number of results..
     # assert 500 < check('unexpected sequence') < 1000
-
-
-# TODO move main stuff to common?
-@click.group()
-def main() -> None:
-    pass
-
-
-@main.command(name='test')
-def cmd_test() -> None:
-    import subprocess
-    import sys
-    subprocess.check_call([sys.executable, '-m', 'pytest', '-s', __file__])
-
-
-@main.command(name='search')
-@click.argument('query', required=True)
-def cmd_search(query: str) -> None:
-    total = 0
-    for r in search(query): # f'"{query}"'):
-        print(r)
-        total += 1
-    logger.info(f'[hn] fetched {total} results')
-
-
-if __name__ == '__main__':
-    main()

@@ -1,9 +1,10 @@
 from typing import Any, Iterator
 
-import click
 from loguru import logger
 import praw  # type: ignore[import-untyped]
 from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
+
+from axol.core.common import  SearchResults, Uid
 
 
 REQUIRES = ['praw']
@@ -19,9 +20,6 @@ def debug_praw() -> None:
 # debug_praw()
 
 
-Json = Any
-
-
 def _ignore_item(key: str, value: Any) -> bool:
     if callable(value):
         return True
@@ -33,7 +31,7 @@ def _ignore_item(key: str, value: Any) -> bool:
 
 
 # sadly praw doesn't keep raw json data :( https://github.com/praw-dev/praw/issues/830
-def jsonify(d) -> Json:
+def jsonify(d):
     if isinstance(d, (str, float, int, bool, type(None))):
         return d
 
@@ -55,13 +53,13 @@ def jsonify(d) -> Json:
     raise RuntimeError(f"Unexpected type: {type(d)}")
 
 
-def _uid(r: Submission) -> str:
+def _uid(r: Submission) -> Uid:
     u = r.id
-    assert isinstance(u, str)  # just in case
+    assert isinstance(u, Uid)  # just in case
     return u
 
 
-def search(query: str) -> Iterator[Json]:
+def search(query: str) -> SearchResults:
     logger.info(f'query:{query} -- fetching...')
 
     # FIXME support domain queries?
@@ -76,7 +74,7 @@ def search(query: str) -> Iterator[Json]:
     searcher = api.subreddit('all')
 
     def _search(sort_by: str) -> Iterator[Submission]:
-        uids: dict[str, Submission] = {}
+        uids: dict[Uid, Submission] = {}
         for r in searcher.search(query=query, limit=None, sort=sort_by):
             # NOTE: reddit api only allows to search in submissions, no comments :(
             assert isinstance(r, Submission), r
@@ -97,7 +95,7 @@ def search(query: str) -> Iterator[Json]:
     # TODO different queries might result in same results as well
     # TODO merge should be shared, merge via uid?
     # might be easier to ignore on database level? not sure
-    uids: dict[str, Submission] = {}
+    uids: dict[Uid, Submission] = {}
     for sort_by in sort_bys:
         for r in _search(sort_by=sort_by):
             uid = _uid(r)
@@ -109,40 +107,11 @@ def search(query: str) -> Iterator[Json]:
     total = len(uids)
     logger.info(f'query:{query} -- got {total} results')
 
-
-@click.group()
-def main() -> None:
-    pass
-
-
-@main.command(name='test')
-def cmd_test() -> None:
-    import subprocess
-    import sys
-    subprocess.check_call([sys.executable, '-m', 'pytest', '-s', __file__])
-
-
-@main.command(name='search')
-@click.argument('query', required=True)
-def cmd_search(query: str) -> None:
-    total = 0
-    for r in search(query): # f'"{query}"'):
-        # TODO yield query and uid alongside?
-        # since it'll need to be in db
-        print(r)
-        total += 1
-    logger.info(f'[reddit] fetched {total} results')
-
-
-if __name__ == '__main__':
-    main()
+# TODO yield query as well?
+# might be useful to have it in the db
 
 # TODO maybe search should be named after specific search provier? like praw
 # or reddit.search.praw/via_praw
 
 # NOTE: seems like for reddit, multiple terms are treated like some sort of fuzzy search?
 # not exactly OR either
-
-
-# FIXME rename 'search.py' to 'crawl.py'? not sure what's best
-# search soulds like read only while crawl writes to the db

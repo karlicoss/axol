@@ -15,7 +15,7 @@ from sqlalchemy import (
 
 from .common import (
     datetime_aware,
-    CrawlResult,
+    SearchResult,
 )
 from .utils import sqlalchemy_strict_sqlite
 
@@ -25,6 +25,7 @@ CrawlDt = datetime_aware
 
 class Columns:
     UID = 'uid'
+    # FIXME rename from crawl to search?
     CRAWL_TIMESTAMP_UTC = 'crawl_timestamp_utc'
     DATA = 'data'
 
@@ -67,7 +68,7 @@ class Database(AbstractContextManager):
         self.engine.dispose()
 
 
-    def select_all(self) -> Iterator[CrawlResult]:
+    def select_all(self) -> Iterator[SearchResult]:
         # FIXME double check that simultaneous write and read work
         query = self.results_table.select().order_by(Columns.CRAWL_TIMESTAMP_UTC, Columns.UID)
         with self.engine.connect() as conn:
@@ -77,7 +78,7 @@ class Database(AbstractContextManager):
                 yield (uid, j)
 
 
-    def insert(self, results: Iterator[CrawlResult]) -> None:
+    def insert(self, results: Iterator[SearchResult]) -> None:
         # TODO dry mode??
         crawl_dt = datetime.now(tz=timezone.utc)
         crawl_timestamp_utc = int(crawl_dt.timestamp())
