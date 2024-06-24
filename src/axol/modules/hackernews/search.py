@@ -24,6 +24,7 @@ fix_date_format()
 
 # TODO would be nice to use some existing query language?
 def search(query: str) -> Iterator[CrawlResult]:
+    logger.info(f'query:{query} -- fetching...')
     # https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax/#how-to-use
     # ok, so single quotes definitely don't work the same way double quotes are
     assert "'" not in query, query
@@ -32,6 +33,7 @@ def search(query: str) -> Iterator[CrawlResult]:
     # TODO maybe always search for exact match for simplicity?
     # and to disable typo tolerance
 
+    total = 0
     # search_by_date (from Algolia) means sorted by date, most recent first
     for r in hn.search_by_date(query):
         ## some stuff that algolia adds -- not useful to keep at all
@@ -43,25 +45,15 @@ def search(query: str) -> Iterator[CrawlResult]:
         assert isinstance(uid, Uid)  # just in case
         # FIXME think about post-filtering? dunno
 
-        entity_types = []
-        if 'comment_text' in r:
-            entity_types.append('comment')
-        if r['objectID'] == str(r['story_id']):  # uhh, story_id is int
-            # NOTE: story_text isn't always present!
-            # e.g. if it's just a submitted link
-            entity_types.append('story')
-        # FIXME make a bit more defensive later?
-        # should probably still insert it but handle at parsing time
-        assert len(entity_types) == 1, (entity_types, r)
-
+        total += 1
         yield uid, r
+
+    logger.info(f'query:{query} -- got {total} results')
 
 
 def test() -> None:
     def check(query: str) -> int:
-        logger.debug(f'{query} : fetching...')
         slist = list(search(query))
-        logger.debug(f'{query} : got {len(slist)} results')
         return len(slist)
 
     # NOTE: seems like it returns fuzzy results

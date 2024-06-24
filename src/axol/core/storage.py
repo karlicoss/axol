@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
@@ -28,10 +29,9 @@ class Columns:
     DATA = 'data'
 
 
-class Database:
-    # TODO read only mode?
+class Database(AbstractContextManager):
+    # todo read only mode?
     def __init__(self, db_path: Path) -> None:
-        # FIXME dispose of engine
         self.db_path = db_path
         self.engine = sqlalchemy.create_engine(f'sqlite:///{db_path}', echo=False)
         self.metadata = sqlalchemy.MetaData()
@@ -63,6 +63,20 @@ class Database:
             # NOTE: checkfirst=True is default -- if false it would complain if db already exists
             self.metadata.create_all(self.engine)
 
+    def __exit__(self, *args, **kwargs) -> None:
+        self.engine.dispose()
+
+
+    def select_all(self) -> Iterator[CrawlResult]:
+        # FIXME double check that simultaneous write and read work
+        query = self.results_table.select().order_by(Columns.CRAWL_TIMESTAMP_UTC, Columns.UID)
+        with self.engine.connect() as conn:
+            for uid, crawl_timestamp_utc, blob in conn.execute(query):
+                # TODO yield timestamp as well?
+                j = orjson.loads(blob)
+                yield (uid, j)
+
+
     def insert(self, results: Iterator[CrawlResult]) -> None:
         # TODO dry mode??
         crawl_dt = datetime.now(tz=timezone.utc)
@@ -79,7 +93,7 @@ class Database:
                 if uid in uids_in_db:
                     batch_exist += 1
                     continue
-                # TODO store as jsonb? not sure
+                # todo store as jsonb? not sure if there is any benefit?
                 batch_new += 1
                 for_db.append({
                     Columns.UID: uid,
@@ -94,16 +108,3 @@ class Database:
         batch_total = batch_exist + batch_new
         # TODO log new total size?
         logger.info(f'[{self.db_path}] batch stats -- {batch_total} crawled, {batch_exist} existed, {batch_new} new')
-
-
-if __name__ == '__main__':
-    db = Database(Path('test.sqlite'))
-    import axol.modules.hackernews.search as S
-    def results():
-        # for uid, j in S.search('beepb00p.xyz'):
-        #     yield uid, j
-        for uid, j in S.search('karlicoss'):
-            # FIXME this query returns too many false positives for fuzzy match...
-            yield uid, j
-    db.insert(results())
-
