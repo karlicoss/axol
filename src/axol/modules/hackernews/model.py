@@ -33,7 +33,6 @@ Result = Comment | Story
 
 # todo add uid here? not sure it should be inside the entity...
 def parse(j: Json) -> Result:
-    orig_j = j
     j = {k: v for k, v in j.items()}
 
     entity_types = []

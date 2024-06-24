@@ -66,10 +66,10 @@ def search(query: str) -> SearchResults:
     assert 'domain:' not in query
     # FIXME add limit support
     # TODO limit is purely to limit number of api calls
-    from axol_config import reddit
+    from axol.user_config import reddit_praw  # type: ignore[attr-defined]
     api = praw.Reddit(
         user_agent='axol',
-        **reddit.praw_credentials(),
+        **reddit_praw.credentials(),
     )
     searcher = api.subreddit('all')
 

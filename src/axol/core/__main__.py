@@ -1,5 +1,4 @@
 import importlib
-from pathlib import Path
 
 import click
 
@@ -36,28 +35,25 @@ def cmd_crawl() -> None:
     """
     Search all queries in the config and save in the databases.
     """
-    from .config import configs
-    for config in configs():
+    import axol.user_config as C
+    for config in C.configs():
         # TODO move this away to something abstracted away from configs module?
         for query in config.queries:
             query_res = config.search(query)
             # FIXME should query and dedup in bulk
             # otherwise fails at db insertion time
-            db_path = Path(config.db_path)
-            # FIXME if relative, resolve relative to global storage dir?
-            with Database(db_path) as db:
+            with Database(config.db_path) as db:
                 db.insert(query_res)
 
 
 @main.command(name='feed')
 def cmd_feed() -> None:
     # TODO add argument for name and list?
-    from .config import configs
-    for config in configs():
-        db_path = Path(config.db_path)
+    import axol.user_config as C
+    for config in C.configs():
         # FIXME read only mode or something?
         # definitely makes sense considering constructor creates the db if it doesn't exist
-        with Database(db_path) as db:
+        with Database(config.db_path) as db:
             for uid, j in db.select_all():
                 try:
                     pj = config.parse(j)
