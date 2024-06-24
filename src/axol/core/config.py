@@ -20,7 +20,7 @@ class Config:
         raise NotImplementedError
 
     @abstractmethod
-    def search(self, query: str) -> SearchResults:
+    def search(self, query: str, limit: int | None) -> SearchResults:
         # FIXME maybe doesn't need to accept queries??
         raise NotImplementedError
 

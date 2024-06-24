@@ -2,6 +2,7 @@ import importlib
 
 import click
 
+from .config import Config
 from .storage import Database
 
 
@@ -10,11 +11,16 @@ def main() -> None:
     pass
 
 
+arg_limit = click.option('--limit', type=int)
+arg_include = click.option('--include', help='name filter for search configs to use')
+
+
 @main.command(name='search')
 @click.argument('module', required=True)
 @click.argument('query', required=True)
 @click.option('--quiet/-q', is_flag=True)
-def cmd_search(*, module: str, query: str, quiet: bool) -> None:
+@arg_limit
+def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> None:
     """
     Search only, won't modify the databases.
 
@@ -25,36 +31,54 @@ def cmd_search(*, module: str, query: str, quiet: bool) -> None:
     # TODO deserialize?
     # and raw mode that doesn't try to deserialise?
     search_module = importlib.import_module(module)
-    for uid, j in search_module.search(query=query):
+    for uid, j in search_module.search(query=query, limit=limit):
         if not quiet:
             print(uid, j)
 
 
+def get_configs(*, include: str | None) -> list[Config]:
+    import axol.user_config as C
+    configs = list(C.configs())
+    if include is not None:
+        configs = [c for c in configs if include in c.name]
+    assert len(configs) > 0
+    return configs
+
+
 @main.command(name='crawl')
-def cmd_crawl() -> None:
+@arg_limit
+@arg_include
+@click.option('--dry', is_flag=True, help='search and print results only, do not modify storage')
+def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
     """
     Search all queries in the config and save in the databases.
     """
-    import axol.user_config as C
-    for config in C.configs():
+    configs = get_configs(include=include)
+    for config in configs:
         # TODO move this away to something abstracted away from configs module?
         for query in config.queries:
-            query_res = config.search(query)
-            # FIXME should query and dedup in bulk
-            # otherwise fails at db insertion time
-            with Database(config.db_path) as db:
-                db.insert(query_res)
+            query_res = config.search(query=query, limit=limit)
+
+            if dry:
+                for uid, j in query_res:
+                    print(uid, config.parse(j))
+            else:
+                # FIXME should query and dedup in bulk
+                # otherwise fails at db insertion time
+                with Database(config.db_path) as db:
+                    db.insert(query_res)
 
 
 @main.command(name='feed')
-def cmd_feed() -> None:
+@arg_include
+def cmd_feed(*, include: str | None) -> None:
     # TODO add argument for name and list?
-    import axol.user_config as C
-    for config in C.configs():
+    configs = get_configs(include=include)
+    for config in configs:
         # FIXME read only mode or something?
         # definitely makes sense considering constructor creates the db if it doesn't exist
         with Database(config.db_path) as db:
-            for uid, j in db.select_all():
+            for uid, crawl_dt, j in db.select_all():
                 try:
                     pj = config.parse(j)
                 except Exception as e:

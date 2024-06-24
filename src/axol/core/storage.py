@@ -15,6 +15,7 @@ from sqlalchemy import (
 
 from .common import (
     datetime_aware,
+    DbResult,
     SearchResult,
 )
 from .utils import sqlalchemy_strict_sqlite
@@ -68,14 +69,14 @@ class Database(AbstractContextManager):
         self.engine.dispose()
 
 
-    def select_all(self) -> Iterator[SearchResult]:
+    def select_all(self) -> Iterator[DbResult]:
         # FIXME double check that simultaneous write and read work
         query = self.results_table.select().order_by(Columns.CRAWL_TIMESTAMP_UTC, Columns.UID)
         with self.engine.connect() as conn:
             for uid, crawl_timestamp_utc, blob in conn.execute(query):
-                # TODO yield timestamp as well?
+                crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
                 j = orjson.loads(blob)
-                yield (uid, j)
+                yield (uid, crawl_dt, j)
 
 
     def insert(self, results: Iterator[SearchResult]) -> None:
