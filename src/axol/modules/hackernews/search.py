@@ -20,7 +20,9 @@ fix_date_format()
 
 
 # TODO would be nice to use some existing query language?
-def search(query: str) -> SearchResults:
+def search(*, query: str, limit: str | None) -> SearchResults:
+    # todo doesn't really support limit? warn if not none?
+
     logger.info(f'query:{query} -- fetching...')
     # https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax/#how-to-use
     # ok, so single quotes definitely don't work the same way double quotes are
@@ -50,7 +52,7 @@ def search(query: str) -> SearchResults:
 
 def test() -> None:
     def check(query: str) -> int:
-        slist = list(search(query))
+        slist = list(search(query=query, limit=None))
         return len(slist)
 
     # NOTE: seems like it returns fuzzy results

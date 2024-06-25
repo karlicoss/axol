@@ -3,6 +3,7 @@ import importlib
 import click
 
 from .config import Config
+from .search import search_all
 from .storage import Database
 
 
@@ -55,18 +56,14 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
     """
     configs = get_configs(include=include)
     for config in configs:
-        # TODO move this away to something abstracted away from configs module?
-        for query in config.queries:
-            query_res = config.search(query=query, limit=limit)
+        results = search_all(search_function=config.search, queries=config.queries, limit=limit)
 
-            if dry:
-                for uid, j in query_res:
-                    print(uid, config.parse(j))
-            else:
-                # FIXME should query and dedup in bulk
-                # otherwise fails at db insertion time
-                with Database(config.db_path) as db:
-                    db.insert(query_res)
+        if dry:
+            for uid, j in results:
+                print(uid, config.parse(j))
+        else:
+            with Database(config.db_path) as db:
+                db.insert(results)
 
 
 @main.command(name='feed')

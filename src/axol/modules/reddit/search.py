@@ -59,13 +59,13 @@ def _uid(r: Submission) -> Uid:
     return u
 
 
-def search(query: str) -> SearchResults:
+def search(*, query: str, limit: int | None) -> SearchResults:
+    # note limit is purely to somewhat limit number of api calls
+    # e.g. here it would likely return more results
     logger.info(f'query:{query} -- fetching...')
 
     # FIXME support domain queries?
     assert 'domain:' not in query
-    # FIXME add limit support
-    # TODO limit is purely to limit number of api calls
     from axol.user_config import reddit_praw  # type: ignore[attr-defined]
     api = praw.Reddit(
         user_agent='axol',
@@ -75,7 +75,7 @@ def search(query: str) -> SearchResults:
 
     def _search(sort_by: str) -> Iterator[Submission]:
         uids: dict[Uid, Submission] = {}
-        for r in searcher.search(query=query, limit=None, sort=sort_by):
+        for r in searcher.search(query=query, limit=limit, sort=sort_by):
             # NOTE: reddit api only allows to search in submissions, no comments :(
             assert isinstance(r, Submission), r
 

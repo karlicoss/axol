@@ -12,7 +12,7 @@ class Bookmark:
     title: str
     url: str
     tags: tuple[str]
-    description: str
+    description: str | None
 
     @property
     def permalink(self) -> str:
@@ -48,13 +48,14 @@ def parse(j: Json) -> Result:
 
     slug = j.pop('slug')
 
-    # TODO not sure if should normalise tags?
-    # e.g. to lowercase
-    tags = tuple(sorted(j.pop('tags')))
+    # put to lowercase, since they are treated the same by pinboard
+    tags = [t.lower() for t in j.pop('tags')]
+    tags = [t for t in tags if len(t) > 0]  # sometimes there is an empty string here
+
+    descr = j.pop('description')  # can be None
     author  = _check(j.pop('author')     , str)
     title   = _check(j.pop('title')      , str)
     url     = _check(j.pop('url')        , str)
-    descr   = _check(j.pop('description'), str)
     created = _check(j.pop('created')    , str)
 
     # kinda unclear which timezone is date in
@@ -70,6 +71,6 @@ def parse(j: Json) -> Result:
         author=author,
         title=title,
         url=url,
-        tags=tags,
+        tags=tuple(sorted(tags)),
         description=descr,
     )
