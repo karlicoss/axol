@@ -1,11 +1,17 @@
-from typing import Iterator
+from abc import abstractmethod
+from dataclasses import dataclass
+from functools import partial
+from typing import Any, Callable, Iterator, Protocol, Sequence, cast
 
 import github
 from github import (
     Github,
     GithubException,  # TODO handle exceptions later?
 )
+from github.Commit import Commit
 from github.ContentFile import ContentFile
+from github.Issue import Issue
+from github.Repository import Repository
 from github.GithubObject import NotSet, Opt
 
 from loguru import logger
@@ -16,14 +22,136 @@ from axol.core.common import SearchResults, Uid
 REQUIRES = ['PyGithub']
 
 
-def search(*, query: str, limit: int | None) -> SearchResults:
-    logger.info(f'query:{query} -- fetching...')
-    # FIXME sort, order (asc/desc), highlight
-    # todo what are qualifiers??
-    # FIXME search_commits
-    # FIXME search_repositories
-    # FIXME search_topics
+def _get_sorts(sorts: Sequence[str]) -> Sequence[tuple[Opt[str], Opt[str]]]:
+    # github trims api results to 1000 (last checked 20240626)
+    # so we can get a bit more by varying sort and order
+    res: list[tuple[Opt[str], Opt[str]]] = [(NotSet, NotSet)]  # best match
+    for sort in sorts:
+        for order in ['asc', 'desc']:
+            res.append((sort, order))
+    return res
 
+
+class Mixin(Protocol):
+    sorts: tuple[str, ...]
+    method: Callable  # meh
+
+
+@dataclass
+class Search(Mixin):  # todo make it typed?
+    api: Github
+
+    @abstractmethod
+    def get_uid(self, x: Any) -> Uid:
+        raise NotImplementedError
+
+    def search(self, *, query: str, limit: int | None) -> SearchResults:
+        sorts = _get_sorts(self.sorts)
+        method = self.__class__.method  # hmm otherwise python binds it??
+        searcher = partial(method, self.api)
+
+        qstr = f'{query=} {sorts=}'
+        logger.info(f'{qstr} -- fetching...')
+
+        def _search(*, sort: Opt[str], order: Opt[str]) -> Iterator[tuple[Uid, Any]]:
+            uids: dict[Uid, Any] = {}
+            for i, x in enumerate(searcher(query=query, sort=sort, order=order)):
+                if limit is not None and i >= limit:
+                    return
+
+                uid = self.get_uid(x)
+
+                is_dupe = uid in uids # check uniqueness just in case
+                if is_dupe:
+                    if isinstance(x, Commit):  # meh, maybe make it a specific class attribute?
+                        # commits can be duplicated due to forks
+                        # just skip
+                        continue
+                    else:
+                        assert uid not in uids, (uid, uids[uid])
+
+                uids[uid] = x
+                yield uid, x
+
+
+        uids: dict[Uid, ContentFile] = {}
+        # todo maybe, only use additional when there is close to 100 results??
+        for sort, order in sorts:
+            logger.debug(f'{query=} {sort=!r:<10} {order=!r:<5} searching...')
+            # TODO make this merging generic
+            # kinda tricky since we don't want to convert dupes to json prematurely..
+            added = 0
+            for uid, x in _search(sort=sort, order=order):
+                if uid in uids:
+                    continue
+                uids[uid] = x
+                added += 1
+
+                # ugh, so there is x.raw_data, however it incurs an api call
+                # same with x.content and some other getters
+
+                j = x._rawData
+                # TODO this contains a lot of spam, especially in 'repository' key
+                # migtt be worth pruning
+
+                yield uid, j
+            logger.debug(f'{query=} {sort=!r:<10} {order=!r:<5} {added=}')
+
+        total = len(uids)
+        logger.info(f'{qstr} -- got {total} results')
+
+
+@dataclass
+class SearchCode(Search):
+    method = Github.search_code
+    # ugh. for code search orders and sort are deprecated
+    # see
+    # - https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-code
+    # - https://github.blog/changelog/2023-03-10-changes-to-the-code-search-api/
+    # - https://github.com/orgs/community/discussions/52932
+    sorts: tuple[str, ...] = ()
+
+    def get_uid(self, x: ContentFile) -> Uid:
+        # todo could also take html_url and chop off the sha?
+        return x.repository.full_name + ':' + x.path
+
+
+@dataclass
+class SearchRepositories(Search):
+    method = Github.search_repositories
+
+    sorts: tuple[str, ...] = ('stars', 'forks', 'updated')
+
+    def get_uid(self, x: Repository) -> Uid:
+        return x.full_name
+
+
+@dataclass
+class SearchIssues(Search):
+    method = Github.search_issues
+
+    # see https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-issues-and-pull-requests
+    sorts: tuple[str, ...] = ('comments', 'created', 'updated')
+    # FIXME these aren't working in github library due to a hard assert
+    # 'reactions',
+    # 'interactions',
+
+    def get_uid(self, x: Issue) -> Uid:
+        # FIXME not sure about this
+        return str(x.id)
+
+
+@dataclass
+class SearchCommits(Search):
+    method = Github.search_commits
+
+    sorts: tuple[str, ...] = ('author-date', 'committer-date')
+
+    def get_uid(self, x: Commit) -> Uid:
+        return x.sha
+
+
+def search(*, query: str, limit: int | None) -> SearchResults:
     # TODO hmm a bit too spammy
     # would be nice to disable response bodies?
     # github.enable_console_debug_logging()
@@ -38,50 +166,4 @@ def search(*, query: str, limit: int | None) -> SearchResults:
         per_page=100,
     )
 
-    def _search(*, order: Opt[str]) -> Iterator[tuple[Uid, ContentFile]]:
-        uids: dict[Uid, ContentFile] = {}
-        for x in api.search_code(query=query, order=order):
-            if limit is not None and len(uids) >= limit:
-                return
-
-            # todo could also take html_url and chop off the sha?
-            uid = x.repository.full_name + ':' + x.path
-
-            # check uniqueness just in case
-            assert uid not in uids, (uid, uids[uid])
-            uids[uid] = x
-            yield uid, x
-
-
-    # github trims api results to 1000 (last checked 20240626)
-    # so we can get a bit more by varying sort and order
-    search_orders: list[Opt[str]] = ['asc', 'desc']
-    # ugh. for code search orders and sort are deprecated
-    # see
-    # - https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-code
-    # - https://github.blog/changelog/2023-03-10-changes-to-the-code-search-api/
-    # - https://github.com/orgs/community/discussions/52932
-    search_orders = [NotSet]
-
-    uids: dict[Uid, ContentFile] = {}
-    # TODO maybe, only use additional when there is close to 100 results??
-    # FIXME stars and forks are probably gonna give same results for descending?
-    for order in search_orders:
-        # TODO make this merging generic
-        for uid, x in _search(order=order):
-            if uid in uids:
-                continue
-            uids[uid] = x
-
-            # ugh, so there is x.raw_data
-            # however it incurs an api call
-            # same with x.content etc
-
-            j = x._rawData
-            # TODO this contains a lot of spam, especially in 'repository' key
-            # migtt be worth pruning
-
-            yield uid, j
-
-    total = len(uids)
-    logger.info(f'query:{query} -- got {total} results')
+    return SearchRepositories(api=api).search(query=query, limit=limit)
