@@ -1,6 +1,7 @@
 import importlib
 
 import click
+from loguru import logger
 
 from .config import Config
 from .search import search_all
@@ -79,7 +80,8 @@ def cmd_feed(*, include: str | None) -> None:
                 try:
                     pj = config.parse(j)
                 except Exception as e:
-                    print("WHILE PARSING", j)
+                    logger.exception(e)
+                    logger.error(f'while parsing {j}')
                     raise e
                 print(uid, pj)
 

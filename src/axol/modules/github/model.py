@@ -8,17 +8,18 @@ from axol.core.common import datetime_aware, Json, _check
 class Base:
     created_at: datetime_aware | None
     html_url: str
+    username: str | None  # can be None if author deleted themselves?
+    repo: str
+
+
+@dataclass
+class Code(Base):
+    path: str
 
 
 @dataclass
 class Commit(Base):
     message: str
-    author_login: str | None
-
-
-@dataclass
-class Code(Base):
-    pass
 
 
 @dataclass
@@ -26,7 +27,6 @@ class Issue(Base):
     title: str
     body: str
     # todo total reactions count?
-    user_login: str | None
 
 
 @dataclass
@@ -66,13 +66,20 @@ def parse(j: Json) -> Result:
     html_url = _check(j.pop('html_url'), str)
 
     if entity_type == 'code':
+        repo = _check(j['repository']['full_name'], str)
+        username = _check(j['repository']['owner'].pop('login'), str)
+        path = _check(j.pop('path'), str)
         return Code(
             # FIXME doesn't contain commit date...
             # what would be a good datetime for it??
             created_at=None,
             html_url=html_url,
+            username=username,
+            repo=repo,
+            path=path,
         )
     elif entity_type == 'commit':
+        repo = _check(j['repository']['full_name'], str)
         cmt = j.pop('commit')
         cmt_author = cmt.pop('author')
         created_at = datetime.fromisoformat(cmt_author['date'])
@@ -89,10 +96,16 @@ def parse(j: Json) -> Result:
         return Commit(
             created_at=created_at,
             html_url=html_url,
+            username=author_login,
+            repo=repo,
             message=message,
-            author_login=author_login,
         )
     elif entity_type == 'issue':
+        _prefix = 'https://api.github.com/repos/'
+        repo_url = j['repository_url']
+        repo = repo_url.removeprefix(_prefix)
+        assert len(repo) < len(repo_url), (repo, repo_url)  # make sure chopped off
+
         title = _check(j.pop('title'), str)
         body = _check(j.pop('body'), str)
         created_at = datetime.fromisoformat(j.pop('created_at'))
@@ -105,18 +118,23 @@ def parse(j: Json) -> Result:
         return Issue(
             created_at=created_at,
             html_url=html_url,
+            username=user_login,
+            repo=repo,
             title=title,
             body=body,
-            user_login=user_login,
         )
     elif entity_type == 'repository':
+        repo = _check(j['full_name'], str)
         created_at = datetime.fromisoformat(j.pop('created_at'))
         description = j.pop('description')  # can be none if empty
         topics = tuple(sorted(j.pop('topics')))
         stars = _check(j.pop('stargazers_count'), int)
+        username = _check(j['owner'].pop('login'), str)
         return Repository(
             created_at=created_at,
             html_url=html_url,
+            username=username,
+            repo=repo,
             description=description,
             topics=topics,
             stars=stars,
