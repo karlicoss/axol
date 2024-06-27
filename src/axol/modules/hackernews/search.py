@@ -20,7 +20,7 @@ fix_date_format()
 
 
 # TODO would be nice to use some existing query language?
-def search(*, query: str, limit: str | None) -> SearchResults:
+def search(*, query: str, limit: int | None) -> SearchResults:
     # todo doesn't really support limit? warn if not none?
 
     logger.info(f'query:{query} -- fetching...')

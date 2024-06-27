@@ -35,7 +35,7 @@ def search(query: str, limit: int | None) -> SearchResults:
 
         html = resp.text
 
-        expected_total = int(notnone(re.search(r'Found\s+(\d+)\s+results', html)).group(1))
+        expected_total = int(notnone(re.search(r'Found(?: about)?\s+(\S+)\s+results', html)).group(1).replace(',', ''))
         logger.debug(f'query:{query} -- expected total {expected_total}')
 
         js_data = notnone(re.search('var bmarks={};(.*?)</script>', html, re.DOTALL)).group(1)
@@ -50,6 +50,9 @@ def search(query: str, limit: int | None) -> SearchResults:
 
         for s in split:
             s = s.rstrip(';')
+            if len(s) == 0:
+                # sometimes seems to happen?
+                continue
             j: Json = orjson.loads(s)
 
             # so for uid it also has j['id']
