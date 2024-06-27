@@ -13,7 +13,7 @@ class Submission:
     id: str
     created_at: datetime_aware
     subreddit_name: str
-    author_name: str  # TODO optional if they deleted themselves?
+    author_name: str | None  # looks like might be none if they deleted themselves?
     downs: int
     ups: int
     _permalink: str
@@ -37,15 +37,23 @@ def parse(j: Json) -> Submission:
     url = j['url']
     assert 'https://www.reddit.com/r/' in url, url
 
+    selftext_html = j['selftext_html']
+    author_name = j['author']['name']
+
+    from_old_axol = j.get('_from_old_axol', False)
+    if not from_old_axol:
+        assert isinstance(selftext_html, str), j
+        assert isinstance(author_name, str), j
+
     return Submission(
         id=j['id'],
         created_at     = created_at,
         subreddit_name = _check(j['subreddit']['display_name'], str),
-        author_name    = _check(j['author']['name']           , str),
         downs          = _check(j['downs']                    , int),
         ups            = _check(j['ups']                      , int),
         _permalink     = _check(j['permalink']                , str),
         title          = _check(j['title']                    , str),
         selftext_md    = _check(j['selftext']                 , str),
-        selftext_html  = _check(j['selftext_html']            , str),
+        author_name    = author_name,
+        selftext_html  = selftext_html,
     )

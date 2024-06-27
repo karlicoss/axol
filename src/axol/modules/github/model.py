@@ -39,8 +39,22 @@ class Repository(Base):
 Result = Code | Commit | Issue | Repository
 
 
+def jcopy(j: Json) -> Json:
+    if isinstance(j, (int, bool, str, float, type(None))):
+        return j
+    if isinstance(j, list):
+        return [jcopy(x) for x in j]
+    if isinstance(j, dict):
+        return {k: jcopy(v) for k, v in j.items()}
+    raise RuntimeError(j)
+
+
 def parse(j: Json) -> Result:
-    j = {k: v for k, v in j.items()}
+    # NOTE need deep copy here..
+    # otherwise parsing twice breaks things if we use .pop
+    j = jcopy(j)
+    # FIXME use it in other places too
+
     entity_types = []
     # todo hmm might be easier to add entity type during search?
     if 'path' in j:
@@ -72,6 +86,7 @@ def parse(j: Json) -> Result:
         return Code(
             # FIXME doesn't contain commit date...
             # what would be a good datetime for it??
+            # I think in old axol used repository pushed_at attribute??
             created_at=None,
             html_url=html_url,
             username=username,
@@ -107,7 +122,7 @@ def parse(j: Json) -> Result:
         assert len(repo) < len(repo_url), (repo, repo_url)  # make sure chopped off
 
         title = _check(j.pop('title'), str)
-        body = _check(j.pop('body'), str)
+        body = _check(j.pop('body'), str)  # TODO not sure? might be None?
         created_at = datetime.fromisoformat(j.pop('created_at'))
         user_login: str | None
         user = j.pop('user')
