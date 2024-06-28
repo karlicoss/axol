@@ -20,7 +20,7 @@ class Submission:
     title: str
 
     selftext_md: str
-    selftext_html: str
+    selftext_html: str | None  # can be none for 'link' submission
 
     @property
     def permalink(self) -> str:
@@ -35,14 +35,16 @@ def parse(j: Json) -> Submission:
     created_at = datetime.fromtimestamp(ts_utc, tz=timezone.utc)
 
     url = j['url']
-    assert 'https://www.reddit.com/r/' in url, url
+    # TODO right, so it might actually be direct link to website
+    # e.g. https://www.reddit.com/r/hypeurls/comments/10j5iy9/ask_hn_has_anyone_fully_attempted_bret_victors/
+    # assert 'https://www.reddit.com/r/' in url, url
+    # FIXME add url to Submission object? and use downstream
 
-    selftext_html = j['selftext_html']
+    selftext_html: str | None = j['selftext_html']
     author_name = j['author']['name']
 
     from_old_axol = j.get('_from_old_axol', False)
     if not from_old_axol:
-        assert isinstance(selftext_html, str), j
         assert isinstance(author_name, str), j
 
     return Submission(
