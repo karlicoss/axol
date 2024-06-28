@@ -1,3 +1,4 @@
+import dataclasses
 import importlib
 
 import click
@@ -81,8 +82,15 @@ def cmd_feed(*, include: str | None) -> None:
 @arg_include
 def cmd_configs(*, include: str | None) -> None:
     configs = get_configs(include=include)
+
+    datas = []
     for config in configs:
-        print(config)
+        d = {'Type': type(config).__name__}
+        d |= dataclasses.asdict(config)
+        datas.append(d)
+
+    import tabulate
+    print(tabulate.tabulate(datas, headers='keys', stralign='right'))
 
 
 # TODO special mode to run test method from search module??
