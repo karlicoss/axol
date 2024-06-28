@@ -17,6 +17,7 @@ from github.GithubObject import NotSet, Opt
 from loguru import logger
 
 from axol.core.common import SearchResults, Uid
+from .query import GithubQuery, Kind
 
 
 REQUIRES = ['PyGithub']
@@ -35,6 +36,7 @@ def _get_sorts(sorts: Sequence[str]) -> Sequence[tuple[Opt[str], Opt[str]]]:
 class Mixin(Protocol):
     sorts: tuple[str, ...]
     method: Callable  # meh
+    KIND: Kind
 
 
 @dataclass
@@ -50,7 +52,7 @@ class Search(Mixin):  # todo make it typed?
         method = self.__class__.method  # hmm otherwise python binds it??
         searcher = partial(method, self.api)
 
-        qstr = f'{query=} {sorts=}'
+        qstr = f'kind={self.KIND} {query=} {sorts=}'
         logger.info(f'{qstr} -- fetching...')
 
         def _search(*, sort: Opt[str], order: Opt[str]) -> Iterator[tuple[Uid, Any]]:
@@ -77,7 +79,7 @@ class Search(Mixin):  # todo make it typed?
         uids: dict[Uid, ContentFile] = {}
         # todo maybe, only use additional when there is close to 100 results??
         for sort, order in sorts:
-            logger.debug(f'{query=} {sort=!r:<10} {order=!r:<5} searching...')
+            logger.debug(f'kind={self.KIND} {query=} {sort=!r:<10} {order=!r:<5} searching...')
             # TODO make this merging generic
             # kinda tricky since we don't want to convert dupes to json prematurely..
             added = 0
@@ -103,6 +105,7 @@ class Search(Mixin):  # todo make it typed?
 
 @dataclass
 class SearchCode(Search):
+    KIND: Kind = 'code'
     method = Github.search_code
     # ugh. for code search orders and sort are deprecated
     # see
@@ -118,6 +121,7 @@ class SearchCode(Search):
 
 @dataclass
 class SearchRepositories(Search):
+    KIND: Kind = 'repositories'
     method = Github.search_repositories
 
     sorts: tuple[str, ...] = ('stars', 'forks', 'updated')
@@ -128,6 +132,7 @@ class SearchRepositories(Search):
 
 @dataclass
 class SearchIssues(Search):
+    KIND: Kind = 'issues'
     method = Github.search_issues
 
     # see https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-issues-and-pull-requests
@@ -143,6 +148,7 @@ class SearchIssues(Search):
 
 @dataclass
 class SearchCommits(Search):
+    KIND: Kind = 'commits'
     method = Github.search_commits
 
     sorts: tuple[str, ...] = ('author-date', 'committer-date')
@@ -151,7 +157,10 @@ class SearchCommits(Search):
         return x.sha
 
 
-def search(*, query: str, limit: int | None) -> SearchResults:
+def search(*, query: GithubQuery | str, limit: int | None) -> SearchResults:
+    if isinstance(query, str):
+        query = GithubQuery(query=query)
+
     # TODO hmm a bit too spammy
     # would be nice to disable response bodies?
     # github.enable_console_debug_logging()
@@ -166,4 +175,13 @@ def search(*, query: str, limit: int | None) -> SearchResults:
         per_page=100,
     )
 
-    return SearchRepositories(api=api).search(query=query, limit=limit)
+    for Searcher in [
+        SearchRepositories,
+        SearchIssues,
+        SearchCommits,
+        SearchCode,
+    ]:
+        if not query.include(Searcher.KIND):
+            continue
+        searcher = Searcher(api=api)  # type: ignore[abstract]
+        yield from searcher.search(query=query.query, limit=limit)

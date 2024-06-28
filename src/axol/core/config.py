@@ -1,12 +1,13 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from .common import Json, SearchResults
 
 
-Query = str  # TODO common?
+# the searcher decides on the query type itself?
+Query = Any
 
 
 @dataclass
@@ -20,7 +21,7 @@ class Config:
         raise NotImplementedError
 
     @abstractmethod
-    def search(self, *, query: str, limit: int | None) -> SearchResults:
+    def search(self, *, query: Query, limit: int | None) -> SearchResults:
         # FIXME maybe doesn't need to accept queries??
         raise NotImplementedError
 
