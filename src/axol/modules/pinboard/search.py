@@ -35,6 +35,7 @@ def search(query: str, limit: int | None) -> SearchResults:
 
         html = resp.text
 
+        # FIXME this bit tends to be flaky? maybe make defensive
         expected_total = int(notnone(re.search(r'Found(?: about)?\s+(\S+)\s+results', html)).group(1).replace(',', ''))
         logger.debug(f'query:{query} -- expected total {expected_total}')
 

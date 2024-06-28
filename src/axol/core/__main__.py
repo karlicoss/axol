@@ -3,7 +3,7 @@ import importlib
 import click
 from loguru import logger
 
-from .config import Config
+from .config import Config, get_configs
 from .search import search_all
 from .storage import Database
 
@@ -36,15 +36,6 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> No
     for uid, j in search_module.search(query=query, limit=limit):
         if not quiet:
             print(uid, j)
-
-
-def get_configs(*, include: str | None) -> list[Config]:
-    import axol.user_config as C
-    configs = list(C.configs())
-    if include is not None:
-        configs = [c for c in configs if include in c.name]
-    assert len(configs) > 0
-    return configs
 
 
 @main.command(name='crawl')
@@ -84,6 +75,14 @@ def cmd_feed(*, include: str | None) -> None:
                     logger.error(f'while parsing {j}')
                     raise e
                 print(uid, pj)
+
+
+@main.command(name='configs')
+@arg_include
+def cmd_configs(*, include: str | None) -> None:
+    configs = get_configs(include=include)
+    for config in configs:
+        print(config)
 
 
 # TODO special mode to run test method from search module??

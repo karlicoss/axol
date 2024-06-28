@@ -60,9 +60,10 @@ def _uid(r: Submission) -> Uid:
 
 
 def search(*, query: str, limit: int | None) -> SearchResults:
+    qstr = f'{query=}'
     # note limit is purely to somewhat limit number of api calls
     # e.g. here it would likely return more results
-    logger.info(f'query:{query} -- fetching...')
+    logger.debug(f'{qstr} -- fetching...')
 
     # FIXME support domain queries?
     assert 'domain:' not in query
@@ -74,6 +75,7 @@ def search(*, query: str, limit: int | None) -> SearchResults:
     searcher = api.subreddit('all')
 
     def _search(sort_by: str) -> Iterator[Submission]:
+        logger.debug(f'{qstr} {sort_by=!r:<10} -- searching...')
         uids: dict[Uid, Submission] = {}
         for r in searcher.search(query=query, limit=limit, sort=sort_by):
             # NOTE: reddit api only allows to search in submissions, no comments :(
@@ -105,7 +107,7 @@ def search(*, query: str, limit: int | None) -> SearchResults:
             # FIXME not sure if need to sort here?
             yield uid, jsonify(r)
     total = len(uids)
-    logger.info(f'query:{query} -- got {total} results')
+    logger.debug(f'{qstr} -- got {total} results')
 
 # TODO yield query as well?
 # might be useful to have it in the db
