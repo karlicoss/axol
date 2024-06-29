@@ -1,17 +1,25 @@
 import re
 import time
+from typing import Any, Callable
 
 from loguru import logger
 import orjson
 import requests
 
 from axol.core.common import notnone, Json, SearchResults, Uid
+from .query import PinboardQuery, Kind
 
 
-def search(query: str, limit: int | None) -> SearchResults:
-    # FIXME support tag queries etc
-    # or search them automatically?
-    logger.info(f'query:{query} -- fetching...')
+def _search(
+    *,
+    query: str,
+    limit: int | None,
+    do_request,
+    kind: Kind,
+) -> SearchResults:
+    qstr = f'{kind=} {query=}'
+
+    logger.info(f'{qstr} -- fetching...')
 
     search_url = 'https://pinboard.in/search'
 
@@ -22,27 +30,39 @@ def search(query: str, limit: int | None) -> SearchResults:
         if limit is not None and len(uids) >= limit:
             break
 
-        params = {
-            # TODO will it quote_plus automatically?? check
-            # q = urllib.parse.quote_plus(query)  # TODO
-            # works for Search All
-            'query': query,
-            'all': 'Search All',
-            'start': str(start),
-        }
-        resp = requests.get(url=search_url, params=params)
-        start += 20  # this is used on pinboard website (in the 'earlier results' link)
-
+        resp = do_request(query=query, start=start)
         html = resp.text
 
-        # FIXME this bit tends to be flaky? maybe make defensive
+        # 20 is used on pinboard website (in the 'earlier results' link)
+        # NOTE seems that in the browser or curl, pinboard might return >20 items on the first page for tag search
+        # however, somehow via requests it's still 20?
+        # also I feel like the website has a bug, the 'earlier' link goes in 50 increments
+        # however pages past the first one display 20 items only??
+        start += 20
+
+        ## just a sanity check
+        html_count = html.count('class="bookmark_title')
+        js_count = html.count('bmarks[')
+        assert html_count == js_count, (html_count, js_count)
+        ##
+
         m = re.search(r'Found(?: about)?\s+(\S+)\s+results', html)
-        if m is None:
-            expected_total = 0
-            assert 'No results found' in html
-            break
-        expected_total = int(m.group(1).replace(',', ''))
-        logger.debug(f'query:{query} -- expected total {expected_total}')
+        if m is not None:
+            expected_total = int(m.group(1).replace(',', ''))
+        else:
+            m = re.search(r'"bookmark_count">(\d*?)<.span>', html)
+            if m is None:
+                assert 'No results found' in html  # regular search returned 0 results
+                expected_total = 0
+                break
+            else:
+                ts = m.group(1)
+                if len(ts) == 0:
+                    expected_total = 0
+                    break
+                expected_total = int(ts)
+
+        logger.debug(f'{qstr} -- expected total {expected_total}')
 
         js_data = notnone(re.search('var bmarks={};(.*?)</script>', html, re.DOTALL)).group(1)
         split = re.split(r'bmarks.\d+. = ', js_data)
@@ -50,8 +70,7 @@ def search(query: str, limit: int | None) -> SearchResults:
         split = split[1:]
 
         if len(split) == 0:
-            logger.debug(f'query:{query} -- no more results')
-            # TODO warn if a lot of mismatch with expected_total??
+            logger.debug(f'{qstr} -- no more results')
             break
 
         for s in split:
@@ -79,13 +98,49 @@ def search(query: str, limit: int | None) -> SearchResults:
 
             uids[uid] = j
             yield uid, j
-        logger.debug(f'query:{query} -- fetched {len(uids)} results so far')
+        logger.debug(f'{qstr} -- fetched {len(uids)} results so far')
         time.sleep(5)  # to avoid spam
 
     total = len(uids)
+    logger.info(f'{qstr} -- got {total} results')
 
     assert expected_total >= 0
 
     if limit is None and expected_total > 10:
         assert total / expected_total > 0.9, (total, expected_total)  # just in case, maybe make defensive later
 
+
+def _do_request_regular(*, query: str, start: int) -> requests.Response:
+    params = {
+        'query': query,
+        'all': 'Search All',
+        'start': str(start),
+    }
+    return requests.get(
+        url='https://pinboard.in/search',
+        params=params,
+    )
+
+
+def _do_request_tag(*, query: str, start: int) -> requests.Response:
+    params = {
+        'start': str(start),
+    }
+    return requests.get(
+        url=f'https://pinboard.in/t:{query}',
+        params=params,
+    )
+
+
+def search(query: PinboardQuery | str, *, limit: int | None) -> SearchResults:
+    if isinstance(query, str):
+        query = PinboardQuery(query=query)
+
+    requesters: list[tuple[Kind, Any]] = [
+        ('regular', _do_request_regular),
+        ('tag'    , _do_request_tag),
+    ]
+    for kind, requester in requesters:
+        if not query.include(kind):
+            continue
+        yield from _search(query=query.query, limit=limit, do_request=requester, kind=kind)
