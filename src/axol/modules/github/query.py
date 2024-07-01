@@ -1,5 +1,7 @@
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import assert_never, Iterator, Literal, Sequence, get_args
+
+from axol.core.query import exact, raw, doublequote, _check, Compilable
 
 
 Kind = Literal[
@@ -11,23 +13,61 @@ Kind = Literal[
 
 
 @dataclass
-class BaseGithubQuery:
+class SearchQuery:
     query: str
+    kind: Kind
 
 
 @dataclass
-class GithubQuery(BaseGithubQuery):
+class Query(Compilable[SearchQuery]):
+    query: str | raw | exact
     included: Sequence[Kind] | None = None
     excluded: Sequence[Kind] | None = None
 
-    def __post_init__(self) -> None:
-        assert not (self.included is not None and self.excluded is not None)
+    def compile(self) -> Iterator[SearchQuery]:
+        all_kinds: list[Kind] = list(get_args(Kind))
 
-    def include(self, kind: Kind) -> bool:
         included = self.included
         excluded = self.excluded
+        assert not (included is not None and excluded is not None)
         if included is not None:
-            return kind in included
-        if excluded is not None:
-            return kind not in excluded
-        return True
+            kinds = [kind for kind in all_kinds if kind in included]
+        elif excluded is not None:
+            kinds = [kind for kind in all_kinds if kind not in excluded]
+        else:
+            kinds = all_kinds
+        assert len(kinds) > 0, self  # just in case
+
+        query = self.query
+        qq: str
+        match query:
+            case raw(q):
+                qq = q
+            case exact(q) | str(q):
+                # NOTE: if we don't quote, it seems to match as OR
+                # e.g. bret victor matches just "victor" here https://github.com/milonmaze/privacy-terms-observatory-beta/issues/34
+
+                # even for single term stuff might make sense
+                # e.g. searching github.com/karlicoss might match mentions of @karlicoss
+                # FIXME would be good to double check and see if string that we search is present inside?
+                # NOTE: e.g. for issue search, the match might be from one of the comments in discussion
+                # in case we decide to filter on the client side
+                qq = doublequote(_check(q))
+            case _:
+                assert_never(query)
+
+        for kind in kinds:
+            yield SearchQuery(query=qq, kind=kind)
+
+
+def test() -> None:
+    assert list(Query('just testing', included=['commits', 'issues']).compile()) == [
+        SearchQuery('"just testing"', kind='issues'),
+        SearchQuery('"just testing"', kind='commits'),
+    ]
+
+    assert list(Query('whatever', excluded=['code']).compile()) == [
+        SearchQuery('"whatever"', kind='repositories'),
+        SearchQuery('"whatever"', kind='issues'),
+        SearchQuery('"whatever"', kind='commits'),
+    ]

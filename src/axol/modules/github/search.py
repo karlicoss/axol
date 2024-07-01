@@ -1,12 +1,11 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Iterator, Protocol, Sequence, cast
+from typing import Any, Callable, Iterator, Protocol, Sequence
 
-import github
 from github import (
     Github,
-    GithubException,  # TODO handle exceptions later?
+    # GithubException,  # TODO handle exceptions later?
 )
 from github.Commit import Commit
 from github.ContentFile import ContentFile
@@ -17,7 +16,8 @@ from github.GithubObject import NotSet, Opt
 from loguru import logger
 
 from axol.core.common import SearchResults, Uid
-from .query import GithubQuery, Kind
+from axol.core.query import compile_queries
+from .query import Query, Kind
 
 
 REQUIRES = ['PyGithub']
@@ -157,9 +157,9 @@ class SearchCommits(Search):
         return x.sha
 
 
-def search(*, query: GithubQuery | str, limit: int | None) -> SearchResults:
-    if isinstance(query, str):
-        query = GithubQuery(query=query)
+def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
+    _queries = [Query(q) if isinstance(q, str) else q for q in queries]
+    search_queries = compile_queries(_queries)
 
     # TODO hmm a bit too spammy
     # would be nice to disable response bodies?
@@ -175,13 +175,14 @@ def search(*, query: GithubQuery | str, limit: int | None) -> SearchResults:
         per_page=100,
     )
 
-    for Searcher in [
+    Searchers = {s.KIND: s for s in [
         SearchRepositories,
         SearchIssues,
         SearchCommits,
         SearchCode,
-    ]:
-        if not query.include(Searcher.KIND):
-            continue
+    ]}
+
+    for squery in search_queries:
+        Searcher = Searchers[squery.kind]
         searcher = Searcher(api=api)  # type: ignore[abstract]
-        yield from searcher.search(query=query.query, limit=limit)
+        yield from searcher.search(query=squery.query, limit=limit)

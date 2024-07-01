@@ -4,7 +4,9 @@ from loguru import logger
 import praw  # type: ignore[import-untyped]
 from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
 
-from axol.core.common import  SearchResults, Uid
+from axol.core.common import SearchResults, Uid
+from axol.core.query import compile_queries
+from .query import Query
 
 
 REQUIRES = ['praw']
@@ -59,7 +61,7 @@ def _uid(r: Submission) -> Uid:
     return u
 
 
-def search(*, query: str, limit: int | None) -> SearchResults:
+def _search(*, query: str, limit: int | None) -> SearchResults:
     qstr = f'{query=}'
     # note limit is purely to somewhat limit number of api calls
     # e.g. here it would likely return more results
@@ -108,6 +110,14 @@ def search(*, query: str, limit: int | None) -> SearchResults:
             yield uid, jsonify(r)
     total = len(uids)
     logger.debug(f'{qstr} -- got {total} results')
+
+
+def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
+    _queries = [Query(q) if isinstance(q, str) else q for q in queries]
+    search_queries = compile_queries(_queries)
+
+    for squery in search_queries:
+        yield from _search(query=squery.query, limit=limit)
 
 # TODO yield query as well?
 # might be useful to have it in the db

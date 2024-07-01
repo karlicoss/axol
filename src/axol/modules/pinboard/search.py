@@ -1,13 +1,14 @@
 import re
 import time
-from typing import Any, Callable
+from typing import Any
 
 from loguru import logger
 import orjson
 import requests
 
 from axol.core.common import notnone, Json, SearchResults, Uid
-from .query import PinboardQuery, Kind
+from axol.core.query import compile_queries
+from .query import Query, Kind
 
 
 def _search(
@@ -132,15 +133,20 @@ def _do_request_tag(*, query: str, start: int) -> requests.Response:
     )
 
 
-def search(query: PinboardQuery | str, *, limit: int | None) -> SearchResults:
-    if isinstance(query, str):
-        query = PinboardQuery(query=query)
+_REQUESTERS: dict[Kind, Any] = {
+    'regular': _do_request_regular,
+    'tag'    : _do_request_tag,
+}
 
-    requesters: list[tuple[Kind, Any]] = [
-        ('regular', _do_request_regular),
-        ('tag'    , _do_request_tag),
-    ]
-    for kind, requester in requesters:
-        if not query.include(kind):
-            continue
-        yield from _search(query=query.query, limit=limit, do_request=requester, kind=kind)
+
+def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
+    _queries = [Query(q) if isinstance(q, str) else q for q in queries]
+    search_queries = compile_queries(_queries)
+
+    # TODO ugh.. why so boilerplaty...
+
+    for squery in search_queries:
+        requester = _REQUESTERS[squery.kind]
+        # FIXME I might need to either merge them here
+        # or just ignore dupes when we insert in the db
+        yield from _search(query=squery.query, limit=limit, do_request=requester, kind=squery.kind)

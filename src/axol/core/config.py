@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from typing import Any, Protocol, Self, Sequence
 
 from .common import Json, SearchResults
@@ -68,6 +69,6 @@ def get_configs(*, include: str | None) -> list[Config]:
     import axol.user_config as C
     configs = list(C.configs())
     if include is not None:
-        configs = [c for c in configs if include in c.name]
+        configs = [c for c in configs if re.search(include, c.name)]
     assert len(configs) > 0
     return configs

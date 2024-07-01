@@ -14,6 +14,9 @@ def search_all(
     queries: Sequence[str],
     limit: int | None,
 ) -> Iterator[SearchResult]:
+    # just a sanity check to make sure we didn't pass single string by accident
+    assert not isinstance(queries, str), queries
+
     handled = set()
     for query in queries:
         for uid, j in search_function(query=query, limit=limit):
