@@ -68,17 +68,15 @@ def cmd_feed(*, include: str | None) -> None:
     # TODO add argument for name and list?
     configs = get_configs(include=include)
     for config in configs:
-        # FIXME read only mode or something?
-        # definitely makes sense considering constructor creates the db if it doesn't exist
-        with Database(config.db_path) as db:
-            for uid, crawl_dt, j in db.select_all():
-                try:
-                    pj = config.parse(j)
-                except Exception as e:
-                    logger.exception(e)
-                    logger.error(f'while parsing {j}')
-                    raise e
-                print(uid, pj)
+        for uid, crawl_dt, j in config.select_all():
+            try:
+                # TODO move parse inside select_all?
+                pj = config.parse(j)
+            except Exception as e:
+                logger.exception(e)
+                logger.error(f'while parsing {j}')
+                raise e
+            print(uid, pj)
 
 
 @main.command(name='configs')
@@ -103,7 +101,7 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
                     **dataclasses.asdict(sq),
                 })
         else:
-            assert dataclasses.asdict(config).keys() == {'name', 'queries'}, config
+            assert dataclasses.asdict(config).keys() == {'name', 'queries', 'exclude'}, config
             queries = config.queries
             if len(queries) == 1:
                 queries = queries[0]  # just for brevity
@@ -111,6 +109,7 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
                 **d,
                 'name': config.name,
                 'queries': queries,
+                'exclude': config.exclude,
             }
             datas.append(d)
 

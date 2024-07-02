@@ -1,10 +1,15 @@
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 import re
-from typing import Any, Protocol, Self, Sequence
+from typing import Any, Callable, Iterator, Protocol, Self, Sequence
 
-from .common import Json, SearchResults
+import orjson
+from loguru import logger
+
+from .common import Json, SearchResults, DbResult
+from .storage import Database
 from .query import compile_queries
 
 
@@ -25,10 +30,16 @@ class Mixin(ABC):
     QueryType: type = NotImplemented
 
 
+ExcludeP = Callable[[bytes], bool]
+
+
 @dataclass
 class Config(Mixin):
     name: str
     queries: Sequence[Query]
+    exclude: ExcludeP | None
+    # FIXME use in search and retrieval
+    # if matched any during retrieval, warn about pruning?
 
     @abstractmethod
     def parse(self, j: Json):
@@ -51,6 +62,25 @@ class Config(Mixin):
                 # TODO could yield query here?
                 yield uid, j
 
+    def select_all(self) -> Iterator[DbResult]:
+        exclude = self.exclude
+        # FIXME read only mode or something?
+        # definitely makes sense considering constructor creates the db if it doesn't exist
+        total = 0
+        excluded = 0
+        with Database(self.db_path) as db:
+            for uid, crawl_timestamp_utc, blob in db.select_all():
+                total += 1
+                # FIXME filter out after search as well
+                if exclude is not None and exclude(blob):
+                    excluded += 1
+                    continue
+                crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
+                j = orjson.loads(blob)
+                yield (uid, crawl_dt, j)
+        if excluded > 0:
+            logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
+
     @property
     def db_path(self) -> Path:
         return storage_dir() / f'{self.name}.sqlite'  # FIXME slugify
@@ -62,6 +92,7 @@ class Config(Mixin):
         name: str | None = None,
         query_name: str | None = None,
         queries: Sequence[Query | str],
+        exclude: ExcludeP | None = None,
     ) -> Self:
         assert (name is None) ^ (query_name is None)
         if name is None:
@@ -78,7 +109,7 @@ class Config(Mixin):
                 _queries.append(cls.QueryType(query))
             else:
                 _queries.append(query)
-        return cls(name=name, queries=_queries)
+        return cls(name=name, queries=_queries, exclude=exclude)
 
 
 def storage_dir() -> Path:
