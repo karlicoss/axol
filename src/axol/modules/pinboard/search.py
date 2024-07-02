@@ -7,8 +7,7 @@ import orjson
 import requests
 
 from axol.core.common import notnone, Json, SearchResults, Uid
-from axol.core.query import compile_queries
-from .query import Query, Kind
+from .query import SearchQuery, Kind
 
 
 def _search(
@@ -139,14 +138,6 @@ _REQUESTERS: dict[Kind, Any] = {
 }
 
 
-def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
-    _queries = [Query(q) if isinstance(q, str) else q for q in queries]
-    search_queries = compile_queries(_queries)
-
-    # TODO ugh.. why so boilerplaty...
-
-    for squery in search_queries:
-        requester = _REQUESTERS[squery.kind]
-        # FIXME I might need to either merge them here
-        # or just ignore dupes when we insert in the db
-        yield from _search(query=squery.query, limit=limit, do_request=requester, kind=squery.kind)
+def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
+    requester = _REQUESTERS[query.kind]
+    yield from _search(query=query.query, limit=limit, do_request=requester, kind=query.kind)

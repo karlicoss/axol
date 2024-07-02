@@ -16,8 +16,7 @@ from github.GithubObject import NotSet, Opt
 from loguru import logger
 
 from axol.core.common import SearchResults, Uid
-from axol.core.query import compile_queries
-from .query import Query, Kind
+from .query import Kind, SearchQuery
 
 
 REQUIRES = ['PyGithub']
@@ -157,10 +156,15 @@ class SearchCommits(Search):
         return x.sha
 
 
-def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
-    _queries = [Query(q) if isinstance(q, str) else q for q in queries]
-    search_queries = compile_queries(_queries)
+SEARCHERS = {s.KIND: s for s in [
+    SearchRepositories,
+    SearchIssues,
+    SearchCommits,
+    SearchCode,
+]}
 
+
+def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
     # TODO hmm a bit too spammy
     # would be nice to disable response bodies?
     # github.enable_console_debug_logging()
@@ -175,14 +179,6 @@ def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
         per_page=100,
     )
 
-    Searchers = {s.KIND: s for s in [
-        SearchRepositories,
-        SearchIssues,
-        SearchCommits,
-        SearchCode,
-    ]}
-
-    for squery in search_queries:
-        Searcher = Searchers[squery.kind]
-        searcher = Searcher(api=api)  # type: ignore[abstract]
-        yield from searcher.search(query=squery.query, limit=limit)
+    Searcher = SEARCHERS[query.kind]
+    searcher = Searcher(api=api)  # type: ignore[abstract]
+    yield from searcher.search(query=query.query, limit=limit)

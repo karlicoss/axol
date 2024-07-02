@@ -1,18 +1,28 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from pathlib import Path
 import re
 from typing import Any, Protocol, Self, Sequence
 
 from .common import Json, SearchResults
+from .query import compile_queries
 
 
 # the searcher decides on the query type itself?
+# TODO make these two typed? not sure how..
 Query = Any
+SearchQuery = Any
 
 
-class Mixin(Protocol):
-    PREFIX: str
+class SearchF(Protocol):
+    # FIXME query type?
+    def __call__(self, query: SearchQuery, *, limit: int | None) -> SearchResults:
+        ...
+
+
+class Mixin(ABC):
+    PREFIX: str = NotImplemented
+    QueryType: type = NotImplemented
 
 
 @dataclass
@@ -25,10 +35,21 @@ class Config(Mixin):
         # TODO not sure about this.. also kinda annoying it erases the type..
         raise NotImplementedError
 
+    @property
     @abstractmethod
-    def search(self, *, query: Query, limit: int | None) -> SearchResults:
-        # FIXME maybe doesn't need to accept queries??
+    def search(self) -> SearchF:
         raise NotImplementedError
+
+    def search_all(self, *, limit: int | None) -> SearchResults:
+        search_queries = compile_queries(self.queries)
+        handled = set()
+        for search_query in search_queries:
+            for uid, j in self.search(query=search_query, limit=limit):
+                if uid in handled:
+                    continue
+                handled.add(uid)
+                # TODO could yield query here?
+                yield uid, j
 
     @property
     def db_path(self) -> Path:
@@ -40,7 +61,7 @@ class Config(Mixin):
         *,
         name: str | None = None,
         query_name: str | None = None,
-        queries,
+        queries: Sequence[Query | str],
     ) -> Self:
         assert (name is None) ^ (query_name is None)
         if name is None:
@@ -50,11 +71,13 @@ class Config(Mixin):
             assert PREFIX is not None, cls
             name = PREFIX + '_' + query_name
 
-        _queries: Sequence[Query]
-        if isinstance(queries, (list, tuple)):
-            _queries = queries
-        else:
-            _queries = [queries]
+        assert isinstance(queries, (list, tuple))
+        _queries: list[Query] = []
+        for query in queries:
+            if isinstance(query, str):
+                _queries.append(cls.QueryType(query))
+            else:
+                _queries.append(query)
         return cls(name=name, queries=_queries)
 
 

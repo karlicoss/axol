@@ -5,9 +5,8 @@ from typing import Any
 import click
 from loguru import logger
 
-from .config import get_configs
+from .config import get_configs, Config
 from .query import compile_queries
-from .search import search_all
 from .storage import Database
 
 
@@ -31,12 +30,14 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> No
 
     Example:
 
-        search axol.modules.hackernews.search whatever
+        search axol.modules.hackernews.config whatever
     """
     # TODO deserialize?
     # and raw mode that doesn't try to deserialise?
-    search_module = importlib.import_module(module)
-    for uid, j in search_module.search(queries=[query], limit=limit):
+    config_module = importlib.import_module(module)
+    config_class: type[Config] = getattr(config_module, 'Config')
+    config = config_class.make(query_name='adhoc', queries=[query])
+    for uid, j in config.search_all(limit=limit):
         if not quiet:
             print(uid, j)
 
@@ -51,7 +52,7 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
     """
     configs = get_configs(include=include)
     for config in configs:
-        results = search_all(search_function=config.search, queries=config.queries, limit=limit)
+        results = config.search_all(limit=limit)
 
         if dry:
             for uid, j in results:
@@ -88,8 +89,10 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
 
     datas = []
     for config in configs:
+        tname = type(config).__module__ + '.' + type(config).__name__
+        tname = tname.removeprefix('axol.modules')  # just for brevity when using default modules
         d: dict[str, Any] = {
-            'Type': type(config).__name__,
+            'Type': tname,
         }
 
         if search:

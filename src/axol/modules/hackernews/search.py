@@ -4,8 +4,7 @@ import hn  # type: ignore[import-untyped]
 # TODO don't remember what type of imports I decided is best?
 # absolute imports in modules??
 from axol.core.common import SearchResults, Uid
-from axol.core.query import compile_queries
-from .query import Query
+from .query import SearchQuery
 
 
 REQUIRES = ['python-hn']
@@ -53,19 +52,13 @@ def _search(query: str, *, limit: int | None) -> SearchResults:
     logger.info(f'query:{query} -- got {total} results')
 
 
-def search(queries: list[Query | str], *, limit: int | None) -> SearchResults:
-    _queries = [Query(q) if isinstance(q, str) else q for q in queries]
-    search_queries = compile_queries(_queries)
-
-    for squery in search_queries:
-        yield from _search(query=squery.query, limit=limit)
+def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
+    yield from _search(query=query.query, limit=limit)
 
 
 def test() -> None:
-    from axol.core.query import raw
-
     def check(query: str) -> int:
-        slist = list(search(queries=[Query(raw(query))], limit=None))
+        slist = list(search(query=SearchQuery(query), limit=None))
         return len(slist)
 
     # NOTE: seems like it returns fuzzy results
