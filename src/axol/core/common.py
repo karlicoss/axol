@@ -14,6 +14,8 @@ DbResult = tuple[Uid, datetime_aware, Json]
 
 
 T = TypeVar('T')
+
+
 def _check(x: Any, t: Type[T]) -> T:
     assert isinstance(x, t), x
     return x

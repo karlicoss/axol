@@ -4,10 +4,10 @@ from typing import Any
 
 import click
 from loguru import logger
+import orjson
 
 from .config import get_configs, Config
 from .query import compile_queries
-from .storage import Database
 
 
 @click.group()
@@ -37,8 +37,9 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> No
     config_module = importlib.import_module(module)
     config_class: type[Config] = getattr(config_module, 'Config')
     config = config_class.make(query_name='adhoc', queries=[query])
-    for uid, j in config.search_all(limit=limit):
+    for uid, jblob in config.search_all(limit=limit):
         if not quiet:
+            j = orjson.loads(jblob)
             print(uid, j)
 
 
@@ -55,11 +56,11 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
         results = config.search_all(limit=limit)
 
         if dry:
-            for uid, j in results:
+            for uid, jblob in results:
+                j = orjson.loads(jblob)
                 print(uid, config.parse(j))
         else:
-            with Database(config.db_path) as db:
-                db.insert(results)
+            config.insert(results)
 
 
 @main.command(name='feed')
@@ -96,12 +97,12 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
         if search:
             squeries = compile_queries(config.queries)
             for sq in squeries:
-                datas.append({
+                d = {
                     **d,
                     **dataclasses.asdict(sq),
-                })
+                }
+                datas.append(d)
         else:
-            assert dataclasses.asdict(config).keys() == {'name', 'queries', 'exclude'}, config
             queries = config.queries
             if len(queries) == 1:
                 queries = queries[0]  # just for brevity
@@ -109,11 +110,12 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
                 **d,
                 'name': config.name,
                 'queries': queries,
-                'exclude': config.exclude,
+                'exclude': config.exclude is not None,  # eh, it's a function so can't pretty print
             }
             datas.append(d)
 
     import tabulate
+
     print(tabulate.tabulate(datas, headers='keys', stralign='right'))
 
 
@@ -125,7 +127,3 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
 
 if __name__ == '__main__':
     main()
-
-
-# FIXME for hn crawling same query may give different sets of results at a very short timespan?
-# try querying the same thing every 5 mins to check

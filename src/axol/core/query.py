@@ -30,12 +30,12 @@ Compiled = TypeVar('Compiled', covariant=True)
 
 
 class Compilable(Protocol[Compiled]):
-    def compile(self) -> Iterator[Compiled]:
-        ...
+    def compile(self) -> Iterator[Compiled]: ...
 
 
 def compile_queries(queries: Sequence[Compilable[Compiled]]) -> Iterator[Compiled]:
     def it() -> Iterator[Compiled]:
         for query in queries:
             yield from query.compile()
+
     return unique_everseen(it())

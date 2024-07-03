@@ -3,26 +3,25 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterator, Protocol, Self, Sequence
+from typing import Any, Callable, Iterable, Iterator, Protocol, Self, Sequence
 
 import orjson
 from loguru import logger
 
-from .common import Json, SearchResults, DbResult
+from .common import Json, SearchResults, DbResult, Uid
 from .storage import Database
 from .query import compile_queries
 
 
 # the searcher decides on the query type itself?
-# TODO make these two typed? not sure how..
+# TODO make these two typed? not sure how.. maybe use Compilable protocol?
 Query = Any
 SearchQuery = Any
 
 
 class SearchF(Protocol):
-    # FIXME query type?
-    def __call__(self, query: SearchQuery, *, limit: int | None) -> SearchResults:
-        ...
+    # TODO typed query??
+    def __call__(self, query: SearchQuery, *, limit: int | None) -> SearchResults: ...
 
 
 class Mixin(ABC):
@@ -33,13 +32,13 @@ class Mixin(ABC):
 ExcludeP = Callable[[bytes], bool]
 
 
+# FIXME maybe feed is a better name??
 @dataclass
 class Config(Mixin):
     name: str
     queries: Sequence[Query]
+    db_path: Path
     exclude: ExcludeP | None
-    # FIXME use in search and retrieval
-    # if matched any during retrieval, warn about pruning?
 
     @abstractmethod
     def parse(self, j: Json):
@@ -51,7 +50,9 @@ class Config(Mixin):
     def search(self) -> SearchF:
         raise NotImplementedError
 
-    def search_all(self, *, limit: int | None) -> SearchResults:
+    def search_all(self, *, limit: int | None) -> Iterator[tuple[Uid, bytes]]:
+        exclude = self.exclude
+
         search_queries = compile_queries(self.queries)
         handled = set()
         for search_query in search_queries:
@@ -59,19 +60,27 @@ class Config(Mixin):
                 if uid in handled:
                     continue
                 handled.add(uid)
+
+                jblob = orjson.dumps(j)
+                if exclude is not None and exclude(jblob):
+                    continue
+
                 # TODO could yield query here?
-                yield uid, j
+                yield uid, jblob
+
+    def insert(self, results: Iterable[tuple[Uid, bytes]]) -> None:
+        # todo return inserted count?
+        # todo not sure if need to use self.exclude here?
+        with Database(self.db_path, writable=True) as db:
+            db.insert(results)
 
     def select_all(self) -> Iterator[DbResult]:
         exclude = self.exclude
-        # FIXME read only mode or something?
-        # definitely makes sense considering constructor creates the db if it doesn't exist
         total = 0
         excluded = 0
         with Database(self.db_path) as db:
             for uid, crawl_timestamp_utc, blob in db.select_all():
                 total += 1
-                # FIXME filter out after search as well
                 if exclude is not None and exclude(blob):
                     excluded += 1
                     continue
@@ -81,26 +90,29 @@ class Config(Mixin):
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
 
-    @property
-    def db_path(self) -> Path:
-        return storage_dir() / f'{self.name}.sqlite'  # FIXME slugify
-
     @classmethod
     def make(
         cls: type[Self],
         *,
-        name: str | None = None,
-        query_name: str | None = None,
+        db_path: str | Path | None = None,
+        query_name: str,
         queries: Sequence[Query | str],
         exclude: ExcludeP | None = None,
     ) -> Self:
-        assert (name is None) ^ (query_name is None)
-        if name is None:
-            # build from query_name and prefix
-            assert query_name is not None
-            PREFIX = cls.PREFIX
-            assert PREFIX is not None, cls
-            name = PREFIX + '_' + query_name
+        assert re.fullmatch(r'\w+', query_name)
+
+        PREFIX = cls.PREFIX
+        assert PREFIX is not None, cls
+        name = PREFIX + '_' + query_name
+
+        if db_path is None:
+            db_path = name + '.sqlite'
+
+        if isinstance(db_path, str):
+            db_path = Path(db_path)
+
+        if not db_path.is_absolute():
+            db_path = storage_dir() / db_path
 
         assert isinstance(queries, (list, tuple))
         _queries: list[Query] = []
@@ -109,11 +121,13 @@ class Config(Mixin):
                 _queries.append(cls.QueryType(query))
             else:
                 _queries.append(query)
-        return cls(name=name, queries=_queries, exclude=exclude)
+        assert len(_queries) > 0
+        return cls(name=name, db_path=db_path, queries=_queries, exclude=exclude)
 
 
 def storage_dir() -> Path:
     import axol.user_config as C
+
     res = C.STORAGE_DIR
     assert res.is_dir(), res
     return res
@@ -121,6 +135,7 @@ def storage_dir() -> Path:
 
 def get_configs(*, include: str | None) -> list[Config]:
     import axol.user_config as C
+
     configs = list(C.configs())
     if include is not None:
         configs = [c for c in configs if re.search(include, c.name)]
