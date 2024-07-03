@@ -29,7 +29,7 @@ class HackernewsSearch:
     def __init__(self) -> None:
         self.logger = get_logger()
 
-    # TODO FIXME lots of code duplication with twitter
+    # TODO lots of code duplication with twitter
     def iter_search(self, query: str, limit=None) -> Iterator[Result]:
         from hn import search_by_date # pip3 install python-hn
 
@@ -76,10 +76,10 @@ class HackernewsSearch:
             )
 
     def search(self, query: str, limit=None) -> List[Result]:
-        # TODO FIXME do I need to sort anything?
+        # TODO do I need to sort anything?
         return list(self.iter_search(query=query, limit=limit))
 
-    # TODO FIXME search_all gonna look very similar?
+    # TODO search_all gonna look very similar?
     def search_all(self, queries: List[str], limit=None) -> List[Result]:
-        assert len(queries) == 1 # TODO FIXME
+        assert len(queries) == 1
         return self.search(query=queries[0], limit=limit)

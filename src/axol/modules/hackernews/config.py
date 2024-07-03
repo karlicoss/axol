@@ -17,4 +17,5 @@ class Config(BaseConfig):
     @property
     def search(self) -> SearchF:
         from . import search
+
         return search.search

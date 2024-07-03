@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from axol.core.common import datetime_aware, Json
+from axol.core.common import datetime_aware, Json, _check
 
 
+# todo use parent_id?
 @dataclass
 class Base:
     id: str
@@ -31,6 +32,7 @@ class Story(Base):
 
 Result = Comment | Story
 
+
 # todo add uid here? not sure it should be inside the entity...
 def parse(j: Json) -> Result:
     j = {k: v for k, v in j.items()}
@@ -47,30 +49,34 @@ def parse(j: Json) -> Result:
 
     ignore = [
         'created_at_i',  # there is created_at which has the date
-        'updated_at',    # we don't use that
-        'parent_id',     # we don't use this, maybe later
+        'updated_at',  # we don't use that
+        'parent_id',  # we don't use this, maybe later
         'children',  # TODO might be useful to handle later?
         # NOTE: children isn't the same thing as the number of comments
     ]
     if entity_type == 'comment':
-        ignore.extend([
-            ## these aren't useful for comments (yet?)
-            'story_id',
-            'story_title',
-            'story_url',
-            ##
-        ])
+        ignore.extend(
+            [
+                ## these aren't useful for comments (yet?)
+                'story_id',
+                'story_title',
+                'story_url',
+                ##
+            ]
+        )
     elif entity_type == 'story':
-        ignore.extend([
-            'story_id',  # same as object_id
-        ])
+        ignore.extend(
+            [
+                'story_id',  # same as object_id
+            ]
+        )
     else:
         raise RuntimeError(j)
 
     for k in ignore:
         j.pop(k, None)
 
-    author = j.pop('author'); assert isinstance(author, str)
+    author = _check(j.pop('author'), str)
     object_id = j.pop('objectID')
 
     created_at_s = j.pop('created_at')
@@ -79,9 +85,10 @@ def parse(j: Json) -> Result:
 
     result: Result
     if entity_type == 'comment':
-        comment_text = j.pop('comment_text'); assert isinstance(comment_text, str)
+        comment_text = _check(j.pop('comment_text'), str)
+        points = j.pop('points', None)
         # ugh. sometimes points isn't present, but when they do, they are none?
-        points = j.pop('points', None); assert points is None
+        assert points is None
         result = Comment(
             id=object_id,
             created_at=created_at,
@@ -93,9 +100,9 @@ def parse(j: Json) -> Result:
         _story_text = j.pop('story_text', None)
         # sometimes it's not present, sometimes present but empty
         story_text = None if len(_story_text or '') == 0 else _story_text
-        num_comments = j.pop('num_comments'); assert isinstance(num_comments, int)
-        points = j.pop('points'); assert isinstance(points, int)
-        title = j.pop('title'); assert isinstance(title, str)
+        num_comments = _check(j.pop('num_comments'), int)
+        points = _check(j.pop('points'), int)
+        title = _check(j.pop('title'), str)
         _url = j.pop('url', None)
         # seems that sometimes (not always!) url is present but empty for things like "ask hn"
         url = None if len(_url or '') == 0 else _url

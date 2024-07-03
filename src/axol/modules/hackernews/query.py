@@ -14,8 +14,8 @@ class SearchQuery:
 class Query(Compilable[SearchQuery]):
     # NOTE: normal search also matches strings inside urls
     # NOTE: doesn't support 'or'
+    # NOTE: looks like you can precede a word with - to exclude from query?
     query: str | raw | exact
-
 
     def compile(self) -> Iterator[SearchQuery]:
         query = self.query
@@ -27,7 +27,9 @@ class Query(Compilable[SearchQuery]):
                 # NOTE: when quoted, still does some fuzzly-ish stuff
                 #       e.g. for "bret victor" matches "Bret-Victor" or "bret_victor"
                 # NOTE: for hn, definitely makes sense to make it exact search by default
-                #       e.g. "bret victor" matches "Don't Bet Your Future on Specialized Vector Databases"
+                #       e.g.
+                #       - search(bret victor) matches "Don't Bet Your Future on Specialized Vector Databases"
+                #       - search(PIM) matches pimp
                 yield SearchQuery(query=doublequote(_check(q)))
             case _:
                 assert_never(query)
