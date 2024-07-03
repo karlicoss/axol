@@ -62,7 +62,7 @@ class Search(Mixin):  # todo make it typed?
 
                 uid = self.get_uid(x)
 
-                is_dupe = uid in uids # check uniqueness just in case
+                is_dupe = uid in uids  # check uniqueness just in case
                 if is_dupe:
                     if isinstance(x, Commit):  # meh, maybe make it a specific class attribute?
                         # commits can be duplicated due to forks
@@ -73,7 +73,6 @@ class Search(Mixin):  # todo make it typed?
 
                 uids[uid] = x
                 yield uid, x
-
 
         uids: dict[Uid, ContentFile] = {}
         # todo maybe, only use additional when there is close to 100 results??
@@ -156,12 +155,15 @@ class SearchCommits(Search):
         return x.sha
 
 
-SEARCHERS = {s.KIND: s for s in [
-    SearchRepositories,
-    SearchIssues,
-    SearchCommits,
-    SearchCode,
-]}
+SEARCHERS = {
+    s.KIND: s
+    for s in [
+        SearchRepositories,
+        SearchIssues,
+        SearchCommits,
+        SearchCode,
+    ]
+}
 
 
 def search(query: SearchQuery, *, limit: int | None) -> SearchResults:

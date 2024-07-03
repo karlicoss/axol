@@ -53,10 +53,10 @@ def parse(j: Json) -> Result:
     tags = [t for t in tags if len(t) > 0]  # sometimes there is an empty string here
 
     descr = j.pop('description')  # can be None
-    author  = _check(j.pop('author')     , str)
-    title   = _check(j.pop('title')      , str)
-    url     = _check(j.pop('url')        , str)
-    created = _check(j.pop('created')    , str)
+    author = _check(j.pop('author'), str)
+    title = _check(j.pop('title'), str)
+    url = _check(j.pop('url'), str)
+    created = _check(j.pop('created'), str)
 
     # kinda unclear which timezone is date in
     # but tried fetching page from different machines and it seems the same

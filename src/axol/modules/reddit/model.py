@@ -19,6 +19,11 @@ class Submission:
     _permalink: str
     title: str
 
+    # usually just a reddit link
+    # but sometimes contains direct link to the site
+    # e.g. https://www.reddit.com/r/hypeurls/comments/10j5iy9/ask_hn_has_anyone_fully_attempted_bret_victors/
+    url: str
+
     selftext_md: str
     selftext_html: str | None  # can be none for 'link' submission
 
@@ -34,19 +39,14 @@ def parse(j: Json) -> Submission:
     ts_utc = j['created_utc']
     created_at = datetime.fromtimestamp(ts_utc, tz=timezone.utc)
 
-    url = j['url']
-    # TODO right, so it might actually be direct link to website
-    # e.g. https://www.reddit.com/r/hypeurls/comments/10j5iy9/ask_hn_has_anyone_fully_attempted_bret_victors/
-    # assert 'https://www.reddit.com/r/' in url, url
-    # FIXME add url to Submission object? and use downstream
-
     selftext_html: str | None = j['selftext_html']
-    author_name = j['author']['name']
+    author_name: str | None = j['author']['name']
 
     from_old_axol = j.get('_from_old_axol', False)
     if not from_old_axol:
         assert isinstance(author_name, str), j
 
+    # fmt: off
     return Submission(
         id=j['id'],
         created_at     = created_at,
@@ -56,6 +56,8 @@ def parse(j: Json) -> Submission:
         _permalink     = _check(j['permalink']                , str),
         title          = _check(j['title']                    , str),
         selftext_md    = _check(j['selftext']                 , str),
+        url            = _check(j['url']                      , str),
         author_name    = author_name,
         selftext_html  = selftext_html,
     )
+    # fmt: on

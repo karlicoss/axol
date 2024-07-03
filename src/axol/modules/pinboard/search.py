@@ -134,7 +134,7 @@ def _do_request_tag(*, query: str, start: int) -> requests.Response:
 
 _REQUESTERS: dict[Kind, Any] = {
     'regular': _do_request_regular,
-    'tag'    : _do_request_tag,
+    'tag': _do_request_tag,
 }
 
 

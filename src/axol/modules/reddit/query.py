@@ -21,8 +21,8 @@ class Query(Compilable[SearchQuery]):
     # probably best to do it at search time
     # that way could reuse the same code both before inserting in the db and during retrieval
 
-    # FIXME port EXCLUDED_SUBREDDIT from old axol?
-    # FIXME port domain: search fold old axol?
+    # TODO port EXCLUDED_SUBREDDIT from old axol?
+    # TODO port domain: search fold old axol?
 
     # NOTE: seems like it might find things not necessarily in link/username/body etc
     # e.g. "bret victor" results in

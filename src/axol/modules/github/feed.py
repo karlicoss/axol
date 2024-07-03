@@ -17,4 +17,5 @@ class Feed(BaseFeed):
     @property
     def search(self) -> SearchF:
         from . import search
+
         return search.search

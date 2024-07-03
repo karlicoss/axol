@@ -18,6 +18,7 @@ class SearchQuery:
 
 @dataclass
 class Query(Compilable[SearchQuery]):
+    # NOTE: two words (unquoted) on pinboard seem to work as AND?
     # NOTE: quotes are still a little fuzzy (e.g. wrt punctuation), but words in query are next to each other
     # e.g. compare quoted and unquoted ink by bret victor
     # if not quoted, the words can be spread out in the match
@@ -32,7 +33,7 @@ class Query(Compilable[SearchQuery]):
         query = self.query
         kind = self.kind
         if kind is None:
-            # looks like if it's a single word there is no point
+            # NOTE: looks like if it's a single word there is no point in tag search
             # e.g. search for configurationmanagement
             # TODO unless there are lots of results? so we can fetch them all? not sure..
             yield from Query(query=self.query, kind='regular').compile()
@@ -47,7 +48,7 @@ class Query(Compilable[SearchQuery]):
                     assert_never(query)
 
             if include_tag:
-                yield from Query(query=self.query, kind='tag'    ).compile()
+                yield from Query(query=self.query, kind='tag').compile()
             return
 
         if kind == 'regular':
@@ -55,7 +56,7 @@ class Query(Compilable[SearchQuery]):
                 case raw(q):
                     yield SearchQuery(query=q, kind=kind)
                 case exact(q) | str(q):
-                    # FIXME decide later if we wanna the default be exact or not
+                    # TODO decide later if we wanna the default be exact or not
                     # I guess doesn't hurt? even for single word queries
                     yield SearchQuery(query=doublequote(_check(q)), kind=kind)
                 case _:
@@ -66,9 +67,15 @@ class Query(Compilable[SearchQuery]):
                     yield SearchQuery(query=q, kind=kind)
                 case exact(q):
                     # exact is no-op for tags
-                    # FIXME check tags anyway?
+                    # TODO check tags anyway?
                     yield SearchQuery(query=q, kind=kind)
                 case str(q):
+                    # NOTE for multi word queries, search doesn't match all tags
+                    # e.g. "greg egan" vs tag:gregegan or tag:greg_egan or tag:greg-egan
+
+                    # so we want regular search for "greg egan"
+                    # and tag seraches for "gregegan" and "greg_egan"
+
                     qs = sorted({q.replace(' ', repl) for repl in ['', '_', '-']})
                     for q in qs:
                         yield SearchQuery(query=q, kind=kind)
@@ -80,6 +87,7 @@ def test_queries() -> None:
     def helper(*queries):
         return list(compile_queries(queries))
 
+    # fmt: off
     assert helper(
         # for raw query there is no validation for special characters etc
         Query(raw('greg " egan'), kind='regular'),
@@ -148,6 +156,4 @@ def test_queries() -> None:
     ) == [
         SearchQuery('"configurationmanagement"', kind='regular'),
     ]
-
-
-# FIXME the configs cli should print both regular queries and search queries?
+    # fmt: on

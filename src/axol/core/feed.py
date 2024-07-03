@@ -44,7 +44,6 @@ class Feed(Mixin, Generic[ResultType]):
 
     @abstractmethod
     def parse(self, j: Json) -> ResultType:
-        # TODO not sure about this.. also kinda annoying it erases the type..
         raise NotImplementedError
 
     @property
@@ -67,7 +66,7 @@ class Feed(Mixin, Generic[ResultType]):
                 if exclude is not None and exclude(jblob):
                     continue
 
-                # TODO could yield query here?
+                # todo could yield query here? not sure if super useful
                 yield uid, jblob
 
     def insert(self, results: Iterable[tuple[Uid, bytes]]) -> None:

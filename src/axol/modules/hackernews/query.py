@@ -9,7 +9,6 @@ class SearchQuery:
     query: str
 
 
-# FIXME would be nice to ensure query module isn't needed for sarching/crawling
 @dataclass
 class Query(Compilable[SearchQuery]):
     # NOTE: normal search also matches strings inside urls

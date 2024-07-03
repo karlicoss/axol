@@ -13,11 +13,14 @@ REQUIRES = ['praw']
 
 def debug_praw() -> None:
     import logging
+
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
     logger = logging.getLogger('prawcore')
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
+
+
 # debug_praw()
 
 
@@ -42,13 +45,14 @@ def jsonify(d):
     if isinstance(d, dict):
         return {k: jsonify(v) for k, v in d.items() if not _ignore_item(k, v)}
 
-    if isinstance(d, (
+    jsonish = (
         PollData,
         PollOption,
         Redditor,
         Submission,
         Subreddit,
-    )):
+    )
+    if isinstance(d, jsonish):
         return jsonify(vars(d))
 
     raise RuntimeError(f"Unexpected type: {type(d)}")
@@ -66,9 +70,8 @@ def _search(*, query: str, limit: int | None) -> SearchResults:
     # e.g. here it would likely return more results
     logger.debug(f'{qstr} -- fetching...')
 
-    # FIXME support domain queries?
-    assert 'domain:' not in query
     from axol.user_config import reddit_praw  # type: ignore[attr-defined]
+
     api = praw.Reddit(
         user_agent='axol',
         **reddit_praw.credentials(),
@@ -105,7 +108,6 @@ def _search(*, query: str, limit: int | None) -> SearchResults:
             if uid in uids:
                 continue
             uids[uid] = r
-            # FIXME not sure if need to sort here?
             yield uid, jsonify(r)
     total = len(uids)
     logger.debug(f'{qstr} -- got {total} results')
@@ -114,8 +116,6 @@ def _search(*, query: str, limit: int | None) -> SearchResults:
 def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
     yield from _search(query=query.query, limit=limit)
 
-# TODO yield query as well?
-# might be useful to have it in the db
 
 # TODO maybe search should be named after specific search provier? like praw
 # or reddit.search.praw/via_praw
