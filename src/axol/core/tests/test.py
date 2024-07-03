@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Iterator
 
 from axol.core.common import Json, Uid
-from axol.core.config import Config as BaseConfig, SearchF, ExcludeP
+from axol.core.feed import Feed as BaseFeed, SearchF, ExcludeP
 
 
 @dataclass
@@ -20,7 +20,7 @@ class Query:
 
 
 @dataclass
-class DummyConfig(BaseConfig):
+class DummyFeed(BaseFeed):
     PREFIX = 'dummy'
     QueryType = str
 
@@ -37,8 +37,8 @@ class DummyConfig(BaseConfig):
         return _search
 
 
-def make_config(*, tmp_path: Path, exclude: ExcludeP | None = None) -> DummyConfig:
-    return DummyConfig.make(
+def make_feed(*, tmp_path: Path, exclude: ExcludeP | None = None) -> DummyFeed:
+    return DummyFeed.make(
         query_name='testing',
         queries=[Query('whatever')],
         db_path=tmp_path / 'test.sqlite',
@@ -48,31 +48,31 @@ def make_config(*, tmp_path: Path, exclude: ExcludeP | None = None) -> DummyConf
 
 def test_search_excludes(tmp_path: Path) -> None:
     exclude = lambda bs: b'0000' in bs
-    config = make_config(tmp_path=tmp_path, exclude=exclude)
-    results = list(config.search_all(limit=None))
+    feed = make_feed(tmp_path=tmp_path, exclude=exclude)
+    results = list(feed.search_all(limit=None))
     assert len(results) == 90
 
 
 def test_exclude_updated(tmp_path: Path) -> None:
-    config = make_config(tmp_path=tmp_path)
-    results = list(config.search_all(limit=None))
+    feed = make_feed(tmp_path=tmp_path)
+    results = list(feed.search_all(limit=None))
     assert len(results) == 100
 
-    config.insert(results)
+    feed.insert(results)
 
-    def asdict(config: DummyConfig):
+    def asdict(feed: DummyFeed):
         d: dict[Uid, Json] = {}
-        for uid, crawl_dt, o in config.feed():
+        for uid, crawl_dt, o in feed.feed():
             assert uid not in d  # just in case
             assert not isinstance(o, Exception)
             d[uid] = o
         return d
 
-    d = asdict(config=config)
+    d = asdict(feed=feed)
     assert len(d) == 100
 
     # scenario: we crawled some stuff and then updated exclude query
     exclude = lambda bs: b'9' in bs
-    config2 = make_config(tmp_path=tmp_path, exclude=exclude)
-    d = asdict(config=config2)
+    feed2 = make_feed(tmp_path=tmp_path, exclude=exclude)
+    d = asdict(feed=feed2)
     assert len(d) == 81

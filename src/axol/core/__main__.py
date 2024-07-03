@@ -6,7 +6,7 @@ import click
 from loguru import logger
 import orjson
 
-from .config import get_configs, Config
+from .feed import get_feeds, Feed
 from .query import compile_queries
 
 
@@ -16,7 +16,7 @@ def main() -> None:
 
 
 arg_limit = click.option('--limit', type=int)
-arg_include = click.option('--include', help='name filter for search configs to use')
+arg_include = click.option('--include', help='name filter for search feeds to use')
 
 
 @main.command(name='search')
@@ -30,14 +30,14 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> No
 
     Example:
 
-        search axol.modules.hackernews.config whatever
+        search axol.modules.hackernews.feed whatever
     """
     # TODO deserialize?
     # and raw mode that doesn't try to deserialise?
-    config_module = importlib.import_module(module)
-    config_class: type[Config] = getattr(config_module, 'Config')
-    config = config_class.make(query_name='adhoc', queries=[query])
-    for uid, jblob in config.search_all(limit=limit):
+    feed_module = importlib.import_module(module)
+    feed_class: type[Feed] = getattr(feed_module, 'Feed')
+    feed = feed_class.make(query_name='adhoc', queries=[query])
+    for uid, jblob in feed.search_all(limit=limit):
         if not quiet:
             j = orjson.loads(jblob)
             print(uid, j)
@@ -49,48 +49,48 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> No
 @click.option('--dry', is_flag=True, help='search and print results only, do not modify storage')
 def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
     """
-    Search all queries in the config and save in the databases.
+    Search all queries in the feed and save in the databases.
     """
-    configs = get_configs(include=include)
-    for config in configs:
-        results = config.search_all(limit=limit)
+    feeds = get_feeds(include=include)
+    for feed in feeds:
+        results = feed.search_all(limit=limit)
 
         if dry:
             for uid, jblob in results:
                 j = orjson.loads(jblob)
-                print(uid, config.parse(j))
+                print(uid, feed.parse(j))
         else:
-            config.insert(results)
+            feed.insert(results)
 
 
 @main.command(name='feed')
 @arg_include
 def cmd_feed(*, include: str | None) -> None:
-    configs = get_configs(include=include)
-    for config in configs:
-        for uid, crawl_dt, o in config.feed():
+    feeds = get_feeds(include=include)
+    for feed in feeds:
+        for uid, crawl_dt, o in feed.feed():
             if isinstance(o, Exception):
                 logger.exception(o)
             else:
                 print(uid, o)
 
 
-@main.command(name='configs')
+@main.command(name='feeds')
 @arg_include
 @click.option('--search', is_flag=True)  # TODO think about something better
-def cmd_configs(*, include: str | None, search: bool) -> None:
-    configs = get_configs(include=include)
+def cmd_feeds(*, include: str | None, search: bool) -> None:
+    feeds = get_feeds(include=include)
 
     datas = []
-    for config in configs:
-        tname = type(config).__module__ + '.' + type(config).__name__
+    for feed in feeds:
+        tname = type(feed).__module__ + '.' + type(feed).__name__
         tname = tname.removeprefix('axol.modules')  # just for brevity when using default modules
         d: dict[str, Any] = {
             'Type': tname,
         }
 
         if search:
-            squeries = compile_queries(config.queries)
+            squeries = compile_queries(feed.queries)
             for sq in squeries:
                 d = {
                     **d,
@@ -98,14 +98,14 @@ def cmd_configs(*, include: str | None, search: bool) -> None:
                 }
                 datas.append(d)
         else:
-            queries = config.queries
+            queries = feed.queries
             if len(queries) == 1:
                 queries = queries[0]  # just for brevity
             d = {
                 **d,
-                'name': config.name,
+                'name': feed.name,
                 'queries': queries,
-                'exclude': config.exclude is not None,  # eh, it's a function so can't pretty print
+                'exclude': feed.exclude is not None,  # eh, it's a function so can't pretty print
             }
             datas.append(d)
 

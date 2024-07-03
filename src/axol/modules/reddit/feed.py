@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
 from axol.core.common import Json
-from axol.core.config import Config as BaseConfig, SearchF
+from axol.core.feed import Feed as BaseFeed, SearchF
 
 from . import model, query
 
 
 @dataclass
-class Config(BaseConfig):
+class Feed(BaseFeed):
     PREFIX = 'reddit'
     QueryType = query.Query
 

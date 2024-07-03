@@ -35,9 +35,8 @@ ExcludeP = Callable[[bytes], bool]
 ResultType = TypeVar('ResultType')
 
 
-# FIXME rename to feed?
 @dataclass
-class Config(Mixin, Generic[ResultType]):
+class Feed(Mixin, Generic[ResultType]):
     name: str
     queries: Sequence[Query]
     db_path: Path
@@ -148,11 +147,11 @@ def storage_dir() -> Path:
     return res
 
 
-def get_configs(*, include: str | None) -> list[Config]:
+def get_feeds(*, include: str | None) -> list[Feed]:
     import axol.user_config as C
 
-    configs = list(C.configs())
+    feeds = list(C.feeds())
     if include is not None:
-        configs = [c for c in configs if re.search(include, c.name)]
-    assert len(configs) > 0
-    return configs
+        feeds = [c for c in feeds if re.search(include, c.name)]
+    assert len(feeds) > 0
+    return feeds
