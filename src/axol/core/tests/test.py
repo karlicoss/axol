@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
-from axol.core.common import Json
+from axol.core.common import Json, Uid
 from axol.core.config import Config as BaseConfig, SearchF, ExcludeP
 
 
@@ -61,11 +61,11 @@ def test_exclude_updated(tmp_path: Path) -> None:
     config.insert(results)
 
     def asdict(config: DummyConfig):
-        d = {}
-        # FIXME implement feed helper?...
-        for uid, crawl_dt, j in config.select_all():
+        d: dict[Uid, Json] = {}
+        for uid, crawl_dt, o in config.feed():
             assert uid not in d  # just in case
-            d[uid] = j
+            assert not isinstance(o, Exception)
+            d[uid] = o
         return d
 
     d = asdict(config=config)

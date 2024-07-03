@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, Iterator, Protocol, Self, Sequence
+from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, Sequence, TypeVar
 
 import orjson
 from loguru import logger
 
-from .common import Json, SearchResults, DbResult, Uid
+from .common import datetime_aware, Json, SearchResults, DbResult, Uid
 from .storage import Database
 from .query import compile_queries
 
@@ -32,16 +32,19 @@ class Mixin(ABC):
 ExcludeP = Callable[[bytes], bool]
 
 
-# FIXME maybe feed is a better name??
+ResultType = TypeVar('ResultType')
+
+
+# FIXME rename to feed?
 @dataclass
-class Config(Mixin):
+class Config(Mixin, Generic[ResultType]):
     name: str
     queries: Sequence[Query]
     db_path: Path
     exclude: ExcludeP | None
 
     @abstractmethod
-    def parse(self, j: Json):
+    def parse(self, j: Json) -> ResultType:
         # TODO not sure about this.. also kinda annoying it erases the type..
         raise NotImplementedError
 
@@ -89,6 +92,18 @@ class Config(Mixin):
                 yield (uid, crawl_dt, j)
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
+
+    def feed(self) -> Iterator[tuple[Uid, datetime_aware, ResultType | Exception]]:
+        for uid, crawl_dt, j in self.select_all():
+            o: ResultType | Exception
+            try:
+                o = self.parse(j)
+            except Exception as e:
+                # todo maybe log or something?
+                err = RuntimeError(f'while parsing {j}')
+                err.__cause__ = e
+                o = err
+            yield uid, crawl_dt, o
 
     @classmethod
     def make(

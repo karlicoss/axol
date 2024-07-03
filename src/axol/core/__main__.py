@@ -66,18 +66,13 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
 @main.command(name='feed')
 @arg_include
 def cmd_feed(*, include: str | None) -> None:
-    # TODO add argument for name and list?
     configs = get_configs(include=include)
     for config in configs:
-        for uid, crawl_dt, j in config.select_all():
-            try:
-                # TODO move parse inside select_all?
-                pj = config.parse(j)
-            except Exception as e:
-                logger.exception(e)
-                logger.error(f'while parsing {j}')
-                raise e
-            print(uid, pj)
+        for uid, crawl_dt, o in config.feed():
+            if isinstance(o, Exception):
+                logger.exception(o)
+            else:
+                print(uid, o)
 
 
 @main.command(name='configs')

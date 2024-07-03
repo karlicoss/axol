@@ -7,11 +7,11 @@ from . import model, query
 
 
 @dataclass
-class Config(BaseConfig):
+class Config(BaseConfig[model.Result]):
     PREFIX = 'hackernews'
     QueryType = query.Query
 
-    def parse(self, j: Json):
+    def parse(self, j: Json) -> model.Result:
         return model.parse(j)
 
     @property
