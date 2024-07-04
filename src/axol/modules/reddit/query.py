@@ -22,7 +22,7 @@ class Query(Compilable[SearchQuery]):
     # that way could reuse the same code both before inserting in the db and during retrieval
 
     # TODO port EXCLUDED_SUBREDDIT from old axol?
-    # TODO port domain: search fold old axol?
+    # todo port domain: search fold old axol?
 
     # NOTE: seems like it might find things not necessarily in link/username/body etc
     # e.g. "bret victor" results in

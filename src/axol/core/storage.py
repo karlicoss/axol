@@ -1,7 +1,8 @@
 from contextlib import AbstractContextManager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+import sqlite3
+from typing import Iterator, cast
 
 from loguru import logger
 import sqlalchemy
@@ -30,12 +31,16 @@ class Columns:
 
 class Database(AbstractContextManager):
     def __init__(self, db_path: Path, *, writable: bool = False) -> None:
+        assert db_path.is_absolute(), db_path
+
         if not writable:
             assert db_path.exists(), db_path
 
         self.db_path = db_path
-        # TODO proper read only mode?
-        self.engine = sqlalchemy.create_engine(f'sqlite:///{db_path}', echo=False)
+        mode = '' if writable else '?mode=ro'
+        creator = lambda: sqlite3.connect(f'file:{db_path}{mode}', uri=True)
+        self.engine = sqlalchemy.create_engine('sqlite://', creator=creator, echo=False)
+
         self.metadata = sqlalchemy.MetaData()
 
         # see https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
@@ -78,24 +83,33 @@ class Database(AbstractContextManager):
         with self.engine.connect() as conn:
             yield from map(tuple, conn.execute(query))
 
-    def insert(self, results: Iterator[tuple[Uid, bytes]]) -> None:
+    def insert(
+        self,
+        results: Iterator[tuple[Uid, bytes]],
+        dry: bool,
+    ) -> Iterator[tuple[Uid, CrawlDt, bytes]]:
+        """
+        Yields actually inserted items, along with the crawl timestamp
+        """
+        # FIXME ugh. reorder crawl_dt first?? also in the db...
+
         # todo dry mode??
         crawl_dt = datetime.now(tz=timezone.utc)
         crawl_timestamp_utc = int(crawl_dt.timestamp())
         logger.info(f'[{self.db_path}] inserting crawled items, dt {crawl_dt} {crawl_timestamp_utc}')
 
-        batch_new = 0
-        batch_exist = 0
+        new = 0
+        exist = 0
         with self.engine.begin() as conn:
             uids_in_db = {uid for (uid,) in conn.execute(select(self.results_table.c[Columns.UID]))}
 
             for_db = []
             for uid, jb in results:
                 if uid in uids_in_db:
-                    batch_exist += 1
+                    exist += 1
                     continue
                 # todo store as jsonb? not sure if there is any benefit?
-                batch_new += 1
+                new += 1
                 assert isinstance(jb, bytes), jb  # todo temporary for refactoring period
                 for_db.append(
                     {
@@ -104,11 +118,18 @@ class Database(AbstractContextManager):
                         Columns.DATA: jb,
                     }
                 )
-            # TODO old axol had batch insertion? (in 1000 items chunks)
+            # todo old axol had batch insertion? (in 1000 items chunks)
             # figure out whether I still need it (ideally via a test?)
             if len(for_db) > 0:
-                conn.execute(self.results_table.insert(), for_db)
+                if not dry:
+                    conn.execute(self.results_table.insert(), for_db)
+                else:
+                    logger.warning(f'[{self.db_path}] dry mode, not updating the db')
 
-        batch_total = batch_exist + batch_new
-        # TODO log new total size?
-        logger.info(f'[{self.db_path}] batch stats -- {batch_total} crawled, {batch_exist} existed, {batch_new} new')
+        total = exist + new
+        logger.info(f'[{self.db_path}] stats -- {total} crawled, {exist} existed, {new} new')
+
+        for d in for_db:
+            uid = cast(Uid, d[Columns.UID])
+            jb = cast(bytes, d[Columns.DATA])
+            yield uid, crawl_dt, jb  # meh

@@ -119,7 +119,7 @@ def parse(j: Json) -> Result:
     else:
         raise RuntimeError(entity_type)
 
-    # TODO make more defensive later?
+    # todo make more defensive later?
     assert len(j) == 0, j
 
     return result

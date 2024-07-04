@@ -114,6 +114,7 @@ class SearchCode(Search):
 
     def get_uid(self, x: ContentFile) -> Uid:
         # todo could also take html_url and chop off the sha?
+        # FIXME this might be too long.. need to think about it...
         return x.repository.full_name + ':' + x.path
 
 
@@ -135,7 +136,7 @@ class SearchIssues(Search):
 
     # see https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-issues-and-pull-requests
     sorts: tuple[str, ...] = ('comments', 'created', 'updated')
-    # FIXME these aren't working in github library due to a hard assert
+    # TODO these aren't working in github library due to a hard assert
     # 'reactions',
     # 'interactions',
 
@@ -167,8 +168,7 @@ SEARCHERS = {
 
 
 def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
-    # TODO hmm a bit too spammy
-    # would be nice to disable response bodies?
+    # NOTE: hmm a bit too spammy, would be nice to disable response bodies?
     # github.enable_console_debug_logging()
 
     from axol.user_config import github as gh  # type: ignore[attr-defined]

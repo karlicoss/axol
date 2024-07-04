@@ -17,14 +17,16 @@ def main() -> None:
 
 arg_limit = click.option('--limit', type=int)
 arg_include = click.option('--include', help='name filter for search feeds to use')
+arg_quiet = click.option('--quiet/-q', is_flag=True, help='do not print anything')
 
 
 @main.command(name='search')
 @click.argument('module', required=True)
 @click.argument('query', required=True)
-@click.option('--quiet/-q', is_flag=True)
+@click.option('--raw', is_flag=True, help='print json, do not deserialize')
 @arg_limit
-def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> None:
+@arg_quiet
+def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None, raw: bool) -> None:
     """
     Search only, won't modify the databases.
 
@@ -32,40 +34,45 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None) -> No
 
         search axol.modules.hackernews.feed whatever
     """
-    # TODO deserialize?
-    # and raw mode that doesn't try to deserialise?
+    # FIXME maybe search should work against the config?.. and search_raw invoke the search module?
     feed_module = importlib.import_module(module)
     feed_class: type[Feed] = getattr(feed_module, 'Feed')
     feed = feed_class.make(query_name='adhoc', queries=[query])
     for uid, jblob in feed.search_all(limit=limit):
-        if not quiet:
-            j = orjson.loads(jblob)
+        if quiet:
+            continue
+        j = orjson.loads(jblob)
+        if raw:
             print(uid, j)
+        else:
+            print(uid, feed.parse(j))
 
 
 @main.command(name='crawl')
 @arg_limit
 @arg_include
+@arg_quiet
 @click.option('--dry', is_flag=True, help='search and print results only, do not modify storage')
-def cmd_crawl(*, limit: int | None, include: str | None, dry: bool) -> None:
+def cmd_crawl(*, limit: int | None, include: str | None, dry: bool, quiet: bool) -> None:
     """
     Search all queries in the feed and save in the databases.
     """
     feeds = get_feeds(include=include)
     for feed in feeds:
-        results = feed.search_all(limit=limit)
-
-        if dry:
-            for uid, jblob in results:
-                j = orjson.loads(jblob)
-                print(uid, feed.parse(j))
-        else:
-            feed.insert(results)
+        for uid, dt, jblob in feed.crawl(limit=limit, dry=dry):
+            j = orjson.loads(jblob)
+            o = feed.parse(j)
+            if quiet:
+                continue
+            print(uid, o)
 
 
 @main.command(name='feed')
 @arg_include
 def cmd_feed(*, include: str | None) -> None:
+    """
+    Load feed from the database and print to stdout
+    """
     feeds = get_feeds(include=include)
     for feed in feeds:
         for uid, crawl_dt, o in feed.feed():
@@ -77,8 +84,11 @@ def cmd_feed(*, include: str | None) -> None:
 
 @main.command(name='feeds')
 @arg_include
-@click.option('--search', is_flag=True)  # TODO think about something better
+@click.option('--search', is_flag=True, help='print raw search queries instead of config queries')
 def cmd_feeds(*, include: str | None, search: bool) -> None:
+    """
+    Print out feeds defined in the config
+    """
     feeds = get_feeds(include=include)
 
     datas = []

@@ -46,6 +46,15 @@ def make_feed(*, tmp_path: Path, exclude: ExcludeP | None = None) -> DummyFeed:
     )
 
 
+def test_crawl(tmp_path: Path) -> None:
+    feed = make_feed(tmp_path=tmp_path)
+    crawled = list(feed.crawl())
+    assert len(crawled) == 100
+
+    data = list(feed.feed())
+    assert len(data) == 100
+
+
 def test_search_excludes(tmp_path: Path) -> None:
     exclude = lambda bs: b'0000' in bs
     feed = make_feed(tmp_path=tmp_path, exclude=exclude)
@@ -58,7 +67,7 @@ def test_exclude_updated(tmp_path: Path) -> None:
     results = list(feed.search_all(limit=None))
     assert len(results) == 100
 
-    feed.insert(results)
+    list(feed._insert(results, dry=False))
 
     def asdict(feed: DummyFeed):
         d: dict[Uid, Json] = {}

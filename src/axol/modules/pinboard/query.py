@@ -56,7 +56,7 @@ class Query(Compilable[SearchQuery]):
                 case raw(q):
                     yield SearchQuery(query=q, kind=kind)
                 case exact(q) | str(q):
-                    # TODO decide later if we wanna the default be exact or not
+                    # todo decide later if we wanna the default be exact or not
                     # I guess doesn't hurt? even for single word queries
                     yield SearchQuery(query=doublequote(_check(q)), kind=kind)
                 case _:

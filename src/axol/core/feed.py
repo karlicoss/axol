@@ -69,11 +69,14 @@ class Feed(Mixin, Generic[ResultType]):
                 # todo could yield query here? not sure if super useful
                 yield uid, jblob
 
-    def insert(self, results: Iterable[tuple[Uid, bytes]]) -> None:
-        # todo return inserted count?
-        # todo not sure if need to use self.exclude here?
-        with Database(self.db_path, writable=True) as db:
-            db.insert(results)
+    def _insert(
+        self,
+        results: Iterable[tuple[Uid, bytes]],
+        dry: bool,
+    ) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
+        writable = not dry
+        with Database(self.db_path, writable=writable) as db:
+            yield from db.insert(results, dry=dry)
 
     def select_all(self) -> Iterator[DbResult]:
         exclude = self.exclude
@@ -85,11 +88,17 @@ class Feed(Mixin, Generic[ResultType]):
                 if exclude is not None and exclude(blob):
                     excluded += 1
                     continue
+                # FIXME crawl_dt deserialize could be inside the db bit?
+                # or the other way round.. move timestamp generation into
                 crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
                 j = orjson.loads(blob)
                 yield (uid, crawl_dt, j)
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
+
+    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
+        results = self.search_all(limit=limit)
+        yield from self._insert(results, dry=dry)
 
     def feed(self) -> Iterator[tuple[Uid, datetime_aware, ResultType | Exception]]:
         for uid, crawl_dt, j in self.select_all():

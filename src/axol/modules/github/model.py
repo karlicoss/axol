@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from axol.core.common import datetime_aware, Json, _check
+from axol.core.common import datetime_aware, Json, _check, json_copy
 
 
 @dataclass
@@ -39,21 +39,10 @@ class Repository(Base):
 Result = Code | Commit | Issue | Repository
 
 
-def jcopy(j: Json) -> Json:
-    if isinstance(j, (int, bool, str, float, type(None))):
-        return j
-    if isinstance(j, list):
-        return [jcopy(x) for x in j]
-    if isinstance(j, dict):
-        return {k: jcopy(v) for k, v in j.items()}
-    raise RuntimeError(j, type(j))
-
-
 def parse(j: Json) -> Result:
     # NOTE need deep copy here..
     # otherwise parsing twice breaks things if we use .pop
-    j = jcopy(j)
-    # FIXME use it in other places too
+    j = json_copy(j)
 
     entity_types = []
     # todo hmm might be easier to add entity type during search?
