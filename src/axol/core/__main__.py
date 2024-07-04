@@ -82,6 +82,25 @@ def cmd_feed(*, include: str | None) -> None:
                 print(uid, o)
 
 
+@main.command(name='prune')
+@arg_include
+@click.option('--dry', is_flag=True, help='only output items that would be pruned, do not actually prune')
+def cmd_prune(*, include: str | None, dry: bool) -> None:
+    """
+    Prune items from the database according to the config
+
+    This is useful if you excluded a bunch of items from the search and want to retroactively delete them from the db as well.
+    """
+    feeds = get_feeds(include=include)
+    for feed in feeds:
+        deleted = feed.prune_db(dry=dry)
+        msg = f'[{feed}]: pruned {deleted} items {dry=}'
+        if deleted > 0:
+            logger.warning(msg)
+        else:
+            logger.info(msg)
+
+
 @main.command(name='feeds')
 @arg_include
 @click.option('--search', is_flag=True, help='print raw search queries instead of config queries')
@@ -132,3 +151,5 @@ def cmd_feeds(*, include: str | None, search: bool) -> None:
 
 if __name__ == '__main__':
     main()
+
+# TODO think about more consistent logging... would be nice to get a feed specific sublogger?

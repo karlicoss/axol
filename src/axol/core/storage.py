@@ -2,12 +2,13 @@ from contextlib import AbstractContextManager
 from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
-from typing import Iterator, cast
+from typing import Callable, Iterable, Iterator, cast
 
 from loguru import logger
 import sqlalchemy
 from sqlalchemy import (
     event,
+    func,
     select,
     Column,
     Table,
@@ -29,7 +30,7 @@ class Columns:
     DATA = 'data'
 
 
-class Database(AbstractContextManager):
+class Database(AbstractContextManager['Database']):
     def __init__(self, db_path: Path, *, writable: bool = False) -> None:
         assert db_path.is_absolute(), db_path
 
@@ -83,9 +84,29 @@ class Database(AbstractContextManager):
         with self.engine.connect() as conn:
             yield from map(tuple, conn.execute(query))
 
+    def delete(
+        self,
+        *,
+        dry: bool,
+        predicate: Callable[[bytes], bool],
+    ) -> int:
+        with self.engine.begin() as conn:
+            dbapi_connection = conn.connection  # meh
+            dbapi_connection.create_function("predicate", 1, predicate)  # type: ignore[attr-defined]
+            if dry:
+                squery = select(func.count()).select_from(self.results_table).where(func.predicate(self.results_table.c.data))
+                res = conn.execute(squery)
+                [(deleted,)] = list(res)
+            else:
+                dquery = self.results_table.delete().where(func.predicate(self.results_table.c.data))
+                res = conn.execute(dquery)
+                deleted = res.rowcount
+        return deleted
+
     def insert(
         self,
-        results: Iterator[tuple[Uid, bytes]],
+        results: Iterable[tuple[Uid, bytes]],
+        *,
         dry: bool,
     ) -> Iterator[tuple[Uid, CrawlDt, bytes]]:
         """

@@ -82,6 +82,8 @@ class Feed(Mixin, Generic[ResultType]):
         exclude = self.exclude
         total = 0
         excluded = 0
+        # TODO when querying, also use stored procedure?
+        # compare performance??
         with Database(self.db_path) as db:
             for uid, crawl_timestamp_utc, blob in db.select_all():
                 total += 1
@@ -96,8 +98,25 @@ class Feed(Mixin, Generic[ResultType]):
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
 
+    def prune_db(self, *, dry: bool = False) -> int:
+        """
+        Returns number of pruned items
+        """
+        # TODO would be nice to yield items to be pruned? at least for dry mode?
+        exclude = self.exclude
+        if exclude is None:
+            # fast path
+            return 0
+
+        writable = not dry
+        with Database(self.db_path, writable=writable) as db:
+            deleted = db.delete(dry=dry, predicate=exclude)
+        return deleted
+        # TODO interactive mode? for now just use --dry
+
     def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
-        results = self.search_all(limit=limit)
+        # convert to list to make sure the connection in _insert isn't open for long
+        results = list(self.search_all(limit=limit))
         yield from self._insert(results, dry=dry)
 
     def feed(self) -> Iterator[tuple[Uid, datetime_aware, ResultType | Exception]]:

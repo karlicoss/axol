@@ -55,6 +55,24 @@ def test_crawl(tmp_path: Path) -> None:
     assert len(data) == 100
 
 
+def test_prune(tmp_path: Path) -> None:
+    feed = make_feed(tmp_path=tmp_path)
+    crawled = list(feed.crawl())
+    assert len(crawled) == 100
+
+    exclude = lambda bs: b'0000' in bs
+    feed = make_feed(tmp_path=tmp_path, exclude=exclude)
+    pruned = feed.prune_db(dry=True)
+    assert pruned == 10
+
+    pruned = feed.prune_db()
+    assert pruned == 10
+
+    feed = make_feed(tmp_path=tmp_path)
+    items = list(feed.feed())
+    assert len(items) == 90
+
+
 def test_search_excludes(tmp_path: Path) -> None:
     exclude = lambda bs: b'0000' in bs
     feed = make_feed(tmp_path=tmp_path, exclude=exclude)
