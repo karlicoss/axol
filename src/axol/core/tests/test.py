@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
+import orjson
+
 from axol.core.common import Json, Uid
 from axol.core.feed import Feed as BaseFeed, SearchF, ExcludeP
 
@@ -24,15 +26,16 @@ class DummyFeed(BaseFeed):
     PREFIX = 'dummy'
     QueryType = str
 
-    def parse(self, j: Json):
-        return j
+    def parse(self, data: bytes):
+        return orjson.loads(data)
 
     @property
     def search(self) -> SearchF:
         def _search(query: SearchQuery, *, limit: int | None):
             for i in range(100):
                 uid = f'{i:05d}'
-                yield uid, {'text': f'item {uid}'}
+                j = {'text': f'item {uid}'}
+                yield uid, orjson.dumps(j)
 
         return _search
 

@@ -5,10 +5,9 @@ from pathlib import Path
 import re
 from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, Sequence, TypeVar
 
-import orjson
 from loguru import logger
 
-from .common import datetime_aware, Json, SearchResults, DbResult, Uid
+from .common import datetime_aware, SearchResults, Uid
 from .storage import Database
 from .query import compile_queries
 
@@ -43,7 +42,7 @@ class Feed(Mixin, Generic[ResultType]):
     exclude: ExcludeP | None
 
     @abstractmethod
-    def parse(self, j: Json) -> ResultType:
+    def parse(self, data: bytes) -> ResultType:
         raise NotImplementedError
 
     @property
@@ -57,17 +56,16 @@ class Feed(Mixin, Generic[ResultType]):
         search_queries = compile_queries(self.queries)
         handled = set()
         for search_query in search_queries:
-            for uid, j in self.search(query=search_query, limit=limit):
+            for uid, data in self.search(query=search_query, limit=limit):
                 if uid in handled:
                     continue
                 handled.add(uid)
 
-                jblob = orjson.dumps(j)
-                if exclude is not None and exclude(jblob):
+                if exclude is not None and exclude(data):
                     continue
 
                 # todo could yield query here? not sure if super useful
-                yield uid, jblob
+                yield uid, data
 
     def _insert(
         self,
@@ -78,7 +76,7 @@ class Feed(Mixin, Generic[ResultType]):
         with Database(self.db_path, writable=writable) as db:
             yield from db.insert(results, dry=dry)
 
-    def select_all(self) -> Iterator[DbResult]:
+    def select_all(self) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
         exclude = self.exclude
         total = 0
         excluded = 0
@@ -93,8 +91,7 @@ class Feed(Mixin, Generic[ResultType]):
                 # FIXME crawl_dt deserialize could be inside the db bit?
                 # or the other way round.. move timestamp generation into
                 crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
-                j = orjson.loads(blob)
-                yield (uid, crawl_dt, j)
+                yield (uid, crawl_dt, blob)
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
 
@@ -120,13 +117,13 @@ class Feed(Mixin, Generic[ResultType]):
         yield from self._insert(results, dry=dry)
 
     def feed(self) -> Iterator[tuple[Uid, datetime_aware, ResultType | Exception]]:
-        for uid, crawl_dt, j in self.select_all():
+        for uid, crawl_dt, data in self.select_all():
             o: ResultType | Exception
             try:
-                o = self.parse(j)
+                o = self.parse(data)
             except Exception as e:
                 # todo maybe log or something?
-                err = RuntimeError(f'while parsing {j}')
+                err = RuntimeError(f'while parsing {data!r}')
                 err.__cause__ = e
                 o = err
             yield uid, crawl_dt, o

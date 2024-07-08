@@ -13,9 +13,10 @@ from github.Issue import Issue
 from github.Repository import Repository
 from github.GithubObject import NotSet, Opt
 
+import orjson
 from loguru import logger
 
-from axol.core.common import SearchResults, Uid
+from axol.core.common import SearchResults, Uid, Json
 from .query import Kind, SearchQuery
 
 
@@ -90,11 +91,11 @@ class Search(Mixin):  # todo make it typed?
                 # ugh, so there is x.raw_data, however it incurs an api call
                 # same with x.content and some other getters
 
-                j = x._rawData
+                j: Json = x._rawData
                 # TODO this contains a lot of spam, especially in 'repository' key
                 # migtt be worth pruning
 
-                yield uid, j
+                yield uid, orjson.dumps(j)
             logger.debug(f'{query=} {sort=!r:<10} {order=!r:<5} {added=}')
 
         total = len(uids)

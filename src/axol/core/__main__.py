@@ -4,7 +4,6 @@ from typing import Any
 
 import click
 from loguru import logger
-import orjson
 
 from .feed import get_feeds, Feed
 from .query import compile_queries
@@ -23,7 +22,7 @@ arg_quiet = click.option('--quiet/-q', is_flag=True, help='do not print anything
 @main.command(name='search')
 @click.argument('module', required=True)
 @click.argument('query', required=True)
-@click.option('--raw', is_flag=True, help='print json, do not deserialize')
+@click.option('--raw', is_flag=True, help='print raw data, do not deserialize')
 @arg_limit
 @arg_quiet
 def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None, raw: bool) -> None:
@@ -38,14 +37,13 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None, raw: 
     feed_module = importlib.import_module(module)
     feed_class: type[Feed] = getattr(feed_module, 'Feed')
     feed = feed_class.make(query_name='adhoc', queries=[query])
-    for uid, jblob in feed.search_all(limit=limit):
+    for uid, data in feed.search_all(limit=limit):
         if quiet:
             continue
-        j = orjson.loads(jblob)
         if raw:
-            print(uid, j)
+            print(uid, data)
         else:
-            print(uid, feed.parse(j))
+            print(uid, feed.parse(data))
 
 
 @main.command(name='crawl')
@@ -59,9 +57,8 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool, quiet: bool)
     """
     feeds = get_feeds(include=include)
     for feed in feeds:
-        for uid, dt, jblob in feed.crawl(limit=limit, dry=dry):
-            j = orjson.loads(jblob)
-            o = feed.parse(j)
+        for uid, dt, data in feed.crawl(limit=limit, dry=dry):
+            o = feed.parse(data)
             if quiet:
                 continue
             print(uid, o)

@@ -21,10 +21,8 @@ def _search(
 
     logger.info(f'{qstr} -- fetching...')
 
-    search_url = 'https://pinboard.in/search'
-
     start = 0
-    uids: dict[Uid, Json] = {}
+    uids: dict[Uid, bytes] = {}
     expected_total = -1  # this will be set on first fetch
     while True:
         if limit is not None and len(uids) >= limit:
@@ -96,8 +94,9 @@ def _search(
             # eh. not sure what is it, sometimes can be 500 as well?
             # assert j.get('code', None) in {'200', None}, j  # just in case
 
-            uids[uid] = j
-            yield uid, j
+            bs = s.encode('utf8')
+            uids[uid] = bs
+            yield uid, bs
         logger.debug(f'{qstr} -- fetched {len(uids)} results so far')
         time.sleep(5)  # to avoid spam
 

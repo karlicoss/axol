@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from axol.core.common import datetime_aware, Json, _check
+import orjson
+
+from axol.core.common import datetime_aware, _check
 
 
 def _reddit(s: str) -> str:
@@ -35,7 +37,9 @@ class Submission:
 Result = Submission
 
 
-def parse(j: Json) -> Submission:
+def parse(data: bytes) -> Submission:
+    j = orjson.loads(data)
+
     ts_utc = j['created_utc']
     created_at = datetime.fromtimestamp(ts_utc, tz=timezone.utc)
 

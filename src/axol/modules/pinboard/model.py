@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from axol.core.common import datetime_aware, Json, _check
+import orjson
+
+from axol.core.common import datetime_aware, _check
 
 
 @dataclass
@@ -23,8 +25,8 @@ class Bookmark:
 Result = Bookmark
 
 
-def parse(j: Json) -> Result:
-    j = {k: v for k, v in j.items()}
+def parse(data: bytes) -> Result:
+    j = orjson.loads(data)
 
     ignore = [
         'author_id',  # not sure if useful?

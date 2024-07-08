@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from axol.core.common import datetime_aware, Json, _check, json_copy
+import orjson
+
+from axol.core.common import datetime_aware, _check
 
 
 @dataclass
@@ -39,10 +41,8 @@ class Repository(Base):
 Result = Code | Commit | Issue | Repository
 
 
-def parse(j: Json) -> Result:
-    # NOTE need deep copy here..
-    # otherwise parsing twice breaks things if we use .pop
-    j = json_copy(j)
+def parse(data: bytes) -> Result:
+    j = orjson.loads(data)
 
     entity_types = []
     # todo hmm might be easier to add entity type during search?

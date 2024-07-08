@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from axol.core.common import datetime_aware, Json, _check
+import orjson
+
+from axol.core.common import datetime_aware, _check
 
 
 # todo use parent_id?
@@ -34,8 +36,8 @@ Result = Comment | Story
 
 
 # todo add uid here? not sure it should be inside the entity...
-def parse(j: Json) -> Result:
-    j = {k: v for k, v in j.items()}
+def parse(data: bytes) -> Result:
+    j = orjson.loads(data)
 
     entity_types = []
     if 'comment_text' in j:

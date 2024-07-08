@@ -7,10 +7,8 @@ Uid = str
 
 datetime_aware = datetime
 
-SearchResult = tuple[Uid, Json]
+SearchResult = tuple[Uid, bytes]
 SearchResults = Iterator[SearchResult]
-
-DbResult = tuple[Uid, datetime_aware, Json]
 
 
 T = TypeVar('T')
