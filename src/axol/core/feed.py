@@ -170,7 +170,6 @@ def storage_dir() -> Path:
     import axol.user_config as C
 
     res = C.STORAGE_DIR
-    assert res.is_dir(), res
     return res
 
 
