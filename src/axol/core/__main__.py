@@ -1,5 +1,6 @@
 import dataclasses
 import importlib
+import sys
 from typing import Any
 
 import click
@@ -71,12 +72,20 @@ def cmd_feed(*, include: str | None) -> None:
     Load feed from the database and print to stdout
     """
     feeds = get_feeds(include=include)
+    errors = []
     for feed in feeds:
         for uid, crawl_dt, o in feed.feed():
             if isinstance(o, Exception):
-                logger.exception(o)
+                # TODO ugh. loguru is not tracing exc_info properly??
+                # e.g. compare to
+                # import logging; logging.exception(o, exc_info=o)
+                logger.opt(exception=True).exception(o)
+                errors.append(o)
             else:
                 print(uid, o)
+    if len(errors) > 0:
+        logger.error(f'got {len(errors)} errors')
+        sys.exit(1)
 
 
 @main.command(name='prune')

@@ -8,6 +8,7 @@ from loguru import logger
 import requests
 
 from axol.core.common import SearchResults, Uid
+from .common import extract_uid
 from .query import SearchQuery, Kind
 
 
@@ -52,22 +53,25 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
             assert_never(kind)
 
         for item_el in item_els:
-            # FIXME not sure if they are overlapping between comments and stories?
-            # maybe append kind?
-            uid: str = item_el.attrs['data-shortid']
+            uid = extract_uid(item_el)
             assert len(uid) > 0, item_el  # just in case
 
             if uid in uids:
                 # can have race condition due to pagination
+                # NOTE actually sometimes happens really consistently, usually after 4th or so page..
+                # but after a few reruns stops happening?? could be some search engine caches or something like that
+                # note sure why but whatever
+                # TODO might need to adjust the total / expected_total ratio below if it keeps happening
                 continue
 
             item = str(item_el).encode('utf8')
             if b'Story removed by submitter' in item:
-                # doesn't have link/title
+                # doesn't have link/title, not much we can do?
+                logger.debug(f'{qstr}: skipping {uid}, story removed by submitter')
+                # TODO subtract from expected total??
                 continue
 
             uids[uid] = item
-            # FIXME ugh. item type doesn't have to be json?? just bytes here?
             yield uid, item
 
         if len(item_els) == 0:
@@ -75,21 +79,24 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
             break
         logger.debug(f'{qstr} -- fetched {len(uids)} results so far')
         time.sleep(1)
-    # FIXME log total stats?
-    #
+
     total = len(uids)
     logger.info(f'{qstr} -- got {total} results')
     if limit is None and expected_total > 10:
-        assert total / expected_total > 0.9, (total, expected_total)  # just in case, maybe make defensive later
+        assert total / expected_total > 0.7, (total, expected_total)  # just in case, maybe make defensive later
 
 
 def _search(query: str, *, kind: Kind, limit: int | None) -> SearchResults:
     qstr = f'{query=} {kind=}'
     logger.info(f'{qstr} -- fetching...')
-    # FIXME merge by uid
+    uids: dict[Uid, bytes] = {}
     for order in ['relevance', 'score', 'newest']:
-        yield from _search_order(query=query, kind=kind, order=order, limit=limit)
-    # FIXME log total?
+        for uid, item in _search_order(query=query, kind=kind, order=order, limit=limit):
+            if uid in uids:
+                continue
+            uids[uid] = item
+            yield uid, item
+    logger.info(f'{qstr} -- fetched {len(uids)} results total')
 
 
 def search(query: SearchQuery, *, limit: int | None) -> SearchResults:

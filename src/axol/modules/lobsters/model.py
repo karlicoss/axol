@@ -5,30 +5,35 @@ from typing import Any, Sequence, assert_never, cast
 from bs4 import BeautifulSoup, NavigableString
 
 from axol.core.common import datetime_aware
+from .common import extract_uid
 from .query import Kind
 
 
 @dataclass
-class Story:
+class _Base:
     dt: datetime_aware
     id: str
-    title: str
-    url: str
-    score: int
-    comments: int
-    tags: Sequence[str]
+    title: str  # NOTE: this is story title (e.g. for Comment)
+    url: str  # NOTE: this is story url (e.g. for Comment)
     author: str
-    # permalink: str  # FIXME should just be property? idk
+
+    def permalink(self) -> str:
+        # NOTE: in principle could extract permalink from the body, it contains user readable alias as well
+        # e.g. https://lobste.rs/s/wmwoc4/userland_dataflow_environment_for_end#c_06ceqk
+        # but this works well anyway
+        return f'https://lobste.rs/s/{self.id}'
 
 
 @dataclass
-class Comment:
-    dt: datetime_aware
-    id: str
-    title: str
-    url: str
-    author: str
-    permalink: str
+class Story(_Base):
+    score: int
+    comments: int
+    tags: Sequence[str]
+
+
+@dataclass
+class Comment(_Base):
+    score: int | None  # score is unavailable if the comment is super new
     text: str
 
 
@@ -47,10 +52,11 @@ def parse(data: bytes) -> Result:
         kinds.append('comments')
     [kind] = kinds
 
-    eid = soup.attrs['data-shortid']
+    eid = extract_uid(soup)
 
     [score_e] = soup.select('.score')
-    score = int(score_e.text)
+    score_s = score_e.text.strip()
+    score = None if len(score_s) == 0 else int(score_s)
 
     dt_es = soup.select('.byline span[title*=""]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
@@ -72,15 +78,16 @@ def parse(data: bytes) -> Result:
         [author_e] = soup.select('.u-author')
         author = author_e.text
 
+        assert score is not None  # shouldn't happen for stories
         story = Story(
             dt=dt,
             id=eid,
             title=title,
             url=url,
+            author=author,
             score=score,
             comments=comments,
             tags=tags,
-            author=author,
         )
         return story
     elif kind == 'comments':
@@ -109,7 +116,7 @@ def parse(data: bytes) -> Result:
             title=title,
             url=url,
             author=author,
-            permalink=permalink,
+            score=score,
             text=comment_text,
         )
         return comment

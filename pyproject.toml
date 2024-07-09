@@ -28,9 +28,10 @@ Homepage = "https://github.com/karlicoss/axol"
 
 [project.optional-dependencies]
 optional = [
-    "PyGithub",   # modules.github.search
-    "python-hn",  # modules.hackernews.search
-    "praw",       # modules.reddit.search
+    "PyGithub",        # modules.github.search
+    "python-hn",       # modules.hackernews.search
+    "praw",            # modules.reddit.search
+    "beautifulsoup4",  # modules.lobsters.search
 ]
 testing = [
     "pytest",
