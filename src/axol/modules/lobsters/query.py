@@ -1,3 +1,6 @@
+# NOTE: some info on search operators here https://lobste.rs/search
+# however e.g. double quotes don't work
+# TODO title: could be useful?
 from dataclasses import dataclass
 from typing import Iterator, Literal, assert_never
 
@@ -21,6 +24,7 @@ class Query(Compilable[SearchQuery]):
     # NOTE: looks like on lobsters search is always exact?
     # anywyay, double quotes result in zero results
     # NOTE: search query for lobsters seems to match text behind the link
+    # TODO lobsters also has tags? although a very small set of predefined ones
     query: str | raw | exact
     kind: Kind | None = None
 
