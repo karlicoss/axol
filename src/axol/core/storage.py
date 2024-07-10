@@ -114,7 +114,6 @@ class Database(AbstractContextManager['Database']):
         """
         # FIXME ugh. reorder crawl_dt first?? also in the db...
 
-        # todo dry mode??
         crawl_dt = datetime.now(tz=timezone.utc)
         crawl_timestamp_utc = int(crawl_dt.timestamp())
         logger.info(f'[{self.db_path}] inserting crawled items, dt {crawl_dt} {crawl_timestamp_utc}')
@@ -123,9 +122,14 @@ class Database(AbstractContextManager['Database']):
         exist = 0
         with self.engine.begin() as conn:
             uids_in_db = {uid for (uid,) in conn.execute(select(self.results_table.c[Columns.UID]))}
-
+            seen = set()
             for_db = []
             for uid, jb in results:
+                # make sure we aren't passed down dupes from search
+                # (search is better suited to deal with them properly)
+                assert uid not in seen, (uid, jb)
+                seen.add(uid)
+
                 if uid in uids_in_db:
                     exist += 1
                     continue
@@ -154,3 +158,82 @@ class Database(AbstractContextManager['Database']):
             uid = cast(Uid, d[Columns.UID])
             jb = cast(bytes, d[Columns.DATA])
             yield uid, crawl_dt, jb  # meh
+
+
+def test_insert(tmp_path: Path) -> None:
+    import pytest
+
+    def results_1() -> Iterator[tuple[Uid, bytes]]:
+        yield '1', b'whatever 1'
+        yield '2', b'whatever 1'
+
+    def results_2() -> Iterator[tuple[Uid, bytes]]:
+        yield '3', b'whatever 2'
+        yield '2', b'whatever 2'
+
+    def results_3() -> Iterator[tuple[Uid, bytes]]:
+        yield '4', b'whatever 3'
+        yield '4', b'whatever 3'
+
+    def results_4() -> Iterator[tuple[Uid, bytes]]:
+        yield '1', b'boom'
+        yield '999', b'whatever 4'
+        yield '1', b'boom'
+
+    db_path = tmp_path / 'db.sqlite'
+    with Database(db_path, writable=True) as db:
+        ins_1 = [uid for uid, _, _ in db.insert(results_1(), dry=False)]
+        assert ins_1 == ['1', '2']
+
+    with Database(db_path, writable=True) as db:
+        # inserting same stuff is a no-op
+        ins_1 = [uid for uid, _, _ in db.insert(results_1(), dry=False)]
+        assert ins_1 == []
+
+        ins_2 = [uid for uid, _, _ in db.insert(results_2(), dry=False)]
+        # item 2 actually changed, but we don't do anything with it, at least for now
+        assert ins_2 == ['3']
+
+        in_db = [(uid, blob) for uid, _, blob in db.select_all()]
+        assert in_db == [
+            ('1', b'whatever 1'),
+            ('2', b'whatever 1'),  # item 2 wasn't updated!
+            ('3', b'whatever 2'),
+        ]
+
+    with Database(db_path, writable=True) as db:
+        with pytest.raises(AssertionError):
+            list(db.insert(results_3(), dry=False))
+
+    with Database(db_path, writable=True) as db:
+        with pytest.raises(AssertionError):
+            list(db.insert(results_4(), dry=False))
+
+
+def test_insert_atomic(tmp_path: Path) -> None:
+    import pytest
+
+    db_path = tmp_path / 'db.sqlite'
+
+    def results_ok() -> Iterator[tuple[Uid, bytes]]:
+        for i in range(10):
+            yield str(i), b'item {i}'
+
+    with Database(db_path, writable=True) as db:
+        list(db.insert(results_ok(), dry=False))
+
+    with Database(db_path, writable=False) as db:
+        assert len(list(db.select_all())) == 10
+
+    def results_bad() -> Iterator[tuple[Uid, bytes]]:
+        for i in range(1_000_000):
+            yield str(i), b'item {i}'
+        raise RuntimeError('BOOM')
+
+    with Database(db_path, writable=True) as db:
+        with pytest.raises(RuntimeError, match='BOOM'):
+            list(db.insert(results_bad(), dry=False))
+
+    # error during insertion should leave the db intact
+    with Database(db_path, writable=False) as db:
+        assert len(list(db.select_all())) == 10
