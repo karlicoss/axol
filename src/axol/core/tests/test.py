@@ -106,3 +106,43 @@ def test_exclude_updated(tmp_path: Path) -> None:
     feed2 = make_feed(tmp_path=tmp_path, exclude=exclude)
     d = asdict(feed=feed2)
     assert len(d) == 81
+
+
+@dataclass
+class ErrorFeed(BaseFeed):
+    PREFIX = 'errors'
+    QueryType = str
+
+    def parse(self, data: bytes):
+        x = int(data.decode('utf8'))
+        if x % 10 == 9:
+            raise RuntimeError('Simulating parsing error')
+        return x
+
+    @property
+    def search(self) -> SearchF:
+        def _search(query: SearchQuery, *, limit: int | None):
+            for i in range(1, 100):
+                uid = str(i)
+                data = uid.encode('utf8')
+                yield uid, data
+
+        return _search
+
+
+def test_errors(tmp_path: Path) -> None:
+    feed = ErrorFeed.make(
+        query_name='testing',
+        queries=[Query('whatever')],
+        db_path=tmp_path / 'test.sqlite',
+    )
+
+    crawled = list(feed.crawl())
+    assert len(crawled) == 99
+
+    errors = [o for _, uid, o in crawled if isinstance(o, Exception)]
+    assert len(errors) == 10
+
+    # make sure items are present in the db despite the errors during parsing
+    db_items = [(uid, x) for _, uid, x in feed._select_all()]
+    assert db_items == sorted([(str(i), str(i).encode('utf8')) for i in range(1, 100)])

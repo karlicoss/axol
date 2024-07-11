@@ -7,8 +7,8 @@ from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, S
 
 from loguru import logger
 
-from .common import datetime_aware, SearchResults, Uid
-from .storage import Database
+from .common import SearchResults, Uid
+from .storage import CrawlDt, Database
 from .query import compile_queries
 
 
@@ -57,6 +57,9 @@ class Feed(Mixin, Generic[ResultType]):
         handled = set()
         for search_query in search_queries:
             for uid, data in self.search(query=search_query, limit=limit):
+                # TODO check that items coming from the same search query are already made unique?
+                # dunno if this is really necessary though
+                # but could be a sign of wrong pagination or smth like that
                 if uid in handled:
                     continue
                 handled.add(uid)
@@ -71,12 +74,12 @@ class Feed(Mixin, Generic[ResultType]):
         self,
         results: Iterable[tuple[Uid, bytes]],
         dry: bool,
-    ) -> Iterator[tuple[datetime_aware, Uid, bytes]]:
+    ) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
         writable = not dry
         with Database(self.db_path, writable=writable) as db:
             yield from db.insert(results, dry=dry)
 
-    def select_all(self) -> Iterator[tuple[datetime_aware, Uid, bytes]]:
+    def _select_all(self) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
         exclude = self.exclude
         total = 0
         excluded = 0
@@ -111,15 +114,20 @@ class Feed(Mixin, Generic[ResultType]):
         return deleted
         # TODO interactive mode? for now just use --dry
 
-    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[datetime_aware, Uid, bytes]]:
+    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         # convert to list to make sure the connection in _insert isn't open for long
         results = list(self.search_all(limit=limit))
-        yield from self._insert(results, dry=dry)
-        # TODO after that could try parsing from newly inserted results?
-        # but do atomically (force the iterator) to make sure stuff is inserted before parsing
 
-    def feed(self) -> Iterator[tuple[datetime_aware, Uid, ResultType | Exception]]:
-        for crawl_dt, uid, data in self.select_all():
+        # convert to list to make sure we actually inserted things before attempting to parse
+        inserted = list(self._insert(results, dry=dry))
+
+        yield from self._parsed(inserted)
+
+    def feed(self) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
+        yield from self._parsed(self._select_all())
+
+    def _parsed(self, results: Iterable[tuple[CrawlDt, Uid, bytes]]) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
+        for crawl_dt, uid, data in results:
             o: ResultType | Exception
             try:
                 o = self.parse(data)

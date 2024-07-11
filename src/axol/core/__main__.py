@@ -57,12 +57,20 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool, quiet: bool)
     Search all queries in the feed and save in the databases.
     """
     feeds = get_feeds(include=include)
+    errors = []
     for feed in feeds:
-        for dt, uid, data in feed.crawl(limit=limit, dry=dry):
-            o = feed.parse(data)
+        for crawl_dt, uid, o in feed.crawl(limit=limit, dry=dry):
+            if isinstance(o, Exception):
+                logger.opt(exception=True).exception(o)
+                errors.append(o)
+                continue
+
             if quiet:
                 continue
             print(uid, o)
+    if len(errors) > 0:
+        logger.error(f'got {len(errors)} errors')
+        sys.exit(1)
 
 
 @main.command(name='feed')
