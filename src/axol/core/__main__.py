@@ -58,7 +58,7 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool, quiet: bool)
     """
     feeds = get_feeds(include=include)
     for feed in feeds:
-        for uid, dt, data in feed.crawl(limit=limit, dry=dry):
+        for dt, uid, data in feed.crawl(limit=limit, dry=dry):
             o = feed.parse(data)
             if quiet:
                 continue
@@ -74,7 +74,7 @@ def cmd_feed(*, include: str | None) -> None:
     feeds = get_feeds(include=include)
     errors = []
     for feed in feeds:
-        for uid, crawl_dt, o in feed.feed():
+        for crawl_dt, uid, o in feed.feed():
             if isinstance(o, Exception):
                 # TODO ugh. loguru is not tracing exc_info properly??
                 # e.g. compare to

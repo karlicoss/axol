@@ -90,9 +90,9 @@ def test_exclude_updated(tmp_path: Path) -> None:
 
     list(feed._insert(results, dry=False))
 
-    def asdict(feed: DummyFeed):
+    def asdict(feed: DummyFeed) -> dict[Uid, Json]:
         d: dict[Uid, Json] = {}
-        for uid, crawl_dt, o in feed.feed():
+        for crawl_dt, uid, o in feed.feed():
             assert uid not in d  # just in case
             assert not isinstance(o, Exception)
             d[uid] = o

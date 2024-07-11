@@ -25,8 +25,8 @@ CrawlDt = datetime_aware
 
 
 class Columns:
-    UID = 'uid'
     CRAWL_TIMESTAMP_UTC = 'crawl_timestamp_utc'
+    UID = 'uid'
     DATA = 'data'
 
 
@@ -63,10 +63,9 @@ class Database(AbstractContextManager['Database']):
         self.results_table = Table(
             'results',
             self.metadata,
-            # todo primary key?
             # fmt: off
-            Column(Columns.UID                , sqlalchemy.Text   , nullable=False, unique=True),
             Column(Columns.CRAWL_TIMESTAMP_UTC, sqlalchemy.Integer, nullable=False),
+            Column(Columns.UID                , sqlalchemy.Text   , nullable=False, unique=True),
             Column(Columns.DATA               , sqlalchemy.BLOB   , nullable=False),
             # fmt: on
         )
@@ -78,11 +77,17 @@ class Database(AbstractContextManager['Database']):
     def __exit__(self, *args, **kwargs) -> None:
         self.engine.dispose()
 
-    def select_all(self) -> Iterator[tuple[Uid, int, bytes]]:
+    def select_all(self) -> Iterator[tuple[int, Uid, bytes]]:
         # TODO double check that simultaneous write and read work
         query = self.results_table.select().order_by(Columns.CRAWL_TIMESTAMP_UTC, Columns.UID)
         with self.engine.connect() as conn:
-            yield from map(tuple, conn.execute(query))
+            for row in conn.execute(query):
+                ts, uid, data = row
+                # just in case
+                assert isinstance(ts, int), row
+                assert isinstance(uid, Uid), row
+                assert isinstance(data, bytes), row
+                yield ts, uid, data
 
     def delete(
         self,
@@ -108,12 +113,10 @@ class Database(AbstractContextManager['Database']):
         results: Iterable[tuple[Uid, bytes]],
         *,
         dry: bool,
-    ) -> Iterator[tuple[Uid, CrawlDt, bytes]]:
+    ) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
         """
         Yields actually inserted items, along with the crawl timestamp
         """
-        # FIXME ugh. reorder crawl_dt first?? also in the db...
-
         crawl_dt = datetime.now(tz=timezone.utc)
         crawl_timestamp_utc = int(crawl_dt.timestamp())
         logger.info(f'[{self.db_path}] inserting crawled items, dt {crawl_dt} {crawl_timestamp_utc}')
@@ -157,7 +160,7 @@ class Database(AbstractContextManager['Database']):
         for d in for_db:
             uid = cast(Uid, d[Columns.UID])
             jb = cast(bytes, d[Columns.DATA])
-            yield uid, crawl_dt, jb  # meh
+            yield crawl_dt, uid, jb  # meh
 
 
 def test_insert(tmp_path: Path) -> None:
@@ -182,19 +185,19 @@ def test_insert(tmp_path: Path) -> None:
 
     db_path = tmp_path / 'db.sqlite'
     with Database(db_path, writable=True) as db:
-        ins_1 = [uid for uid, _, _ in db.insert(results_1(), dry=False)]
+        ins_1 = [uid for _, uid, _ in db.insert(results_1(), dry=False)]
         assert ins_1 == ['1', '2']
 
     with Database(db_path, writable=True) as db:
         # inserting same stuff is a no-op
-        ins_1 = [uid for uid, _, _ in db.insert(results_1(), dry=False)]
+        ins_1 = [uid for _, uid, _ in db.insert(results_1(), dry=False)]
         assert ins_1 == []
 
-        ins_2 = [uid for uid, _, _ in db.insert(results_2(), dry=False)]
+        ins_2 = [uid for _, uid, _ in db.insert(results_2(), dry=False)]
         # item 2 actually changed, but we don't do anything with it, at least for now
         assert ins_2 == ['3']
 
-        in_db = [(uid, blob) for uid, _, blob in db.select_all()]
+        in_db = [(uid, blob) for _, uid, blob in db.select_all()]
         assert in_db == [
             ('1', b'whatever 1'),
             ('2', b'whatever 1'),  # item 2 wasn't updated!

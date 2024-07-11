@@ -71,27 +71,27 @@ class Feed(Mixin, Generic[ResultType]):
         self,
         results: Iterable[tuple[Uid, bytes]],
         dry: bool,
-    ) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
+    ) -> Iterator[tuple[datetime_aware, Uid, bytes]]:
         writable = not dry
         with Database(self.db_path, writable=writable) as db:
             yield from db.insert(results, dry=dry)
 
-    def select_all(self) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
+    def select_all(self) -> Iterator[tuple[datetime_aware, Uid, bytes]]:
         exclude = self.exclude
         total = 0
         excluded = 0
         # TODO when querying, also use stored procedure?
         # compare performance??
         with Database(self.db_path) as db:
-            for uid, crawl_timestamp_utc, blob in db.select_all():
+            for crawl_timestamp_utc, uid, blob in db.select_all():
                 total += 1
                 if exclude is not None and exclude(blob):
                     excluded += 1
                     continue
-                # FIXME crawl_dt deserialize could be inside the db bit?
+                # TODO crawl_dt deserialize could be inside the db bit?
                 # or the other way round.. move timestamp generation into
                 crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
-                yield (uid, crawl_dt, blob)
+                yield (crawl_dt, uid, blob)
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
 
@@ -111,13 +111,15 @@ class Feed(Mixin, Generic[ResultType]):
         return deleted
         # TODO interactive mode? for now just use --dry
 
-    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[Uid, datetime_aware, bytes]]:
+    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[datetime_aware, Uid, bytes]]:
         # convert to list to make sure the connection in _insert isn't open for long
         results = list(self.search_all(limit=limit))
         yield from self._insert(results, dry=dry)
+        # TODO after that could try parsing from newly inserted results?
+        # but do atomically (force the iterator) to make sure stuff is inserted before parsing
 
-    def feed(self) -> Iterator[tuple[Uid, datetime_aware, ResultType | Exception]]:
-        for uid, crawl_dt, data in self.select_all():
+    def feed(self) -> Iterator[tuple[datetime_aware, Uid, ResultType | Exception]]:
+        for crawl_dt, uid, data in self.select_all():
             o: ResultType | Exception
             try:
                 o = self.parse(data)
@@ -126,7 +128,7 @@ class Feed(Mixin, Generic[ResultType]):
                 err = RuntimeError(f'while parsing {data!r}')
                 err.__cause__ = e
                 o = err
-            yield uid, crawl_dt, o
+            yield crawl_dt, uid, o
 
     @classmethod
     def make(
