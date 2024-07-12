@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from axol.core.common import html
 from axol.core.feed import Feed as BaseFeed, SearchF
 
 from . import model, query
@@ -53,6 +54,7 @@ def test_feed(tmp_path: Path) -> None:
         title='Borrow checking, RC, GC, and the Eleven (!) Other Memory Safety Approaches',
         url='https://verdagon.dev/grimoire/grimoire',
         author='jado',
+        permalink='https://lobste.rs/s/mutdyp/borrow_checking_rc_gc_eleven_other_memory',
         score=0,
         comments=0,
         tags=['programming'],
@@ -60,15 +62,16 @@ def test_feed(tmp_path: Path) -> None:
 
     # just a random comment that should be present
     [(uid, dt, c)] = [(uid, dt, x) for uid, dt, x in items if isinstance(x, model.Comment) and x.author == 'englishm']
-    assert 'My thought process' in c.text
-    assert 'this type of content' in c.text
-    c = dataclasses.replace(c, text='')
+    assert 'My thought process' in c.text.html
+    assert 'this type of content' in c.text.html
+    c = dataclasses.replace(c, text=html(''))
     assert c == model.Comment(
         dt=datetime.datetime(2015, 1, 29, 10, 55, 39, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=64800))),
         id='c_8tqeri',
         title='They Live',
-        url='/s/fm4zlm/they_live',
+        url='https://lobste.rs/s/fm4zlm/they_live',
         author='englishm',
+        permalink='https://lobste.rs/s/fm4zlm/they_live#c_8tqeri',
         score=1,
-        text='',
+        text=html(''),
     )

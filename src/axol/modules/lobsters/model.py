@@ -4,8 +4,8 @@ from typing import Any, Sequence, assert_never, cast
 
 from bs4 import BeautifulSoup, NavigableString
 
-from axol.core.common import datetime_aware
-from .common import extract_uid
+from axol.core.common import datetime_aware, html
+from .common import extract_uid, lobsters
 from .query import Kind
 
 
@@ -16,12 +16,10 @@ class _Base:
     title: str  # NOTE: this is story title (e.g. for Comment)
     url: str  # NOTE: this is story url (e.g. for Comment)
     author: str
+    permalink: str
 
-    def permalink(self) -> str:
-        # NOTE: in principle could extract permalink from the body, it contains user readable alias as well
-        # e.g. https://lobste.rs/s/wmwoc4/userland_dataflow_environment_for_end#c_06ceqk
-        # but this works well anyway
-        return f'https://lobste.rs/s/{self.id}'
+    # NOTE: f'https://lobste.rs/s/{self.id}' works as well
+    # but permalink extracted from html has nicer human readable link
 
 
 @dataclass
@@ -34,7 +32,7 @@ class Story(_Base):
 @dataclass
 class Comment(_Base):
     score: int | None  # score is unavailable if the comment is super new
-    text: str
+    text: html
 
 
 Result = Story | Comment
@@ -68,12 +66,16 @@ def parse(data: bytes) -> Result:
         [title_e] = soup.select('.u-url')
         title = title_e.text
         url = title_e.attrs['href']
+        assert url.startswith('http'), url
 
         [tags_e] = soup.select('.tags')
         tags = [x.text.strip() for x in tags_e.select('.tag')]
 
         [comments_e] = soup.select('.mobile_comments')
         comments = int(comments_e.text)
+
+        permalink = comments_e['href']
+        permalink = lobsters(permalink)
 
         [author_e] = soup.select('.u-author')
         author = author_e.text
@@ -85,6 +87,7 @@ def parse(data: bytes) -> Result:
             title=title,
             url=url,
             author=author,
+            permalink=permalink,
             score=score,
             comments=comments,
             tags=tags,
@@ -102,13 +105,15 @@ def parse(data: bytes) -> Result:
         assert len(title) > 0
         url = story_e.attrs['href']
         assert url.startswith('/s/')
+        url = lobsters(url)
 
         assert permalink_e.text == 'link'
         permalink = permalink_e.attrs['href']
+        permalink = lobsters(permalink)
 
         [text_e] = soup.select('.comment_text')
-        comment_text = text_e.text
-        assert len(comment_text) > 0
+        assert len(text_e.text) > 0, text_e  # just in case
+        comment_text = html(html=text_e.decode_contents())
 
         comment = Comment(
             dt=dt,
@@ -116,6 +121,7 @@ def parse(data: bytes) -> Result:
             title=title,
             url=url,
             author=author,
+            permalink=permalink,
             score=score,
             text=comment_text,
         )

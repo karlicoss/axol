@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Iterator, Type, TypeVar
 
@@ -32,3 +33,9 @@ def json_copy(j: Json) -> Json:
     if isinstance(j, dict):
         return {k: json_copy(v) for k, v in j.items()}
     raise RuntimeError(j, type(j))
+
+
+@dataclass
+class html:
+    "Marker class to signal that the object contains raw html"
+    html: str
