@@ -7,10 +7,17 @@ from axol.core.common import datetime_aware, _check
 
 
 @dataclass
+class User:
+    # we can't always reconstruct url from login due to bots or possibly some other edge cases
+    login: str
+    url: str
+
+
+@dataclass
 class Base:
     created_at: datetime_aware | None
     html_url: str
-    username: str | None  # can be None if author deleted themselves?
+    user: User | None  # can be None if author deleted themselves?
     repo: str
 
 
@@ -70,7 +77,7 @@ def parse(data: bytes) -> Result:
 
     if entity_type == 'code':
         repo = _check(j['repository']['full_name'], str)
-        username = _check(j['repository']['owner'].pop('login'), str)
+        repo_owner = j['repository']['owner']
         path = _check(j.pop('path'), str)
         return Code(
             # FIXME doesn't contain commit date...
@@ -78,7 +85,10 @@ def parse(data: bytes) -> Result:
             # I think in old axol used repository pushed_at attribute??
             created_at=None,
             html_url=html_url,
-            username=username,
+            user=User(
+                login=_check(repo_owner.pop('login'), str),
+                url=_check(repo_owner.pop('html_url'), str),
+            ),
             repo=repo,
             path=path,
         )
@@ -89,18 +99,21 @@ def parse(data: bytes) -> Result:
         created_at = datetime.fromisoformat(cmt_author['date'])
         message = _check(cmt.pop('message'), str)
         author = j.pop('author')
-        author_login: str | None
+        user: User | None
         if author is None:
             # sometimes legit missing
             # e.g. https://github.com/indieweb/wiki/commit/5fa29b457ecb9015ecc02eaf4a3cd26bf1b4b44b
             # I guess means user deleted themselves?
-            author_login = None
+            user = None
         else:
-            author_login = _check(author.pop('login'), str)
+            user = User(
+                login=_check(author.pop('login'), str),
+                url=_check(author.pop('html_url'), str),
+            )
         return Commit(
             created_at=created_at,
             html_url=html_url,
-            username=author_login,
+            user=user,
             repo=repo,
             message=message,
         )
@@ -113,16 +126,18 @@ def parse(data: bytes) -> Result:
         title = _check(j.pop('title'), str)
         body = j.pop('body')
         created_at = datetime.fromisoformat(j.pop('created_at'))
-        user_login: str | None
-        user = j.pop('user')
-        if user is None:
-            user_login = None
+        uu = j.pop('user')
+        if uu is None:
+            user = None
         else:
-            user_login = _check(user.pop('login'), str)
+            user = User(
+                login=_check(uu.pop('login'), str),
+                url=_check(uu.pop('html_url'), str),
+            )
         return Issue(
             created_at=created_at,
             html_url=html_url,
-            username=user_login,
+            user=user,
             repo=repo,
             title=title,
             body=body,
@@ -133,11 +148,15 @@ def parse(data: bytes) -> Result:
         description = j.pop('description')  # can be none if empty
         topics = tuple(sorted(j.pop('topics')))
         stars = _check(j.pop('stargazers_count'), int)
-        username = _check(j['owner'].pop('login'), str)
+        owner = j['owner']
+        user = User(
+            login=_check(owner.pop('login'), str),
+            url=_check(owner.pop('html_url'), str),
+        )
         return Repository(
             created_at=created_at,
             html_url=html_url,
-            username=username,
+            user=user,
             repo=repo,
             description=description,
             topics=topics,
