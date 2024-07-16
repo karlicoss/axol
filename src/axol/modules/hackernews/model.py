@@ -3,7 +3,7 @@ from datetime import datetime
 
 import orjson
 
-from axol.core.common import datetime_aware, _check
+from axol.core.common import datetime_aware, _check, html
 
 
 # todo use parent_id?
@@ -20,14 +20,14 @@ class Base:
 
 @dataclass
 class Comment(Base):
-    text: str
+    text: html
 
 
 @dataclass
 class Story(Base):
     title: str
     url: str | None  # might be mising if it's an "ask hn" or smth like that
-    text: str | None  # might be missing if it's a link submission
+    text: html | None  # might be missing if it's a link submission
     points: int
     num_comments: int
 
@@ -95,13 +95,13 @@ def parse(data: bytes) -> Result:
             id=object_id,
             created_at=created_at,
             author=author,
-            text=comment_text,
+            text=html(comment_text),
         )
     elif entity_type == 'story':
         # TODO maybe use pydantic for such validation??
-        _story_text = j.pop('story_text', None)
+        _story_text: str | None = j.pop('story_text', None)
         # sometimes it's not present, sometimes present but empty
-        story_text = None if len(_story_text or '') == 0 else _story_text
+        story_text = None if _story_text is None or len(_story_text or '') == 0 else html(_story_text)
         num_comments = _check(j.pop('num_comments'), int)
         points = _check(j.pop('points'), int)
         title = _check(j.pop('title'), str)
