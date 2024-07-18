@@ -58,6 +58,7 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool, quiet: bool)
     """
     feeds = get_feeds(include=include)
     errors = []
+    total = 0
     for feed in feeds:
         for crawl_dt, uid, o in feed.crawl(limit=limit, dry=dry):
             if isinstance(o, Exception):
@@ -65,9 +66,11 @@ def cmd_crawl(*, limit: int | None, include: str | None, dry: bool, quiet: bool)
                 errors.append(o)
                 continue
 
+            total += 1
             if quiet:
                 continue
             print(uid, o)
+    logger.info(f'crawled {total} new items')
     if len(errors) > 0:
         logger.error(f'got {len(errors)} errors')
         sys.exit(1)
