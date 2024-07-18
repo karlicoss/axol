@@ -108,26 +108,19 @@ class Database(AbstractContextManager['Database']):
                 deleted = res.rowcount
         return deleted
 
-    def insert(
+    def _insert(
         self,
-        results: Iterable[tuple[Uid, bytes]],
+        items: Iterable[tuple[CrawlDt, Uid, bytes]],
         *,
         dry: bool,
     ) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
-        """
-        Yields actually inserted items, along with the crawl timestamp
-        """
-        crawl_dt = datetime.now(tz=timezone.utc)
-        crawl_timestamp_utc = int(crawl_dt.timestamp())
-        logger.info(f'[{self.db_path}] inserting crawled items, dt {crawl_dt} {crawl_timestamp_utc}')
-
         new = 0
         exist = 0
         with self.engine.begin() as conn:
             uids_in_db = {uid for (uid,) in conn.execute(select(self.results_table.c[Columns.UID]))}
             seen = set()
             for_db = []
-            for uid, jb in results:
+            for crawl_dt, uid, jb in items:
                 # make sure we aren't passed down dupes from search
                 # (search is better suited to deal with them properly)
                 assert uid not in seen, (uid, jb)
@@ -136,6 +129,9 @@ class Database(AbstractContextManager['Database']):
                 if uid in uids_in_db:
                     exist += 1
                     continue
+
+                crawl_timestamp_utc = int(crawl_dt.timestamp())
+
                 # todo store as jsonb? not sure if there is any benefit?
                 new += 1
                 assert isinstance(jb, bytes), jb  # todo temporary for refactoring period
@@ -161,6 +157,21 @@ class Database(AbstractContextManager['Database']):
             uid = cast(Uid, d[Columns.UID])
             jb = cast(bytes, d[Columns.DATA])
             yield crawl_dt, uid, jb  # meh
+
+    def insert(
+        self,
+        results: Iterable[tuple[Uid, bytes]],
+        *,
+        dry: bool,
+    ) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
+        """
+        Yields actually inserted items, along with the crawl timestamp
+        """
+        now_dt = datetime.now(tz=timezone.utc)
+        logger.info(f'[{self.db_path}] inserting crawled items, dt {now_dt}')
+
+        items = ((now_dt, uid, jb) for uid, jb in results)
+        return self._insert(items, dry=dry)
 
 
 def test_insert(tmp_path: Path) -> None:

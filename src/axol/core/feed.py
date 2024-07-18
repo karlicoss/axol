@@ -116,7 +116,8 @@ class Feed(Mixin, Generic[ResultType]):
 
     def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         # convert to list to make sure the connection in _insert isn't open for long
-        results = list(self.search_all(limit=limit))
+        # sort by crawl_dt and uid cause why not?
+        results = sorted(self.search_all(limit=limit))
 
         # convert to list to make sure we actually inserted things before attempting to parse
         inserted = list(self._insert(results, dry=dry))
@@ -180,7 +181,7 @@ def storage_dir() -> Path:
     return res
 
 
-def get_feeds(*, include: str | None) -> list[Feed]:
+def get_feeds(*, include: str | None = None) -> list[Feed]:
     import axol.user_config as C
 
     feeds = list(C.feeds())
