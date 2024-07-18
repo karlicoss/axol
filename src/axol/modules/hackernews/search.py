@@ -1,10 +1,11 @@
 # NOTE: for hn crawling same query may give different sets of results at a very short timespan
 # try querying the same thing every 5 mins to check
+import orjson
 from loguru import logger
 import hn  # type: ignore[import-untyped]
 
 # todo don't remember what type of imports I decided is best? absolute imports in modules??
-from axol.core.common import SearchResults, Uid, _check
+from axol.core.common import Json, SearchResults, Uid, _check
 from .query import SearchQuery
 
 
@@ -35,6 +36,7 @@ def _search(query: str, *, limit: int | None) -> SearchResults:
 
     total = 0
     # search_by_date (from Algolia) means sorted by date, most recent first
+    r: Json
     for r in hn.search_by_date(query):
         if limit is not None and total >= limit:
             break
@@ -47,7 +49,7 @@ def _search(query: str, *, limit: int | None) -> SearchResults:
         uid = _check(r['objectID'], Uid)  # just in case
 
         total += 1
-        yield uid, r
+        yield uid, orjson.dumps(r)
 
     logger.info(f'{query=} -- got {total} results')
 
