@@ -186,6 +186,6 @@ def get_feeds(*, include: str | None = None) -> list[Feed]:
 
     feeds = list(C.feeds())
     if include is not None:
-        feeds = [c for c in feeds if re.search(include, c.name)]
+        feeds = [c for c in feeds if re.match(include, c.name)]
     assert len(feeds) > 0
     return feeds
