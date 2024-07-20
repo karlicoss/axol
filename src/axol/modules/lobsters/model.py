@@ -99,8 +99,13 @@ def parse(data: bytes) -> Result:
         children = [c for c in byline.children if not isinstance(c, NavigableString)]
         [_, _, info_e, permalink_e, _, story_e, _] = children
 
-        [author_e] = info_e.select('a')[-1]  # meh
+        # first link in info_e is avatar
+        # then actual user link
+        # then possible to have some sort of user flair
+        author_e = info_e.select('a')[1]
         author = author_e.text
+        author_href = author_e['href']
+        assert author_href == f'/~{author}', info_e  # validate just in case
 
         title = story_e.text
         assert len(title) > 0
