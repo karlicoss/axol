@@ -81,6 +81,10 @@ class Database(AbstractContextManager['Database']):
         # TODO double check that simultaneous write and read work
         query = self.results_table.select().order_by(Columns.CRAWL_TIMESTAMP_UTC, Columns.UID)
         with self.engine.connect() as conn:
+            total_query = select(func.count()).select_from(self.results_table)
+            [(total,)] = list(conn.execute(total_query))
+            logger.info(f'total db items: {total}')
+
             for row in conn.execute(query):
                 ts, uid, data = row
                 # just in case

@@ -66,7 +66,8 @@ def parse(data: bytes) -> Result:
         [title_e] = soup.select('.u-url')
         title = title_e.text
         url = title_e.attrs['href']
-        assert url.startswith('http'), url
+        # eh, sometimes can be HTTPS://?
+        assert url.lower().startswith('http'), url
 
         [tags_e] = soup.select('.tags')
         tags = [x.text.strip() for x in tags_e.select('.tag')]

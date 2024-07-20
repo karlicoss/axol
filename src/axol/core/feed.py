@@ -148,7 +148,7 @@ class Feed(Mixin, Generic[ResultType]):
         queries: Sequence[Query | str],
         exclude: ExcludeP | None = None,
     ) -> Self:
-        assert re.fullmatch(r'\w+', query_name)
+        assert re.fullmatch(r'[\w\.]+', query_name)
 
         PREFIX = cls.PREFIX
         assert PREFIX is not None, cls
