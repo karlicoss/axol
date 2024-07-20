@@ -1,10 +1,11 @@
 from typing import Any, Iterator
 
 from loguru import logger
+import orjson
 import praw  # type: ignore[import-untyped]
 from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
 
-from axol.core.common import SearchResults, Uid
+from axol.core.common import Json, SearchResults, Uid
 from .query import SearchQuery
 
 
@@ -108,7 +109,8 @@ def _search(*, query: str, limit: int | None) -> SearchResults:
             if uid in uids:
                 continue
             uids[uid] = r
-            yield uid, jsonify(r)
+            rj: Json = jsonify(r)
+            yield uid, orjson.dumps(rj)
     total = len(uids)
     logger.debug(f'{qstr} -- got {total} results')
 
