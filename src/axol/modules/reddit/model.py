@@ -50,6 +50,10 @@ def parse(data: bytes) -> Submission:
     if not from_old_axol:
         assert isinstance(author_name, str), j
 
+    url = _check(j['url'], str)
+    if url.startswith('/r'):
+        url = _reddit(url)
+
     # fmt: off
     return Submission(
         id=j['id'],
@@ -60,7 +64,7 @@ def parse(data: bytes) -> Submission:
         _permalink     = _check(j['permalink']                , str),
         title          = _check(j['title']                    , str),
         selftext_md    = _check(j['selftext']                 , str),
-        url            = _check(j['url']                      , str),
+        url            = url,
         author_name    = author_name,
         selftext_html  = selftext_html,
     )

@@ -25,6 +25,8 @@ class Query(Compilable[SearchQuery]):
     # it also matches some odd tags:
     # - e.g. '+bret.victor'
     # - or even tag combinations like 'bret', 'victor'
+    # NOTE: "unexpected return" results in bunch of things, whereas "unexpected-return" is empty
+    #   so could be useful to search both
 
     query: str | raw | exact
     kind: Kind | None = None
