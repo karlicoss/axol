@@ -66,6 +66,10 @@ def parse(data: bytes) -> Result:
         [title_e] = soup.select('.u-url')
         title = title_e.text
         url = title_e.attrs['href']
+
+        if url.startswith('/s/'):
+            # weird, sometimes can be a relative url?
+            url = lobsters(url)
         # eh, sometimes can be HTTPS://?
         assert url.lower().startswith('http'), url
 

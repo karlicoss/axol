@@ -20,6 +20,6 @@ lint.ignore = [
 # sometimes it's useful to give a variable a name even if we don't use it as a documentation
 # on the other hand, often is a sign of error
     "F841",  # Local variable `count` is assigned to but never used
-    "F401",  # imported but unused
+    #"F401",  # imported but unused
 ###
 ]

@@ -23,6 +23,7 @@ class SearchQuery:
 class Query(Compilable[SearchQuery]):
     # NOTE: looks like on lobsters search is always exact?
     # anywyay, double quotes result in zero results
+    # reported here https://github.com/lobsters/lobsters/issues/1296
     # NOTE: search query for lobsters seems to match text behind the link
     # TODO lobsters also has tags? although a very small set of predefined ones
     query: str | raw | exact
