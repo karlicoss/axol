@@ -5,6 +5,7 @@ from typing import Any
 
 import click
 from loguru import logger
+from more_itertools import ilen
 
 from .feed import get_feeds, Feed
 from .query import compile_queries
@@ -121,7 +122,8 @@ def cmd_prune(*, include: str | None, dry: bool) -> None:
 @main.command(name='feeds')
 @arg_include
 @click.option('--search', is_flag=True, help='print raw search queries instead of config queries')
-def cmd_feeds(*, include: str | None, search: bool) -> None:
+@click.option('--db-stats', is_flag=True, help='print database stats for the feed')
+def cmd_feeds(*, include: str | None, search: bool, db_stats: bool) -> None:
     """
     Print out feeds defined in the config
     """
@@ -153,6 +155,9 @@ def cmd_feeds(*, include: str | None, search: bool) -> None:
                 'queries': queries,
                 'exclude': feed.exclude is not None,  # eh, it's a function so can't pretty print
             }
+            if db_stats:
+                db_items = ilen(feed.feed()) if feed.db_path.exists() else -1
+                d['db_items'] = db_items
             datas.append(d)
 
     import tabulate
