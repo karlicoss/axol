@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from loguru import logger
 import requests
 
-from axol.core.common import SearchResults, Uid
+from axol.core.common import SearchResults, Uid, make_uid
 from .common import extract_uid
 from .query import SearchQuery, Kind
 
@@ -53,8 +53,7 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
             assert_never(kind)
 
         for item_el in item_els:
-            uid = extract_uid(item_el)
-            assert len(uid) > 0, item_el  # just in case
+            uid = make_uid(extract_uid(item_el))
 
             if uid in uids:
                 # can have race condition due to pagination

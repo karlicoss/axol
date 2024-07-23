@@ -16,6 +16,7 @@ from sqlalchemy import (
 
 from .common import (
     datetime_aware,
+    make_uid,
     Uid,
 )
 from .utils import sqlalchemy_strict_sqlite
@@ -89,9 +90,9 @@ class Database(AbstractContextManager['Database']):
                 ts, uid, data = row
                 # just in case
                 assert isinstance(ts, int), row
-                assert isinstance(uid, Uid), row
+                assert isinstance(uid, str), row
                 assert isinstance(data, bytes), row
-                yield ts, uid, data
+                yield ts, make_uid(uid), data
 
     def delete(
         self,
@@ -182,21 +183,21 @@ def test_insert(tmp_path: Path) -> None:
     import pytest
 
     def results_1() -> Iterator[tuple[Uid, bytes]]:
-        yield '1', b'whatever 1'
-        yield '2', b'whatever 1'
+        yield make_uid('1'), b'whatever 1'
+        yield make_uid('2'), b'whatever 1'
 
     def results_2() -> Iterator[tuple[Uid, bytes]]:
-        yield '3', b'whatever 2'
-        yield '2', b'whatever 2'
+        yield make_uid('3'), b'whatever 2'
+        yield make_uid('2'), b'whatever 2'
 
     def results_3() -> Iterator[tuple[Uid, bytes]]:
-        yield '4', b'whatever 3'
-        yield '4', b'whatever 3'
+        yield make_uid('4'), b'whatever 3'
+        yield make_uid('4'), b'whatever 3'
 
     def results_4() -> Iterator[tuple[Uid, bytes]]:
-        yield '1', b'boom'
-        yield '999', b'whatever 4'
-        yield '1', b'boom'
+        yield make_uid('1'), b'boom'
+        yield make_uid('999'), b'whatever 4'
+        yield make_uid('1'), b'boom'
 
     db_path = tmp_path / 'db.sqlite'
     with Database(db_path, writable=True) as db:
@@ -235,7 +236,7 @@ def test_insert_atomic(tmp_path: Path) -> None:
 
     def results_ok() -> Iterator[tuple[Uid, bytes]]:
         for i in range(10):
-            yield str(i), b'item {i}'
+            yield make_uid(str(i)), b'item {i}'
 
     with Database(db_path, writable=True) as db:
         list(db.insert(results_ok(), dry=False))
@@ -245,7 +246,7 @@ def test_insert_atomic(tmp_path: Path) -> None:
 
     def results_bad() -> Iterator[tuple[Uid, bytes]]:
         for i in range(1_000_000):
-            yield str(i), b'item {i}'
+            yield make_uid(str(i)), b'item {i}'
         raise RuntimeError('BOOM')
 
     with Database(db_path, writable=True) as db:

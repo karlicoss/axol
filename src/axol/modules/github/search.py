@@ -16,7 +16,7 @@ from github.GithubObject import NotSet, Opt
 import orjson
 from loguru import logger
 
-from axol.core.common import SearchResults, Uid, Json
+from axol.core.common import SearchResults, Uid, Json, make_uid
 from .query import Kind, SearchQuery
 
 
@@ -116,7 +116,10 @@ class SearchCode(Search):
     def get_uid(self, x: ContentFile) -> Uid:
         # todo could also take html_url and chop off the sha?
         # FIXME this might be too long.. need to think about it...
-        return x.repository.full_name + ':' + x.path
+        # TODO maybe do md5 or base64?
+        # md5 is limited length but not reversible (although who cares??)
+        # base64 length can be unbounded -- a bit shit
+        return make_uid(x.repository.full_name + ':' + x.path)
 
 
 @dataclass
@@ -127,7 +130,9 @@ class SearchRepositories(Search):
     sorts: tuple[str, ...] = ('stars', 'forks', 'updated')
 
     def get_uid(self, x: Repository) -> Uid:
-        return x.full_name
+        # FIXME include 'repo_' or something?
+        # also do check_uid function to make sure it's alnums and reasonable length?
+        return make_uid(x.full_name)
 
 
 @dataclass
@@ -143,7 +148,7 @@ class SearchIssues(Search):
 
     def get_uid(self, x: Issue) -> Uid:
         # FIXME not sure about this
-        return str(x.id)
+        return make_uid(str(x.id))
 
 
 @dataclass
@@ -154,7 +159,7 @@ class SearchCommits(Search):
     sorts: tuple[str, ...] = ('author-date', 'committer-date')
 
     def get_uid(self, x: Commit) -> Uid:
-        return x.sha
+        return make_uid(x.sha)
 
 
 SEARCHERS = {

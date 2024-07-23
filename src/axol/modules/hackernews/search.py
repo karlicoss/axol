@@ -5,7 +5,7 @@ from loguru import logger
 import hn  # type: ignore[import-untyped]
 
 # todo don't remember what type of imports I decided is best? absolute imports in modules??
-from axol.core.common import Json, SearchResults, Uid, _check
+from axol.core.common import Json, SearchResults, _check, make_uid
 from .query import SearchQuery
 
 
@@ -46,10 +46,10 @@ def _search(query: str, *, limit: int | None) -> SearchResults:
         r.pop('_tags', None)
         ##
 
-        uid = _check(r['objectID'], Uid)  # just in case
+        uid = _check(r['objectID'], str)  # just in case
 
         total += 1
-        yield uid, orjson.dumps(r)
+        yield make_uid(uid), orjson.dumps(r)
 
     logger.info(f'{query=} -- got {total} results')
 

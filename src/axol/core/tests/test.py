@@ -26,7 +26,7 @@ class DummyFeed(BaseFeed):
     PREFIX = 'dummy'
     QueryType = str
 
-    def parse(self, data: bytes):
+    def parse(self, data: bytes) -> Json:
         return orjson.loads(data)
 
     @property

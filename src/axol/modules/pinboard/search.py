@@ -6,7 +6,7 @@ from loguru import logger
 import orjson
 import requests
 
-from axol.core.common import notnone, Json, SearchResults, Uid
+from axol.core.common import make_uid, notnone, Json, SearchResults, Uid
 from .query import SearchQuery, Kind
 
 
@@ -84,8 +84,7 @@ def _search(
             # however if I replace user with an arbitrary string, it works
             # https://pinboard.in/u:_/b:a95fd8864c28
             # so just bookmark slug must be unique enough
-            uid = j['slug']
-            assert isinstance(uid, str), j  # just in case
+            uid = make_uid(j['slug'])
 
             if uid in uids:
                 # race conditions might happen due to the pagination

@@ -5,7 +5,7 @@ import orjson
 import praw  # type: ignore[import-untyped]
 from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
 
-from axol.core.common import Json, SearchResults, Uid
+from axol.core.common import Json, SearchResults, Uid, make_uid
 from .query import SearchQuery
 
 
@@ -61,8 +61,8 @@ def jsonify(d):
 
 def _uid(r: Submission) -> Uid:
     u = r.id
-    assert isinstance(u, Uid)  # just in case
-    return u
+    assert isinstance(u, str), r  # just in case
+    return make_uid(u)
 
 
 def _search(*, query: str, limit: int | None) -> SearchResults:
