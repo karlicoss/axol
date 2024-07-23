@@ -13,7 +13,7 @@ def make_uid(s: str) -> Uid:
     # limit characters to prevent stupid crap like spaces etc
     assert re.fullmatch(r'[\w\.-]+', s), s
     # kinda arbitrary, but feels like it's worth limiting length
-    assert 0 < len(s) < 80, s
+    assert 0 < len(s) < 150, s
     return Uid(s)
 
 
