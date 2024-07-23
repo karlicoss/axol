@@ -181,11 +181,15 @@ def storage_dir() -> Path:
     return res
 
 
-def get_feeds(*, include: str | None = None) -> list[Feed]:
+def get_feeds(*, include: str | None = None, exclude: str | None = None) -> list[Feed]:
+    assert not (include is not None and exclude is not None)
+
     import axol.user_config as C
 
     feeds = list(C.feeds())
     if include is not None:
         feeds = [c for c in feeds if re.match(include, c.name)]
+    if exclude is not None:
+        feeds = [c for c in feeds if not re.match(exclude, c.name)]
     assert len(feeds) > 0
     return feeds
