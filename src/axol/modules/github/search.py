@@ -67,22 +67,36 @@ class Search(Mixin):  # todo make it typed?
                 if is_dupe:
                     if isinstance(x, Commit):  # meh, maybe make it a specific class attribute?
                         # commits can be duplicated due to forks
-                        # just skip
+                        continue
+                    elif isinstance(x, ContentFile):
+                        # casn be duplicated due to identical matched blobs
                         continue
                     else:
-                        assert uid not in uids, (uid, uids[uid])
+                        assert uid not in uids, (uid, x, uids[uid])
 
                 uids[uid] = x
                 yield uid, x
 
+        done_sort: set[Opt[str]] = set()
         uids: dict[Uid, ContentFile] = {}
         # todo maybe, only use additional when there is close to 100 results??
         for sort, order in sorts:
-            logger.debug(f'kind={self.KIND} {query=} {sort=!r:<10} {order=!r:<5} searching...')
+            qstr2 = f'kind={self.KIND} {query=} {sort=!r:<10} {order=!r:<5}'
+            logger.debug(f'{qstr2} searching...')
             # TODO make this merging generic
             # kinda tricky since we don't want to convert dupes to json prematurely..
+            found = 0
             added = 0
             for uid, x in _search(sort=sort, order=order):
+                found += 1
+
+                if found > 50 and added == 0:
+                    # seems like we're not hitting any new results in this batch
+                    if sort in done_sort:
+                        # if we processed that sort before, likely means that previous order exhausted all new items
+                        logger.debug(f'{qstr2}: bailing early, looks like already found all items')
+                        break
+
                 if uid in uids:
                     continue
                 uids[uid] = x
@@ -97,6 +111,7 @@ class Search(Mixin):  # todo make it typed?
 
                 yield uid, orjson.dumps(j)
             logger.debug(f'{query=} {sort=!r:<10} {order=!r:<5} {added=}')
+            done_sort.add(sort)
 
         total = len(uids)
         logger.info(f'{qstr} -- got {total} results')
@@ -114,12 +129,12 @@ class SearchCode(Search):
     sorts: tuple[str, ...] = ()
 
     def get_uid(self, x: ContentFile) -> Uid:
-        # todo could also take html_url and chop off the sha?
-        # FIXME this might be too long.. need to think about it...
-        # TODO maybe do md5 or base64?
-        # md5 is limited length but not reversible (although who cares??)
-        # base64 length can be unbounded -- a bit shit
-        return make_uid(x.repository.full_name + ':' + x.path)
+        # hmm, so sha here seems to be literal hash of the matched blob?
+        # it's not commit sha -- e.g. these repos are completely unrelated
+        # - https://github.com/search?q=repo%3Atigthor%2Fneural-network-hacking%20promnesia&type=code
+        # - https://github.com/search?q=repo%3AKayzaks%2FHackingNeuralNetworks%20promnesia&type=code
+        # , they have the same sha
+        return make_uid('code_' + x.sha)
 
 
 @dataclass
@@ -130,9 +145,8 @@ class SearchRepositories(Search):
     sorts: tuple[str, ...] = ('stars', 'forks', 'updated')
 
     def get_uid(self, x: Repository) -> Uid:
-        # FIXME include 'repo_' or something?
-        # also do check_uid function to make sure it's alnums and reasonable length?
-        return make_uid(x.full_name)
+        name = x.full_name.replace('/', '_')
+        return make_uid('repo_' + name)
 
 
 @dataclass
@@ -147,8 +161,7 @@ class SearchIssues(Search):
     # 'interactions',
 
     def get_uid(self, x: Issue) -> Uid:
-        # FIXME not sure about this
-        return make_uid(str(x.id))
+        return make_uid('issue_' + str(x.id))
 
 
 @dataclass
@@ -159,7 +172,7 @@ class SearchCommits(Search):
     sorts: tuple[str, ...] = ('author-date', 'committer-date')
 
     def get_uid(self, x: Commit) -> Uid:
-        return make_uid(x.sha)
+        return make_uid('commit_' + x.sha)
 
 
 SEARCHERS = {

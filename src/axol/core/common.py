@@ -11,9 +11,9 @@ Uid = NewType('Uid', str)
 def make_uid(s: str) -> Uid:
     assert isinstance(s, str), s
     # limit characters to prevent stupid crap like spaces etc
-    assert re.fullmatch(r'[\w]+', s), s  #
+    assert re.fullmatch(r'[\w\.-]+', s), s
     # kinda arbitrary, but feels like it's worth limiting length
-    assert 0 < len(s) < 50, s
+    assert 0 < len(s) < 80, s
     return Uid(s)
 
 
