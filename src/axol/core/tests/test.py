@@ -53,7 +53,7 @@ def make_feed(*, tmp_path: Path, exclude: ExcludeP | None = None, query_name: st
         query_name=query_name,
         queries=[Query('whatever')],
         db_path=tmp_path / f'{query_name}.sqlite',
-        exclude=exclude,
+        exclude_raw=exclude,
     )
 
 

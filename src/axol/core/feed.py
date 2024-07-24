@@ -39,7 +39,7 @@ class Feed(Mixin, Generic[ResultType]):
     name: str
     queries: Sequence[Query]
     db_path: Path
-    exclude: ExcludeP | None
+    exclude_raw: ExcludeP | None
 
     @abstractmethod
     def parse(self, data: bytes) -> ResultType:
@@ -51,7 +51,7 @@ class Feed(Mixin, Generic[ResultType]):
         raise NotImplementedError
 
     def _exclude(self, data: bytes) -> bool:
-        exclude = self.exclude
+        exclude = self.exclude_raw
         if exclude is None:
             return False
         try:
@@ -112,7 +112,7 @@ class Feed(Mixin, Generic[ResultType]):
         Returns number of pruned items
         """
         # TODO would be nice to yield items to be pruned? at least for dry mode?
-        has_exclude = self.exclude is not None
+        has_exclude = self.exclude_raw is not None
         if not has_exclude:
             logger.info('feed has no exclude function defined, nothing to do')
             # fast path
@@ -156,7 +156,7 @@ class Feed(Mixin, Generic[ResultType]):
         db_path: str | Path | None = None,
         query_name: str,
         queries: Sequence[Query | str],
-        exclude: ExcludeP | None = None,
+        exclude_raw: ExcludeP | None = None,
     ) -> Self:
         assert re.fullmatch(r'[\w\.]+', query_name)
 
@@ -181,7 +181,7 @@ class Feed(Mixin, Generic[ResultType]):
             else:
                 _queries.append(query)
         assert len(_queries) > 0
-        return cls(name=name, db_path=db_path, queries=_queries, exclude=exclude)
+        return cls(name=name, db_path=db_path, queries=_queries, exclude_raw=exclude_raw)
 
 
 def storage_dir() -> Path:
