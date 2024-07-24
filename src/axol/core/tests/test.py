@@ -33,18 +33,26 @@ class DummyFeed(BaseFeed):
     def search(self) -> SearchF:
         def _search(query: SearchQuery, *, limit: int | None):
             for i in range(100):
-                uid = f'{i:05d}'
+                uid = f'{i:03d}'
                 j = {'text': f'item {uid}'}
                 yield uid, orjson.dumps(j)
 
         return _search
 
+    def asdict(self) -> dict[Uid, Json]:
+        d: dict[Uid, Json] = {}
+        for crawl_dt, uid, o in self.feed():
+            assert uid not in d  # just in case
+            assert not isinstance(o, Exception)
+            d[uid] = o
+        return d
 
-def make_feed(*, tmp_path: Path, exclude: ExcludeP | None = None) -> DummyFeed:
+
+def make_feed(*, tmp_path: Path, exclude: ExcludeP | None = None, query_name: str = 'testing') -> DummyFeed:
     return DummyFeed.make(
-        query_name='testing',
+        query_name=query_name,
         queries=[Query('whatever')],
-        db_path=tmp_path / 'test.sqlite',
+        db_path=tmp_path / f'{query_name}.sqlite',
         exclude=exclude,
     )
 
@@ -58,12 +66,12 @@ def test_crawl(tmp_path: Path) -> None:
     assert len(data) == 100
 
 
-def test_prune(tmp_path: Path) -> None:
+def test_prune_db(tmp_path: Path) -> None:
     feed = make_feed(tmp_path=tmp_path)
     crawled = list(feed.crawl())
     assert len(crawled) == 100
 
-    exclude = lambda bs: b'0000' in bs
+    exclude = lambda bs: b'00' in bs
     feed = make_feed(tmp_path=tmp_path, exclude=exclude)
     pruned = feed.prune_db(dry=True)
     assert pruned == 10
@@ -77,35 +85,76 @@ def test_prune(tmp_path: Path) -> None:
 
 
 def test_search_excludes(tmp_path: Path) -> None:
-    exclude = lambda bs: b'0000' in bs
+    """
+    If exclude is defined, search should respect it
+    """
+    exclude = lambda bs: b'00' in bs
     feed = make_feed(tmp_path=tmp_path, exclude=exclude)
     results = list(feed.search_all(limit=None))
     assert len(results) == 90
 
 
 def test_exclude_updated(tmp_path: Path) -> None:
+    """
+    If exclude is defined after initial crawling, nexttime we request feed, it should be respected
+    """
     feed = make_feed(tmp_path=tmp_path)
     results = list(feed.search_all(limit=None))
     assert len(results) == 100
 
     list(feed._insert(results, dry=False))
 
-    def asdict(feed: DummyFeed) -> dict[Uid, Json]:
-        d: dict[Uid, Json] = {}
-        for crawl_dt, uid, o in feed.feed():
-            assert uid not in d  # just in case
-            assert not isinstance(o, Exception)
-            d[uid] = o
-        return d
-
-    d = asdict(feed=feed)
+    d = feed.asdict()
     assert len(d) == 100
 
     # scenario: we crawled some stuff and then updated exclude query
     exclude = lambda bs: b'9' in bs
     feed2 = make_feed(tmp_path=tmp_path, exclude=exclude)
-    d = asdict(feed=feed2)
+    d = feed2.asdict()
     assert len(d) == 81
+
+
+def test_exclude_error(tmp_path: Path) -> None:
+    """
+    Make sure things work properly if exclude function fails for some reason
+    """
+    triggered_error = False
+
+    def exclude_1(data: bytes) -> bool:
+        # trigger a random error
+        if b'item 011' in data:
+            nonlocal triggered_error
+            triggered_error = True
+            raise RuntimeError
+        return b'item 08' in data
+
+    feed = make_feed(tmp_path=tmp_path, exclude=exclude_1)
+    results = list(feed.crawl())
+    assert triggered_error
+    triggered_error = False  # reset
+    # despite the error, everything else should be processed properly
+    assert len(results) == 90
+    assert '011' in feed.asdict()
+
+    def exclude_2(data: bytes) -> bool:
+        # trigger a random error
+        if b'item 091' in data:
+            nonlocal triggered_error
+            triggered_error = True
+            raise RuntimeError
+        return b'item 01' in data
+
+    feed = make_feed(tmp_path=tmp_path, exclude=exclude_2)
+    d = feed.asdict()
+    assert triggered_error
+    triggered_error = False  # reset
+    assert len(d) == 80
+    assert '091' in d
+
+    pruned = feed.prune_db()
+    assert triggered_error
+    triggered_error = False  # reset
+    assert pruned == 10
 
 
 @dataclass
@@ -130,7 +179,7 @@ class ErrorFeed(BaseFeed):
         return _search
 
 
-def test_errors(tmp_path: Path) -> None:
+def test_parse_errors(tmp_path: Path) -> None:
     feed = ErrorFeed.make(
         query_name='testing',
         queries=[Query('whatever')],

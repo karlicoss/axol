@@ -50,9 +50,19 @@ class Feed(Mixin, Generic[ResultType]):
     def search(self) -> SearchF:
         raise NotImplementedError
 
-    def search_all(self, *, limit: int | None) -> Iterator[tuple[Uid, bytes]]:
+    def _exclude(self, data: bytes) -> bool:
         exclude = self.exclude
+        if exclude is None:
+            return False
+        try:
+            return exclude(data)
+        except Exception as e:
+            logger.error(f'error while evaluating exclude function for {data!r}')
+            logger.exception(e)
+            # stay on the safe side
+            return False
 
+    def search_all(self, *, limit: int | None) -> Iterator[tuple[Uid, bytes]]:
         search_queries = compile_queries(self.queries)
         handled = set()
         for search_query in search_queries:
@@ -64,7 +74,7 @@ class Feed(Mixin, Generic[ResultType]):
                     continue
                 handled.add(uid)
 
-                if exclude is not None and exclude(data):
+                if self._exclude(data):
                     continue
 
                 # todo could yield query here? not sure if super useful
@@ -80,15 +90,14 @@ class Feed(Mixin, Generic[ResultType]):
             yield from db.insert(results, dry=dry)
 
     def _select_all(self) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
-        exclude = self.exclude
         total = 0
         excluded = 0
-        # TODO when querying, also use stored procedure?
+        # TODO when querying, also use stored procedure like in prune_db?
         # compare performance??
         with Database(self.db_path) as db:
             for crawl_timestamp_utc, uid, blob in db.select_all():
                 total += 1
-                if exclude is not None and exclude(blob):
+                if self._exclude(blob):
                     excluded += 1
                     continue
                 # TODO crawl_dt deserialize could be inside the db bit?
@@ -103,14 +112,15 @@ class Feed(Mixin, Generic[ResultType]):
         Returns number of pruned items
         """
         # TODO would be nice to yield items to be pruned? at least for dry mode?
-        exclude = self.exclude
-        if exclude is None:
+        has_exclude = self.exclude is not None
+        if not has_exclude:
+            logger.info('feed has no exclude function defined, nothing to do')
             # fast path
             return 0
 
         writable = not dry
         with Database(self.db_path, writable=writable) as db:
-            deleted = db.delete(dry=dry, predicate=exclude)
+            deleted = db.delete(dry=dry, predicate=self._exclude)
         return deleted
         # TODO interactive mode? for now just use --dry
 

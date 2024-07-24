@@ -6,7 +6,7 @@ import orjson
 from axol.core.common import datetime_aware, _check
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class User:
     # we can't always reconstruct url from login due to bots or possibly some other edge cases
     login: str
