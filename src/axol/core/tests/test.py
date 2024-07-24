@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
 import orjson
 
@@ -48,12 +48,19 @@ class DummyFeed(BaseFeed):
         return d
 
 
-def make_feed(*, tmp_path: Path, exclude: ExcludeP | None = None, query_name: str = 'testing') -> DummyFeed:
+def make_feed(
+    *,
+    tmp_path: Path,
+    exclude_raw: ExcludeP | None = None,
+    exclude: Callable[[Json], bool] | None = None,
+    query_name: str = 'testing',
+) -> DummyFeed:
     return DummyFeed.make(
         query_name=query_name,
         queries=[Query('whatever')],
         db_path=tmp_path / f'{query_name}.sqlite',
-        exclude_raw=exclude,
+        exclude_raw=exclude_raw,
+        exclude=exclude,
     )
 
 
@@ -72,7 +79,7 @@ def test_prune_db(tmp_path: Path) -> None:
     assert len(crawled) == 100
 
     exclude = lambda bs: b'00' in bs
-    feed = make_feed(tmp_path=tmp_path, exclude=exclude)
+    feed = make_feed(tmp_path=tmp_path, exclude_raw=exclude)
     pruned = feed.prune_db(dry=True)
     assert pruned == 10
 
@@ -89,7 +96,7 @@ def test_search_excludes(tmp_path: Path) -> None:
     If exclude is defined, search should respect it
     """
     exclude = lambda bs: b'00' in bs
-    feed = make_feed(tmp_path=tmp_path, exclude=exclude)
+    feed = make_feed(tmp_path=tmp_path, exclude_raw=exclude)
     results = list(feed.search_all(limit=None))
     assert len(results) == 90
 
@@ -108,7 +115,9 @@ def test_exclude_updated(tmp_path: Path) -> None:
     assert len(d) == 100
 
     # scenario: we crawled some stuff and then updated exclude query
-    exclude = lambda bs: b'9' in bs
+    def exclude(o: Json) -> bool:
+        return '9' in o['text']
+
     feed2 = make_feed(tmp_path=tmp_path, exclude=exclude)
     d = feed2.asdict()
     assert len(d) == 81
@@ -128,7 +137,7 @@ def test_exclude_error(tmp_path: Path) -> None:
             raise RuntimeError
         return b'item 08' in data
 
-    feed = make_feed(tmp_path=tmp_path, exclude=exclude_1)
+    feed = make_feed(tmp_path=tmp_path, exclude_raw=exclude_1)
     results = list(feed.crawl())
     assert triggered_error
     triggered_error = False  # reset
@@ -144,7 +153,7 @@ def test_exclude_error(tmp_path: Path) -> None:
             raise RuntimeError
         return b'item 01' in data
 
-    feed = make_feed(tmp_path=tmp_path, exclude=exclude_2)
+    feed = make_feed(tmp_path=tmp_path, exclude_raw=exclude_2)
     d = feed.asdict()
     assert triggered_error
     triggered_error = False  # reset

@@ -39,6 +39,7 @@ class Feed(Mixin, Generic[ResultType]):
     name: str
     queries: Sequence[Query]
     db_path: Path
+    exclude: Callable[[ResultType], bool] | None
     exclude_raw: ExcludeP | None
 
     @abstractmethod
@@ -50,19 +51,31 @@ class Feed(Mixin, Generic[ResultType]):
     def search(self) -> SearchF:
         raise NotImplementedError
 
-    def _exclude(self, data: bytes) -> bool:
-        exclude = self.exclude_raw
-        if exclude is None:
-            return False
-        try:
-            return exclude(data)
-        except Exception as e:
-            logger.error(f'error while evaluating exclude function for {data!r}')
-            logger.exception(e)
-            # stay on the safe side
-            return False
+    @property
+    def _excluder(self) -> Callable[[bytes], bool] | None:
+        exclude_raw = self.exclude_raw
+        exclude = self.exclude
+        if exclude is not None:
+            assert exclude_raw is None  # otherwise unclear which to pick
+
+            exclude_raw = lambda blob: exclude(self.parse(blob))
+
+        if exclude_raw is None:
+            return None
+
+        def exclude_raw_defensive(data: bytes) -> bool:
+            try:
+                return exclude_raw(data)
+            except Exception as e:
+                logger.error(f'error while evaluating exclude function for {data!r}')
+                logger.exception(e)
+                # stay on the safe side
+                return False
+
+        return exclude_raw_defensive
 
     def search_all(self, *, limit: int | None) -> Iterator[tuple[Uid, bytes]]:
+        excluder = self._excluder
         search_queries = compile_queries(self.queries)
         handled = set()
         for search_query in search_queries:
@@ -74,7 +87,7 @@ class Feed(Mixin, Generic[ResultType]):
                     continue
                 handled.add(uid)
 
-                if self._exclude(data):
+                if excluder is not None and excluder(data):
                     continue
 
                 # todo could yield query here? not sure if super useful
@@ -90,6 +103,7 @@ class Feed(Mixin, Generic[ResultType]):
             yield from db.insert(results, dry=dry)
 
     def _select_all(self) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
+        excluder = self._excluder
         total = 0
         excluded = 0
         # TODO when querying, also use stored procedure like in prune_db?
@@ -97,7 +111,7 @@ class Feed(Mixin, Generic[ResultType]):
         with Database(self.db_path) as db:
             for crawl_timestamp_utc, uid, blob in db.select_all():
                 total += 1
-                if self._exclude(blob):
+                if excluder is not None and excluder(blob):
                     excluded += 1
                     continue
                 # TODO crawl_dt deserialize could be inside the db bit?
@@ -112,15 +126,15 @@ class Feed(Mixin, Generic[ResultType]):
         Returns number of pruned items
         """
         # TODO would be nice to yield items to be pruned? at least for dry mode?
-        has_exclude = self.exclude_raw is not None
-        if not has_exclude:
+        excluder = self._excluder
+        if excluder is None:
             logger.info('feed has no exclude function defined, nothing to do')
             # fast path
             return 0
 
         writable = not dry
         with Database(self.db_path, writable=writable) as db:
-            deleted = db.delete(dry=dry, predicate=self._exclude)
+            deleted = db.delete(dry=dry, predicate=excluder)
         return deleted
         # TODO interactive mode? for now just use --dry
 
@@ -156,6 +170,7 @@ class Feed(Mixin, Generic[ResultType]):
         db_path: str | Path | None = None,
         query_name: str,
         queries: Sequence[Query | str],
+        exclude: Callable[[ResultType], bool] | None = None,
         exclude_raw: ExcludeP | None = None,
     ) -> Self:
         assert re.fullmatch(r'[\w\.]+', query_name)
@@ -181,7 +196,9 @@ class Feed(Mixin, Generic[ResultType]):
             else:
                 _queries.append(query)
         assert len(_queries) > 0
-        return cls(name=name, db_path=db_path, queries=_queries, exclude_raw=exclude_raw)
+
+        assert not (exclude is not None and exclude_raw is not None)
+        return cls(name=name, db_path=db_path, queries=_queries, exclude=exclude, exclude_raw=exclude_raw)
 
 
 def storage_dir() -> Path:

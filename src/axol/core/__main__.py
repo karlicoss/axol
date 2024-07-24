@@ -158,7 +158,7 @@ def cmd_feeds(*, include: str | None, exclude: str | None, search: bool, db_stat
                 **d,
                 'name': feed.name,
                 'queries': queries,
-                'exclude': feed.exclude_raw is not None,  # eh, it's a function so can't pretty print
+                'exclude': feed._excluder is not None,  # eh, it's a function so can't pretty print
             }
             if db_stats:
                 db_items = ilen(feed.feed()) if feed.db_path.exists() else -1
