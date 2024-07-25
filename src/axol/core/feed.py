@@ -1,20 +1,19 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 import re
-from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, Sequence, TypeVar
+from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, Sequence, TypeVar, ClassVar
 
 from loguru import logger
 
 from .common import SearchResults, Uid
 from .storage import CrawlDt, Database
-from .query import compile_queries
+from .query import compile_queries, Compilable
 
 
 # the searcher decides on the query type itself?
 # TODO make these two typed? not sure how.. maybe use Compilable protocol?
-Query = Any
 SearchQuery = Any
 
 
@@ -23,24 +22,22 @@ class SearchF(Protocol):
     def __call__(self, query: SearchQuery, *, limit: int | None) -> SearchResults: ...
 
 
-class Mixin(ABC):
-    PREFIX: str = NotImplemented
-    QueryType: type = NotImplemented
-
-
-ExcludeP = Callable[[bytes], bool]
-
-
 ResultType = TypeVar('ResultType')
+QueryType = TypeVar('QueryType', bound=Compilable)
 
 
 @dataclass
-class Feed(Mixin, Generic[ResultType]):
+class Feed(Generic[ResultType, QueryType]):
+    PREFIX: ClassVar[str]
+    # ugh... doesn't allow generic ClassVar
+    # https://github.com/python/typing/discussions/1424
+    # QueryCls: ClassVar[type[QueryType]]
+    QueryCls: ClassVar[type]
     name: str
-    queries: Sequence[Query]
+    queries: Sequence[QueryType]
     db_path: Path
     exclude: Callable[[ResultType], bool] | None
-    exclude_raw: ExcludeP | None
+    exclude_raw: Callable[[bytes], bool] | None
 
     @abstractmethod
     def parse(self, data: bytes) -> ResultType:
@@ -169,9 +166,9 @@ class Feed(Mixin, Generic[ResultType]):
         *,
         db_path: str | Path | None = None,
         query_name: str,
-        queries: Sequence[Query | str],
+        queries: Sequence[QueryType | str],
         exclude: Callable[[ResultType], bool] | None = None,
-        exclude_raw: ExcludeP | None = None,
+        exclude_raw: Callable[[bytes], bool] | None = None,
     ) -> Self:
         assert re.fullmatch(r'[\w\.]+', query_name)
 
@@ -189,10 +186,10 @@ class Feed(Mixin, Generic[ResultType]):
             db_path = storage_dir() / db_path
 
         assert isinstance(queries, (list, tuple))
-        _queries: list[Query] = []
+        _queries: list[QueryType] = []
         for query in queries:
             if isinstance(query, str):
-                _queries.append(cls.QueryType(query))
+                _queries.append(cls.QueryCls(query))
             else:
                 _queries.append(query)
         assert len(_queries) > 0

@@ -7,9 +7,9 @@ from . import model, query
 
 
 @dataclass
-class Feed(BaseFeed[model.Result]):
+class Feed(BaseFeed[model.Result, query.Query]):
     PREFIX = 'hackernews'
-    QueryType = query.Query
+    QueryCls = query.Query
 
     def parse(self, data: bytes) -> model.Result:
         return model.parse(data)

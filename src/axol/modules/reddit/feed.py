@@ -6,11 +6,11 @@ from . import model, query
 
 
 @dataclass
-class Feed(BaseFeed):
+class Feed(BaseFeed[model.Result, query.Query]):
     PREFIX = 'reddit'
-    QueryType = query.Query
+    QueryCls = query.Query
 
-    def parse(self, data: bytes):
+    def parse(self, data: bytes) -> model.Result:
         return model.parse(data)
 
     @property

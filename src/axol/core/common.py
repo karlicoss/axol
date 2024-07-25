@@ -46,7 +46,7 @@ def json_copy(j: Json) -> Json:
     raise RuntimeError(j, type(j))
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class html:
     "Marker class to signal that the object contains raw html"
     html: str

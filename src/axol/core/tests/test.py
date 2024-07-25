@@ -5,7 +5,7 @@ from typing import Callable, Iterator
 import orjson
 
 from axol.core.common import Json, Uid
-from axol.core.feed import Feed as BaseFeed, SearchF, ExcludeP
+from axol.core.feed import Feed as BaseFeed, SearchF
 
 
 @dataclass
@@ -22,9 +22,9 @@ class Query:
 
 
 @dataclass
-class DummyFeed(BaseFeed):
+class DummyFeed(BaseFeed[Json, Query]):
     PREFIX = 'dummy'
-    QueryType = str
+    QueryCls = str
 
     def parse(self, data: bytes) -> Json:
         return orjson.loads(data)
@@ -51,7 +51,7 @@ class DummyFeed(BaseFeed):
 def make_feed(
     *,
     tmp_path: Path,
-    exclude_raw: ExcludeP | None = None,
+    exclude_raw: Callable[[bytes], bool] | None = None,
     exclude: Callable[[Json], bool] | None = None,
     query_name: str = 'testing',
 ) -> DummyFeed:
@@ -169,7 +169,7 @@ def test_exclude_error(tmp_path: Path) -> None:
 @dataclass
 class ErrorFeed(BaseFeed):
     PREFIX = 'errors'
-    QueryType = str
+    QueryCls = str
 
     def parse(self, data: bytes):
         x = int(data.decode('utf8'))
