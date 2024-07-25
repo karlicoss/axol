@@ -108,6 +108,10 @@ def parse(data: bytes) -> Result:
         _url = j.pop('url', None)
         # seems that sometimes (not always!) url is present but empty for things like "ask hn"
         url = None if len(_url or '') == 0 else _url
+        if url is not None:
+            if '{story_id}' in url:
+                # caused bug in old axol
+                url = url.format(story_id=object_id)
         result = Story(
             id=object_id,
             created_at=created_at,
