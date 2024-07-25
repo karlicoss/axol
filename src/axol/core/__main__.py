@@ -123,6 +123,24 @@ def cmd_prune(*, include: str | None, exclude: str | None, dry: bool) -> None:
             logger.info(msg)
 
 
+@main.command(name='stats')
+@arg_include
+@arg_exclude
+def cmd_stats(*, include: str | None, exclude: str | None) -> None:
+    """
+    Compute statistics for different fields in feed's objects.
+
+    This is useful to quickly analyse crawled results and populate exclude filters.
+    """
+    feeds = get_feeds(include=include, exclude=exclude)
+    assert len(feeds) == 1, feeds  # doesn't really make sense to compute stats against multiple feeds?
+    [feed] = feeds
+
+    from .misc.stats import print_stats
+
+    print_stats(feed=feed)
+
+
 @main.command(name='feeds')
 @arg_include
 @arg_exclude
