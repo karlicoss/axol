@@ -135,10 +135,16 @@ class Feed(Generic[ResultType, QueryType]):
         return deleted
         # TODO interactive mode? for now just use --dry
 
-    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
+    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception] | Exception]:
         # convert to list to make sure the connection in _insert isn't open for long
         # sort by crawl_dt and uid cause why not?
-        results = sorted(self.search_all(limit=limit))
+        try:
+            results = sorted(self.search_all(limit=limit))
+        except Exception as e:
+            logger.error('exception while searching; bailing')
+            logger.exception(e)
+            yield e
+            return
 
         # convert to list to make sure we actually inserted things before attempting to parse
         inserted = list(self._insert(results, dry=dry))

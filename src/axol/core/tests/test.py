@@ -195,7 +195,7 @@ def test_parse_errors(tmp_path: Path) -> None:
         db_path=tmp_path / 'test.sqlite',
     )
 
-    crawled = list(feed.crawl())
+    crawled = [x for x in feed.crawl() if not isinstance(x, Exception)]
     assert len(crawled) == 99
 
     errors = [o for _, uid, o in crawled if isinstance(o, Exception)]

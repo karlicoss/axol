@@ -34,7 +34,7 @@ def test_feed(tmp_path: Path) -> None:
         queries=[query.Query('unexpected return')],
         db_path=tmp_path / 'test.sqlite',
     )
-    crawled = list(feed.crawl())
+    crawled = [x for x in feed.crawl() if not isinstance(x, Exception)]
 
     assert len(crawled) > 10
 

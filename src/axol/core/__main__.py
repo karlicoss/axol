@@ -63,7 +63,12 @@ def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dr
     errors = []
     total = 0
     for feed in feeds:
-        for crawl_dt, uid, o in feed.crawl(limit=limit, dry=dry):
+        for res in feed.crawl(limit=limit, dry=dry):
+            if isinstance(res, Exception):
+                logger.opt(exception=True).exception(res)
+                errors.append(res)
+                continue
+            crawl_dt, uid, o = res
             if isinstance(o, Exception):
                 logger.opt(exception=True).exception(o)
                 errors.append(o)
