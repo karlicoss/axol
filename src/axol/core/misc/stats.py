@@ -20,6 +20,7 @@ EXCLUDE_KEYS: set[Key] = {
 
 def print_stats(*, feed: Feed, threshold: float = 0.01) -> None:
     counters: dict[Key, Counter] = {}
+    otypes: Counter[str] = Counter()
 
     def count(key: Key, item) -> None:
         if key not in counters:
@@ -31,13 +32,18 @@ def print_stats(*, feed: Feed, threshold: float = 0.01) -> None:
         if isinstance(o, Exception):
             raise o
         total += 1
+        otype = type(o).__name__
+        otypes[otype] += 1
 
         d = vars(o)
         d = {k: v for k, v in d.items() if not isinstance(v, datetime)}
         for k, v in d.items():
-            kk = (type(o).__name__, k)
+            kk = (otype, k)
             if kk not in EXCLUDE_KEYS:
                 count(kk, v)
+
+    for otype, cnt in sorted(otypes.items(), key=lambda p: p[1], reverse=True):
+        print(f'{otype:<10} {cnt:<5}')
 
     printed = False
     for k, c in counters.items():
