@@ -80,10 +80,10 @@ def test_prune_db(tmp_path: Path) -> None:
 
     exclude = lambda bs: b'00' in bs
     feed = make_feed(tmp_path=tmp_path, exclude_raw=exclude)
-    pruned = feed.prune_db(dry=True)
+    pruned = len(list(feed.prune_db(dry=True)))
     assert pruned == 10
 
-    pruned = feed.prune_db()
+    pruned = len(list(feed.prune_db()))
     assert pruned == 10
 
     feed = make_feed(tmp_path=tmp_path)
@@ -160,7 +160,7 @@ def test_exclude_error(tmp_path: Path) -> None:
     assert len(d) == 80
     assert '091' in d
 
-    pruned = feed.prune_db()
+    pruned = len(list(feed.prune_db()))
     assert triggered_error
     triggered_error = False  # reset
     assert pruned == 10

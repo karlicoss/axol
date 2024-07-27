@@ -118,7 +118,7 @@ class Feed(Generic[ResultType, QueryType]):
         if excluded > 0:
             logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
 
-    def prune_db(self, *, dry: bool = False) -> int:
+    def prune_db(self, *, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         """
         Returns number of pruned items
         """
@@ -127,13 +127,19 @@ class Feed(Generic[ResultType, QueryType]):
         if excluder is None:
             logger.info('feed has no exclude function defined, nothing to do')
             # fast path
-            return 0
+            return
 
         writable = not dry
         with Database(self.db_path, writable=writable) as db:
-            deleted = db.delete(dry=dry, predicate=excluder)
-        return deleted
-        # TODO interactive mode? for now just use --dry
+            pruned = db.delete(dry=dry, predicate=excluder)
+
+            def it() -> Iterator[tuple[CrawlDt, Uid, bytes]]:
+                for ts, uid, data in pruned:
+                    # meh.. some duplication with above
+                    crawl_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                    yield crawl_dt, uid, data
+
+            yield from self._parsed(it())
 
     def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception] | Exception]:
         # convert to list to make sure the connection in _insert isn't open for long

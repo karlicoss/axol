@@ -99,19 +99,22 @@ class Database(AbstractContextManager['Database']):
         *,
         dry: bool,
         predicate: Callable[[bytes], bool],
-    ) -> int:
+    ) -> Iterator[tuple[int, Uid, bytes]]:
+        # fmt: off
+        select_query = self.results_table.select().where(func.predicate(self.results_table.c.data))
+        delete_query = self.results_table.delete().where(func.predicate(self.results_table.c.data))
+        # fmt: on
         with self.engine.begin() as conn:
             dbapi_connection = conn.connection  # meh
             dbapi_connection.create_function("predicate", 1, predicate)  # type: ignore[attr-defined]
-            if dry:
-                squery = select(func.count()).select_from(self.results_table).where(func.predicate(self.results_table.c.data))
-                res = conn.execute(squery)
-                [(deleted,)] = list(res)
-            else:
-                dquery = self.results_table.delete().where(func.predicate(self.results_table.c.data))
-                res = conn.execute(dquery)
+            to_prune = list(conn.execute(select_query))
+            if not dry:
+                res = conn.execute(delete_query)
                 deleted = res.rowcount
-        return deleted
+                assert deleted == len(to_prune), (deleted, len(to_prune))  # just in case
+        for row in to_prune:
+            ts, uid, data = row
+            yield ts, make_uid(uid), data
 
     def _insert(
         self,

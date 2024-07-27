@@ -113,7 +113,8 @@ def cmd_feed(*, include: str | None, exclude: str | None) -> None:
 @arg_include
 @arg_exclude
 @click.option('--dry', is_flag=True, help='only output items that would be pruned, do not actually prune')
-def cmd_prune(*, include: str | None, exclude: str | None, dry: bool) -> None:
+@click.option('--print', 'do_print', is_flag=True, help='whether to print out pruned items (useful with --dry mode)')
+def cmd_prune(*, include: str | None, exclude: str | None, dry: bool, do_print: bool) -> None:
     """
     Prune items from the database according to the config
 
@@ -121,9 +122,12 @@ def cmd_prune(*, include: str | None, exclude: str | None, dry: bool) -> None:
     """
     feeds = get_feeds(include=include, exclude=exclude)
     for feed in feeds:
-        deleted = feed.prune_db(dry=dry)
-        msg = f'[{feed}]: pruned {deleted} items {dry=}'
-        if deleted > 0:
+        total = 0
+        for crawl_dt, uid, o in feed.prune_db(dry=dry):
+            if do_print:
+                print(crawl_dt, uid, o)
+        msg = f'[{feed}]: pruned {total} items {dry=}'
+        if total > 0:
             logger.warning(msg)
         else:
             logger.info(msg)
