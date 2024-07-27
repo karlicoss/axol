@@ -78,6 +78,7 @@ def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dr
             if quiet:
                 continue
             print(uid, o)
+    # TODO really need to specify loggers per feed, since this msg is a bit confusing
     logger.info(f'crawled {total} new items')
     if len(errors) > 0:
         logger.error(f'got {len(errors)} errors')

@@ -38,8 +38,8 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
         soup = BeautifulSoup(r.text, "html.parser")
         if expected_total == -1:
             [total_e] = soup.select('.searchresults .heading')
-            m = re.fullmatch(r'(\d+) results for', total_e.text.strip())
-            assert m is not None
+            m = re.fullmatch(r'(\d+) results? for', total_e.text.strip())
+            assert m is not None, total_e
             expected_total = int(m.group(1))
             logger.debug(f'{qstr} -- expected total {expected_total}')
 
