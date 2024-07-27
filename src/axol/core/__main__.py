@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import dataclasses
 import importlib
 import sys
@@ -5,7 +6,7 @@ from typing import Any
 
 import click
 from loguru import logger
-from more_itertools import ilen
+from more_itertools import ilen, bucket
 
 from .feed import get_feeds, Feed
 from .query import compile_queries
@@ -54,32 +55,48 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None, raw: 
 @arg_include
 @arg_exclude
 @arg_quiet
+@click.option('--parallel', is_flag=True, help='pass to run crawling in parallel, grouped by the provider type')
 @click.option('--dry', is_flag=True, help='search and print results only, do not modify storage')
-def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dry: bool, quiet: bool) -> None:
+def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dry: bool, quiet: bool, parallel: bool) -> None:
     """
     Search all queries in the feed and save in the databases.
     """
     feeds = get_feeds(include=include, exclude=exclude)
-    errors = []
-    total = 0
-    for feed in feeds:
-        for res in feed.crawl(limit=limit, dry=dry):
-            if isinstance(res, Exception):
-                logger.opt(exception=True).exception(res)
-                errors.append(res)
-                continue
-            crawl_dt, uid, o = res
-            if isinstance(o, Exception):
-                logger.opt(exception=True).exception(o)
-                errors.append(o)
-                continue
 
-            total += 1
-            if quiet:
-                continue
-            print(uid, o)
-    # TODO really need to specify loggers per feed, since this msg is a bit confusing
-    logger.info(f'crawled {total} new items')
+    def _crawl_group(*, feeds: list[Feed]) -> list[Exception]:
+        errors: list[Exception] = []
+        for feed in feeds:
+            for res in feed.crawl(limit=limit, dry=dry):
+                if isinstance(res, Exception):
+                    logger.opt(exception=True).exception(res)
+                    errors.append(res)
+                    continue
+                crawl_dt, uid, o = res
+                if isinstance(o, Exception):
+                    logger.opt(exception=True).exception(o)
+                    errors.append(o)
+                    continue
+
+                if quiet:
+                    continue
+                print(uid, o)
+        return errors
+
+    errors: list[Exception] = []
+    if not parallel:
+        errors = _crawl_group(feeds=feeds)
+    else:
+        fb = bucket(feeds, key=lambda f: f.PREFIX)
+        groups = {k: list(fb[k]) for k in fb}
+
+        with ThreadPoolExecutor() as pool:
+            futures = []
+            for group in groups.values():
+                futures.append(pool.submit(_crawl_group, feeds=group))
+
+            for f in futures:
+                errors.extend(f.result())
+
     if len(errors) > 0:
         logger.error(f'got {len(errors)} errors')
         sys.exit(1)
