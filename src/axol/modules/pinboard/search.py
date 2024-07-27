@@ -50,9 +50,14 @@ def _search(
         else:
             m = re.search(r'"bookmark_count">(\d*?)<.span>', html)
             if m is None:
-                assert 'No results found' in html  # regular search returned 0 results
-                expected_total = 0
-                break
+                if 'No results found' in html:  # regular search returned 0 results
+                    expected_total = 0
+                    break
+                else:
+                    if '<b>Login Required</b>' in html:
+                        raise RuntimeError('Looks like this query requires you to log into Pinboard :(')
+                    else:
+                        raise RuntimeError("Shouldn't have happened")
             else:
                 ts = m.group(1)
                 if len(ts) == 0:

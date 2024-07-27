@@ -43,7 +43,8 @@ def test_feed(tmp_path: Path) -> None:
     assert len(items) == len(crawled)
 
     # just a random story that should be present
-    [(uid, dt, s)] = [(uid, dt, x) for uid, dt, x in items if isinstance(x, model.Story) and x.author == 'jado']
+    [(dt, uid, s)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Story) and x.author == 'jado']
+    assert uid == 'mutdyp'
     assert s.score > 40
     assert s.comments > 15
     # replace volatile attributes
@@ -61,7 +62,8 @@ def test_feed(tmp_path: Path) -> None:
     )
 
     # just a random comment that should be present
-    [(uid, dt, c)] = [(uid, dt, x) for uid, dt, x in items if isinstance(x, model.Comment) and x.author == 'englishm']
+    [(dt, uid, c)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Comment) and x.author == 'englishm']
+    assert uid == 'c_8tqeri'
     assert 'My thought process' in c.text.html
     assert 'this type of content' in c.text.html
     c = dataclasses.replace(c, text=html(''))
