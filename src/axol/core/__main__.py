@@ -124,6 +124,7 @@ def cmd_prune(*, include: str | None, exclude: str | None, dry: bool, do_print: 
     for feed in feeds:
         total = 0
         for crawl_dt, uid, o in feed.prune_db(dry=dry):
+            total += 1
             if do_print:
                 print(crawl_dt, uid, o)
         msg = f'[{feed}]: pruned {total} items {dry=}'
