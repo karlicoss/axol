@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Sequence
 
 import orjson
 
@@ -41,7 +42,7 @@ class Issue(Base):
 @dataclass
 class Repository(Base):
     description: str | None
-    topics: tuple[str]
+    topics: Sequence[str]
     stars: int
 
 

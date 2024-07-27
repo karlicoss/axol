@@ -4,6 +4,7 @@ from functools import partial
 from typing import Any, Callable, Iterator, Protocol, Sequence
 
 from github import (
+    Auth,
     Github,
     # GithubException,  # TODO handle exceptions later?
 )
@@ -17,6 +18,8 @@ import orjson
 from loguru import logger
 
 from axol.core.common import SearchResults, Uid, Json, make_uid
+from axol.credentials import github_token
+
 from .query import Kind, SearchQuery
 
 
@@ -190,10 +193,8 @@ def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
     # NOTE: hmm a bit too spammy, would be nice to disable response bodies?
     # github.enable_console_debug_logging()
 
-    from axol.user_config import github as gh  # type: ignore[attr-defined]
-
     api = Github(
-        login_or_token=gh.token(),
+        auth=Auth.Token(github_token()),
         # couldn't find what's the max allowed search per_page
         # if we pass value bigger than 100 it works
         # but seems to still return only 100 results per batch

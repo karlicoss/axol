@@ -6,6 +6,8 @@ import praw  # type: ignore[import-untyped]
 from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
 
 from axol.core.common import Json, SearchResults, Uid, make_uid
+from axol.credentials import reddit_praw
+
 from .query import SearchQuery
 
 
@@ -71,11 +73,9 @@ def _search(*, query: str, limit: int | None) -> SearchResults:
     # e.g. here it would likely return more results
     logger.debug(f'{qstr} -- fetching...')
 
-    from axol.user_config import reddit_praw  # type: ignore[attr-defined]
-
     api = praw.Reddit(
         user_agent='axol',
-        **reddit_praw.credentials(),
+        **reddit_praw(),
     )
     searcher = api.subreddit('all')
 
