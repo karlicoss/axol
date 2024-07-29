@@ -12,14 +12,21 @@ from .common import extract_uid
 from .query import SearchQuery, Kind
 
 
-def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> SearchResults:
+def _search_order(
+    query: str,
+    *,
+    kind: Kind,
+    order: str,
+    limit: int | None,
+    total_so_far: int,
+) -> SearchResults:
     qstr = f'{query=} {kind=} {order=}'
     logger.info(f'{qstr} -- fetching...')
 
-    # looks like on lobsters quotes in query would result in 0 results
-    assert "'" not in query, query
+    # results in bizarre matches.. not sure why
+    assert '/' not in query, query
 
-    uids: dict[Uid, bytes] = {}
+    uids: set[Uid] = set()
     expected_total = -1  # will be set on first search
     for page in itertools.count(start=1):
         if limit is not None and len(uids) >= limit:
@@ -43,6 +50,13 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
             expected_total = int(m.group(1))
             logger.debug(f'{qstr} -- expected total {expected_total}')
 
+        if expected_total == total_so_far:
+            # this is so we don't do unnecessary queries
+            # lobsters only returns 20 pages of results (while displaying the correct overall total)
+            # so this logic works for us
+            logger.debug(f'{qstr} -- looks like already fetched everything before, bailing early')
+            return
+
         if kind == 'stories':
             [items_container] = soup.select('.stories.list')
             item_els = items_container.select('.story')
@@ -62,6 +76,7 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
                 # note sure why but whatever
                 # TODO might need to adjust the total / expected_total ratio below if it keeps happening
                 continue
+            uids.add(uid)
 
             item = str(item_el).encode('utf8')
             if b'Story removed by submitter' in item:
@@ -70,7 +85,6 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
                 # TODO subtract from expected total??
                 continue
 
-            uids[uid] = item
             yield uid, item
 
         if len(item_els) == 0:
@@ -88,12 +102,13 @@ def _search_order(query: str, *, kind: Kind, order: str, limit: int | None) -> S
 def _search(query: str, *, kind: Kind, limit: int | None) -> SearchResults:
     qstr = f'{query=} {kind=}'
     logger.info(f'{qstr} -- fetching...')
-    uids: dict[Uid, bytes] = {}
-    for order in ['relevance', 'score', 'newest']:
-        for uid, item in _search_order(query=query, kind=kind, order=order, limit=limit):
+    uids: set[Uid] = set()
+    for order in ['newest', 'relevance', 'score']:
+        total_so_far = len(uids)
+        for uid, item in _search_order(query=query, kind=kind, order=order, limit=limit, total_so_far=total_so_far):
             if uid in uids:
                 continue
-            uids[uid] = item
+            uids.add(uid)
             yield uid, item
     logger.info(f'{qstr} -- fetched {len(uids)} results total')
 

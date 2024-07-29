@@ -28,12 +28,16 @@ def test_feed(tmp_path: Path) -> None:
     import os
     import pytest
 
+    from axol.core.query import raw
+
     if 'CI' in os.environ:
         pytest.skip('skipping to prevent potentially hammering the website')
 
     feed = Feed.make(
         query_name='test_lobsters',
-        queries=[query.Query('scoped tagging')],
+        # before lobsters used to return wrong results for double quoted queries
+        # using raw since I'm a bit lazy to rewrite test
+        queries=[query.Query(raw('scoped tagging'))],
         db_path=tmp_path / 'test.sqlite',
     )
     crawled = list(feed.crawl())
