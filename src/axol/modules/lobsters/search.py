@@ -32,15 +32,21 @@ def _search_order(
         if limit is not None and len(uids) >= limit:
             break
 
-        r = requests.get(
-            'https://lobste.rs/search',
-            params={
-                'q': query,
-                'order': order,
-                'page': str(page),
-                'what': kind,
-            },
-        )
+        while True:
+            r = requests.get(
+                'https://lobste.rs/search',
+                params={
+                    'q': query,
+                    'order': order,
+                    'page': str(page),
+                    'what': kind,
+                },
+            )
+            if re.search('Throttled, sleep.* between hits', r.text):
+                logger.debug(f'{qstr} -- lobste.rs suggested to sleep between hits, waiting...')
+                time.sleep(5)
+            else:
+                break
 
         soup = BeautifulSoup(r.text, "html.parser")
         if expected_total == -1:
@@ -91,7 +97,7 @@ def _search_order(
             logger.debug(f'{qstr} -- no more results')
             break
         logger.debug(f'{qstr} -- fetched {len(uids)} results so far')
-        time.sleep(1)
+        time.sleep(2)  # seems that it sometimes suggests to sleep(1), so doing 2 just in case
 
     total = len(uids)
     logger.info(f'{qstr} -- got {total} results')
