@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-
 from ...core.common import datetime_aware
 from .model import Result, Comment, Story
 from ...renderers.markdown import Author, MarkdownAdapterT, from_html, make_title
