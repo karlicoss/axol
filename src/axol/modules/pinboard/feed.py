@@ -3,7 +3,7 @@ from pathlib import Path
 
 from axol.core.feed import Feed as BaseFeed, SearchF
 
-from . import model, query
+from . import model, query, markdown
 
 
 @dataclass
@@ -19,6 +19,8 @@ class Feed(BaseFeed[model.Result, query.Query]):
         from . import search
 
         return search.search
+
+    MarkdownAdapter = markdown.MarkdownAdapter
 
 
 def test(tmp_path: Path) -> None:

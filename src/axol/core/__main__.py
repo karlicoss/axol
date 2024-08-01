@@ -1,8 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 import dataclasses
 import importlib
+from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Iterator, IO, ContextManager
 
 import click
 from loguru import logger
@@ -124,6 +126,59 @@ def cmd_feed(*, include: str | None, exclude: str | None) -> None:
     if len(errors) > 0:
         logger.error(f'got {len(errors)} errors')
         sys.exit(1)
+
+
+@main.command(name='markdown')
+@arg_include
+@click.option('--to', type=Path, required=False)
+def cmd_markdown(*, include: str | None, to: Path | None) -> None:
+    feeds = get_feeds(include=include)
+
+    if to is None:
+        assert len(feeds) == 1, feeds  # think how to support multiple feeds in this case later?
+    else:
+        assert to.is_dir(), to
+
+    from ..renderers.markdown import MarkdownAdapterT
+
+    def iter_markdown(feed: Feed) -> Iterator[str | Exception]:
+        MdAdapter: type[MarkdownAdapterT] = feed.MarkdownAdapter
+
+        for crawl_dt, uid, o in feed.feed():
+            if isinstance(o, Exception):
+                yield o
+                continue
+            mdo = MdAdapter(o)
+
+            content = mdo.content
+            yield content
+
+    errors: list[Exception] = []
+
+    for feed in feeds:
+        logger.info(f'processing {feed}')
+
+        ctx: ContextManager[IO[str]]
+        if to is None:
+            ctx = nullcontext(enter_result=sys.stdout)
+        else:
+            path = to / f'{feed.name}.md'
+            logger.debug(f'wiriting to {path}')
+            ctx = path.open('w')
+        with ctx as sink:
+            try:
+                for md in iter_markdown(feed):
+                    if isinstance(md, Exception):
+                        logger.opt(exception=md).exception(md)
+                        errors.append(md)
+                        continue
+                    sink.write(md + '\n')
+            except Exception as e:
+                logger.opt(exception=e).exception(e)
+                errors.append(e)
+                continue
+
+    sys.exit(1 if len(errors) > 0 else 0)
 
 
 @main.command(name='prune')

@@ -8,8 +8,9 @@ from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, S
 from loguru import logger
 
 from .common import SearchResults, Uid
-from .storage import CrawlDt, Database
 from .query import compile_queries, Compilable
+from .storage import CrawlDt, Database
+from ..renderers.markdown import MarkdownAdapterT  # todo meh, this import kinda doesn't belong here...
 
 
 # the searcher decides on the query type itself?
@@ -33,6 +34,7 @@ class Feed(Generic[ResultType, QueryType]):
     # https://github.com/python/typing/discussions/1424
     # QueryCls: ClassVar[type[QueryType]]
     QueryCls: ClassVar[type]
+    MarkdownAdapter: ClassVar[type[MarkdownAdapterT]]
     name: str
     queries: Sequence[QueryType]
     db_path: Path

@@ -4,8 +4,6 @@ from html import unescape as html_unescape
 import re
 from typing import Any
 
-import html2text
-
 from ..core.common import datetime_aware, html
 
 
@@ -54,9 +52,11 @@ class MarkdownAdapterT:
 
 
 def from_html(text: html) -> str:
+    from html2text import HTML2Text
+
     html_text = text.html
     htext = html_unescape(html_text)
-    converter = html2text.HTML2Text(
+    converter = HTML2Text(
         bodywidth=1000,  # default in 78
     )
     # by default uses "_"
