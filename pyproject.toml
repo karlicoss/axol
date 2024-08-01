@@ -32,6 +32,7 @@ optional = [
     "python-hn",       # modules.hackernews.search
     "praw",            # modules.reddit.search
     "beautifulsoup4",  # modules.lobsters.search
+    "html2text"     ,  # for rendering (e.g. to markdown)
 ]
 testing = [
     "pytest",
