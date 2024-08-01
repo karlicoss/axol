@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import orjson
 
 from axol.core.common import datetime_aware, _check
+from .common import pinboard_link
 
 
 @dataclass
@@ -19,7 +20,7 @@ class Bookmark:
     @property
     def permalink(self) -> str:
         # user can be anything
-        return f'https://pinboard.in/u:_/b:{self.slug}'
+        return pinboard_link(f'/u:_/b:{self.slug}')
 
 
 Result = Bookmark

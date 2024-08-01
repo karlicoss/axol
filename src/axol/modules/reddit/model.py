@@ -4,10 +4,7 @@ from datetime import datetime, timezone
 import orjson
 
 from axol.core.common import datetime_aware, _check
-
-
-def _reddit(s: str) -> str:
-    return f'https://reddit.com{s}'
+from .common import reddit_link
 
 
 @dataclass
@@ -31,7 +28,7 @@ class Submission:
 
     @property
     def permalink(self) -> str:
-        return _reddit(self._permalink)
+        return reddit_link(self._permalink)
 
 
 Result = Submission
@@ -52,7 +49,7 @@ def parse(data: bytes) -> Submission:
 
     url = _check(j['url'], str)
     if url.startswith('/r'):
-        url = _reddit(url)
+        url = reddit_link(url)
 
     # fmt: off
     return Submission(

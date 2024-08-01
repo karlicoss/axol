@@ -4,6 +4,7 @@ from datetime import datetime
 import orjson
 
 from axol.core.common import datetime_aware, _check, html
+from .common import hn_link
 
 
 # todo use parent_id?
@@ -15,7 +16,7 @@ class Base:
 
     @property
     def permalink(self) -> str:
-        return f'https://news.ycombinator.com/item?id={self.id}'
+        return hn_link(f'/item?id={self.id}')
 
 
 @dataclass

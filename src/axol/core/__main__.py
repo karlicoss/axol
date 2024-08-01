@@ -148,10 +148,18 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
             if isinstance(o, Exception):
                 yield o
                 continue
-            mdo = MdAdapter(o)
-
-            content = mdo.content
-            yield content
+            try:
+                mdo = MdAdapter(o)
+                created_at = mdo.created_at
+                # TODO include uid?
+                author = mdo.author
+                content = mdo.content
+            except Exception as e:
+                yield e
+                continue
+            created_str = 'no timestamp' if created_at is None else created_at.strftime('%Y-%m-%d %H:%M')
+            by = f'by [{author.name}]({author.url})'
+            yield f'{content}\n\n`{created_str}` {by}'
 
     errors: list[Exception] = []
 

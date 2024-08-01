@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from ...core.common import datetime_aware
+from .common import pinboard_link
 from .model import Result
 from ...renderers.markdown import Author, MarkdownAdapterT, make_title
 
@@ -23,10 +24,10 @@ class MarkdownAdapter(MarkdownAdapterT):
             domain='pinboard.in',
             kind='Pinboard',
             name=name,
-            url=f'https://pinboard.in/u:{name}',
+            url=pinboard_link(f'/u:{name}'),
         )
 
-    # FIXME for old html renderer I think I grouped it
+    # TODO for old html renderer I think I grouped it
     # so for same bookmark, users appeared in a table along with descriptions
     @property
     def content(self) -> str:
@@ -34,8 +35,11 @@ class MarkdownAdapter(MarkdownAdapterT):
 
         title_line = make_title(title=o.title, permalink=o.permalink, url=o.url)
 
+        tag_links = []
+        for tag in o.tags:
+            tag_url = pinboard_link(f'/u:{o.author}/t:{tag}')
+            tag_links.append(f'[`#{tag}`]({tag_url})')
         parts = []
-        tag_links = [f'[`#{tag}`](https://pinboard.in/u:{o.author}/t:{tag})' for tag in o.tags]
         if len(tag_links) > 0:
             parts.append('`tags:` ' + ' '.join(tag_links))
         footer = ', '.join(parts)

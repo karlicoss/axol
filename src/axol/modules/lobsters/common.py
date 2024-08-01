@@ -15,6 +15,6 @@ def extract_uid(soup) -> str:
         raise RuntimeError(f'unexpected combination: {short_id=} {_id=}')
 
 
-def lobsters(s: str) -> str:
-    assert s.startswith('/s/'), s
+def lobsters_link(s: str) -> str:
+    assert s.startswith('/s/') or s.startswith('/~'), s
     return f'https://lobste.rs{s}'

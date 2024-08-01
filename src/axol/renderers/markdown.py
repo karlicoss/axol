@@ -47,7 +47,8 @@ class MarkdownAdapterT:
     @property
     @abstractmethod
     def content(self) -> str:
-        # TODO split in header and footer? not sure.. or return a dataclass containing them?
+        # todo split in header and footer?  or return a dataclass containing them?
+        # not sure if there is much benefit tho
         raise NotImplementedError
 
 

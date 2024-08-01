@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 
 from ...core.common import datetime_aware
+from .common import lobsters_link
 from .model import Result, Comment, Story
 from ...renderers.markdown import Author, MarkdownAdapterT, from_html, make_title
 
@@ -16,19 +17,16 @@ class MarkdownAdapter(MarkdownAdapterT):
 
     @property
     def author(self) -> Author:
-        # TODO not sure if should remove author from body?
-        # although if it's on the same line doesn't hurt?
-        # maybe just reuse Author object
         name = self.o.author
         return Author(
             domain='lobste.rs',
             kind='Lobsters',
             name=name,
-            url=f'https://lobste.rs/~{name}',
+            url=lobsters_link(f'/~{name}'),
         )
 
     # TODO instead yield lines for the downstream to join?
-    # TODO check for unused properties?
+    # todo check for unused properties?
     @property
     def content(self) -> str:
         o = self.o

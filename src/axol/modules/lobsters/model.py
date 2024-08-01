@@ -5,7 +5,7 @@ from typing import Any, Sequence, assert_never, cast
 from bs4 import BeautifulSoup, NavigableString
 
 from axol.core.common import datetime_aware, html
-from .common import extract_uid, lobsters
+from .common import extract_uid, lobsters_link
 from .query import Kind
 
 
@@ -69,7 +69,7 @@ def parse(data: bytes) -> Result:
 
         if url.startswith('/s/'):
             # weird, sometimes can be a relative url?
-            url = lobsters(url)
+            url = lobsters_link(url)
         # eh, sometimes can be HTTPS://?
         assert url.lower().startswith('http'), url
 
@@ -80,7 +80,7 @@ def parse(data: bytes) -> Result:
         comments = int(comments_e.text)
 
         permalink = comments_e['href']
-        permalink = lobsters(permalink)
+        permalink = lobsters_link(permalink)
 
         [author_e] = soup.select('.u-author')
         author = author_e.text
@@ -115,11 +115,11 @@ def parse(data: bytes) -> Result:
         assert len(title) > 0
         url = story_e.attrs['href']
         assert url.startswith('/s/')
-        url = lobsters(url)
+        url = lobsters_link(url)
 
         assert permalink_e.text == 'link'
         permalink = permalink_e.attrs['href']
-        permalink = lobsters(permalink)
+        permalink = lobsters_link(permalink)
 
         [text_e] = soup.select('.comment_text')
         assert len(text_e.text) > 0, text_e  # just in case
