@@ -56,7 +56,7 @@ def parse(data: bytes) -> Result:
     tags = [t for t in tags if len(t) > 0]  # sometimes there is an empty string here
 
     descr = j.pop('description')  # can be None
-    author = _check(j.pop('author'), str)
+    author = _check(j.pop('author'), str).strip()
     title = _check(j.pop('title'), str)
     url = _check(j.pop('url'), str)
     created = _check(j.pop('created'), str)

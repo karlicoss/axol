@@ -54,7 +54,14 @@ def parse(data: bytes) -> Result:
 
     [score_e] = soup.select('.score')
     score_s = score_e.text.strip()
-    score = None if len(score_s) == 0 else int(score_s)
+    score: int | None = None
+    try:
+        score = int(score_s)
+    except ValueError:
+        # for very new comments score isn't defined
+        # it used to be just empty string, but seems like now it's ~ or something like that?
+        # seems easiest to just be defensive
+        pass
 
     dt_es = soup.select('.byline span[title*=""]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
