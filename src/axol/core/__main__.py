@@ -217,7 +217,8 @@ def cmd_prune(*, include: str | None, exclude: str | None, dry: bool, do_print: 
 @main.command(name='stats')
 @arg_include
 @arg_exclude
-def cmd_stats(*, include: str | None, exclude: str | None) -> None:
+@click.option('--threshold', type=float, default=0.01, help='threshold to filter against')
+def cmd_stats(*, include: str | None, exclude: str | None, threshold: float) -> None:
     """
     Compute statistics for different fields in feed's objects.
 
@@ -229,7 +230,7 @@ def cmd_stats(*, include: str | None, exclude: str | None) -> None:
 
     from .misc.stats import print_stats
 
-    print_stats(feed=feed)
+    print_stats(feed=feed, threshold=threshold)
 
 
 @main.command(name='feeds')

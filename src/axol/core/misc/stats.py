@@ -18,7 +18,7 @@ EXCLUDE_KEYS: set[Key] = {
 }
 
 
-def print_stats(*, feed: Feed, threshold: float = 0.01) -> None:
+def print_stats(*, feed: Feed, threshold: float) -> None:
     counters: dict[Key, Counter] = {}
     otypes: Counter[str] = Counter()
 
