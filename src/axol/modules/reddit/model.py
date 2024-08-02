@@ -31,10 +31,10 @@ class Submission:
         return reddit_link(self._permalink)
 
 
-Result = Submission
+Model = Submission
 
 
-def parse(data: bytes) -> Submission:
+def parse(data: bytes) -> Model:
     j = orjson.loads(data)
 
     ts_utc = j['created_utc']

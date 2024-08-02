@@ -2,13 +2,13 @@ from dataclasses import dataclass
 
 from ...core.common import datetime_aware
 from .common import hn_link
-from .model import Result, Comment, Story
+from .model import Model, Comment, Story
 from ...renderers.markdown import Author, MarkdownAdapterT, from_html, make_title
 
 
 @dataclass
 class MarkdownAdapter(MarkdownAdapterT):
-    model: Result
+    model: Model
 
     @property
     def created_at(self) -> datetime_aware:

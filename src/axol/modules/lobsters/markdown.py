@@ -1,23 +1,22 @@
 from dataclasses import dataclass
 
-
 from ...core.common import datetime_aware
 from .common import lobsters_link
-from .model import Result, Comment, Story
+from .model import Model, Comment, Story
 from ...renderers.markdown import Author, MarkdownAdapterT, from_html, make_title
 
 
 @dataclass
 class MarkdownAdapter(MarkdownAdapterT):
-    o: Result
+    model: Model
 
     @property
     def created_at(self) -> datetime_aware:
-        return self.o.dt
+        return self.model.dt
 
     @property
     def author(self) -> Author:
-        name = self.o.author
+        name = self.model.author
         return Author(
             domain='lobste.rs',
             kind='Lobsters',
@@ -29,7 +28,7 @@ class MarkdownAdapter(MarkdownAdapterT):
     # todo check for unused properties?
     @property
     def content(self) -> str:
-        o = self.o
+        o = self.model
 
         prefix = None if o.score is None else f'{o.score}⇧'
         title_line = make_title(prefix=prefix, title=o.title, permalink=o.permalink, url=o.url)

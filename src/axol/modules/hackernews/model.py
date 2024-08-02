@@ -33,11 +33,11 @@ class Story(Base):
     num_comments: int
 
 
-Result = Comment | Story
+Model = Comment | Story
 
 
 # todo add uid here? not sure it should be inside the entity...
-def parse(data: bytes) -> Result:
+def parse(data: bytes) -> Model:
     j = orjson.loads(data)
 
     entity_types = []
@@ -86,7 +86,7 @@ def parse(data: bytes) -> Result:
     created_at = datetime.fromisoformat(created_at_s)
     assert created_at.tzinfo is not None, created_at_s
 
-    result: Result
+    result: Model
     if entity_type == 'comment':
         comment_text = _check(j.pop('comment_text'), str)
         points = j.pop('points', None)

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ...core.common import datetime_aware
 from .common import pinboard_link
-from .model import Result
+from .model import Model
 from ...renderers.markdown import Author, MarkdownAdapterT, make_title
 
 
@@ -11,15 +11,15 @@ class MarkdownAdapter(MarkdownAdapterT):
     # TODO on the one hand, lots of dupes in pinboard when people bookmark same stuff
     # on the other, when it runs daily gonna be hard to deduplicate?
     # dunno. pinboard is a bit unuque here
-    o: Result
+    model: Model
 
     @property
     def created_at(self) -> datetime_aware:
-        return self.o.created_at
+        return self.model.created_at
 
     @property
     def author(self) -> Author:
-        name = self.o.author
+        name = self.model.author
         return Author(
             domain='pinboard.in',
             kind='Pinboard',
@@ -31,7 +31,7 @@ class MarkdownAdapter(MarkdownAdapterT):
     # so for same bookmark, users appeared in a table along with descriptions
     @property
     def content(self) -> str:
-        o = self.o
+        o = self.model
 
         title_line = make_title(title=o.title, permalink=o.permalink, url=o.url)
 

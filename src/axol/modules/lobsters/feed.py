@@ -8,11 +8,11 @@ from . import model, query, markdown
 
 
 @dataclass
-class Feed(BaseFeed[model.Result, query.Query]):
+class Feed(BaseFeed[model.Model, query.Query]):
     PREFIX = 'lobsters'
     QueryCls = query.Query
 
-    def parse(self, data: bytes) -> model.Result:
+    def parse(self, data: bytes) -> model.Model:
         return model.parse(data)
 
     @property

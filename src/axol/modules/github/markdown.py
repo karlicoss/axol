@@ -2,21 +2,21 @@ from dataclasses import dataclass
 from typing import assert_never
 
 from ...core.common import datetime_aware
-from .model import Result, Code, Commit, Issue, Repository
+from .model import Model, Code, Commit, Issue, Repository
 from ...renderers.markdown import Author, MarkdownAdapterT, make_title
 
 
 @dataclass
 class MarkdownAdapter(MarkdownAdapterT):
-    o: Result
+    model: Model
 
     @property
     def created_at(self) -> datetime_aware | None:
-        return self.o.created_at
+        return self.model.created_at
 
     @property
     def author(self) -> Author:
-        user = self.o.user
+        user = self.model.user
         if user is None:
             name = 'DELETED'
             url = f'https://github.com/{name}'  # meh
@@ -33,7 +33,7 @@ class MarkdownAdapter(MarkdownAdapterT):
 
     @property
     def content(self) -> str:
-        o = self.o
+        o = self.model
 
         # FIXME hmm need to sanitize the title.. might contain underscores etc
         # should use a proper md renderer I think

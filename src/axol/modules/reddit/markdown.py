@@ -2,22 +2,22 @@ from dataclasses import dataclass
 
 from ...core.common import datetime_aware
 from .common import reddit_link
-from .model import Result
+from .model import Model
 from ...renderers.markdown import Author, MarkdownAdapterT, make_title
 
 
 @dataclass
 class MarkdownAdapter(MarkdownAdapterT):
     # TODO hmm often link is posted at multiple subreddits.. dunno
-    o: Result  # FIXME maybe rename Result to Model everywhere??
+    model: Model
 
     @property
     def created_at(self) -> datetime_aware:
-        return self.o.created_at
+        return self.model.created_at
 
     @property
     def author(self) -> Author:
-        name = self.o.author_name
+        name = self.model.author_name
         if name is None:
             name = 'DELETED'  # I think it was possible for my old axol version
         return Author(
@@ -31,7 +31,7 @@ class MarkdownAdapter(MarkdownAdapterT):
     # otherwise it might get truncated
     @property
     def content(self) -> str:
-        o = self.o
+        o = self.model
 
         subreddit = f'/r/{o.subreddit_name}'
         ups = f'{o.ups}⇧'  # not really interested in downvotes?

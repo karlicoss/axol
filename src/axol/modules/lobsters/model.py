@@ -35,10 +35,10 @@ class Comment(_Base):
     text: html
 
 
-Result = Story | Comment
+Model = Story | Comment
 
 
-def parse(data: bytes) -> Result:
+def parse(data: bytes) -> Model:
     bs = BeautifulSoup(data, 'html.parser')
     [_soup] = bs.children
     soup = cast(Any, _soup)  # ugh. seems like bs4 has wrong type annotations

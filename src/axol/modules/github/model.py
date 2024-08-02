@@ -46,10 +46,10 @@ class Repository(Base):
     stars: int
 
 
-Result = Code | Commit | Issue | Repository
+Model = Code | Commit | Issue | Repository
 
 
-def parse(data: bytes) -> Result:
+def parse(data: bytes) -> Model:
     j = orjson.loads(data)
 
     entity_types = []

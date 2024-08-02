@@ -23,10 +23,10 @@ class Bookmark:
         return pinboard_link(f'/u:_/b:{self.slug}')
 
 
-Result = Bookmark
+Model = Bookmark
 
 
-def parse(data: bytes) -> Result:
+def parse(data: bytes) -> Model:
     j = orjson.loads(data)
 
     ignore = [
