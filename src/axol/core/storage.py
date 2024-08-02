@@ -4,7 +4,7 @@ from pathlib import Path
 import sqlite3
 from typing import Callable, Iterable, Iterator, cast
 
-from loguru import logger
+import loguru
 import sqlalchemy
 from sqlalchemy import (
     event,
@@ -32,8 +32,13 @@ class Columns:
 
 
 class Database(AbstractContextManager['Database']):
-    def __init__(self, db_path: Path, *, writable: bool = False) -> None:
+    def __init__(self, db_path: Path, *, writable: bool = False, logger=None) -> None:
         assert db_path.is_absolute(), db_path
+
+        parent_logger = logger if logger is not None else loguru.logger
+        # meh, it's too much text this way
+        # self.logger = parent_logger.bind(db_path=db_path)
+        self.logger = parent_logger
 
         if not writable:
             assert db_path.exists(), db_path
@@ -84,7 +89,7 @@ class Database(AbstractContextManager['Database']):
         with self.engine.connect() as conn:
             total_query = select(func.count()).select_from(self.results_table)
             [(total,)] = list(conn.execute(total_query))
-            logger.info(f'total db items: {total}')
+            self.logger.info(f'total db items: {total}')
 
             for row in conn.execute(query):
                 ts, uid, data = row
@@ -156,10 +161,10 @@ class Database(AbstractContextManager['Database']):
                 if not dry:
                     conn.execute(self.results_table.insert(), for_db)
                 else:
-                    logger.warning(f'[{self.db_path}] dry mode, not updating the db')
+                    self.logger.warning(f'[{self.db_path}] dry mode, not updating the db')
 
         total = exist + new
-        logger.info(f'[{self.db_path}] stats -- {total} crawled, {exist} existed, {new} new')
+        self.logger.info(f'[{self.db_path}] stats -- {total} crawled, {exist} existed, {new} new')
 
         for d in for_db:
             uid = cast(Uid, d[Columns.UID])
@@ -176,7 +181,7 @@ class Database(AbstractContextManager['Database']):
         Yields actually inserted items, along with the crawl timestamp
         """
         now_dt = datetime.now(tz=timezone.utc)
-        logger.info(f'[{self.db_path}] inserting crawled items, dt {now_dt}')
+        self.logger.info(f'[{self.db_path}] inserting crawled items, dt {now_dt}')
 
         items = ((now_dt, uid, jb) for uid, jb in results)
         return self._insert(items, dry=dry)

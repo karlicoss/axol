@@ -1,12 +1,13 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import cached_property
 from pathlib import Path
 import re
 from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, Sequence, TypeVar, ClassVar
 
-from loguru import logger
-
+import loguru
+from .logger import logger as main_logger
 from .common import SearchResults, Uid
 from .query import compile_queries, Compilable
 from .storage import CrawlDt, Database
@@ -41,6 +42,10 @@ class Feed(Generic[ResultType, QueryType]):
     exclude: Callable[[ResultType], bool] | None
     exclude_raw: Callable[[bytes], bool] | None
 
+    @cached_property
+    def logger(self) -> 'loguru.Logger':
+        return main_logger.bind(feed=self.name)
+
     @abstractmethod
     def parse(self, data: bytes) -> ResultType:
         raise NotImplementedError
@@ -66,8 +71,8 @@ class Feed(Generic[ResultType, QueryType]):
             try:
                 return exclude_raw(data)
             except Exception as e:
-                logger.error(f'error while evaluating exclude function for {data!r}')
-                logger.exception(e)
+                self.logger.error(f'error while evaluating exclude function for {data!r}')
+                self.logger.exception(e)
                 # stay on the safe side
                 return False
 
@@ -98,7 +103,7 @@ class Feed(Generic[ResultType, QueryType]):
         dry: bool,
     ) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
         writable = not dry
-        with Database(self.db_path, writable=writable) as db:
+        with Database(self.db_path, writable=writable, logger=self.logger) as db:
             yield from db.insert(results, dry=dry)
 
     def _select_all(self) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
@@ -107,7 +112,8 @@ class Feed(Generic[ResultType, QueryType]):
         excluded = 0
         # TODO when querying, also use stored procedure like in prune_db?
         # compare performance??
-        with Database(self.db_path) as db:
+        # another nice thing is that we can log how many we excluded before yielding
+        with Database(self.db_path, logger=self.logger) as db:
             for crawl_timestamp_utc, uid, blob in db.select_all():
                 total += 1
                 if excluder is not None and excluder(blob):
@@ -118,7 +124,7 @@ class Feed(Generic[ResultType, QueryType]):
                 crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
                 yield (crawl_dt, uid, blob)
         if excluded > 0:
-            logger.warning(f"{self}: excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
+            self.logger.warning(f"excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
 
     def prune_db(self, *, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         """
@@ -127,12 +133,12 @@ class Feed(Generic[ResultType, QueryType]):
         # TODO would be nice to yield items to be pruned? at least for dry mode?
         excluder = self._excluder
         if excluder is None:
-            logger.info('feed has no exclude function defined, nothing to do')
+            self.logger.info('feed has no exclude function defined, nothing to do')
             # fast path
             return
 
         writable = not dry
-        with Database(self.db_path, writable=writable) as db:
+        with Database(self.db_path, writable=writable, logger=self.logger) as db:
             pruned = db.delete(dry=dry, predicate=excluder)
 
             def it() -> Iterator[tuple[CrawlDt, Uid, bytes]]:
@@ -149,8 +155,8 @@ class Feed(Generic[ResultType, QueryType]):
         try:
             results = sorted(self.search_all(limit=limit))
         except Exception as e:
-            logger.error('exception while searching; bailing')
-            logger.exception(e)
+            self.logger.error('exception while searching; bailing')
+            self.logger.exception(e)
             yield e
             return
 

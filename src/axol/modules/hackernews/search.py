@@ -1,10 +1,10 @@
 # NOTE: for hn crawling same query may give different sets of results at a very short timespan
 # try querying the same thing every 5 mins to check
 import orjson
-from loguru import logger
 import hn  # type: ignore[import-untyped]
 
 # todo don't remember what type of imports I decided is best? absolute imports in modules??
+from axol.core.logger import logger as global_logger
 from axol.core.common import Json, SearchResults, _check, make_uid
 from .query import SearchQuery
 
@@ -28,6 +28,8 @@ fix_date_format()
 # todo would be nice to use some existing query language?
 def _search(query: str, *, limit: int | None) -> SearchResults:
     assert isinstance(query, str), query  # should be mypy checked, but just in case
+
+    logger = global_logger.bind(query=query)
 
     logger.info(f'{query=} -- fetching...')
     # https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax/#how-to-use

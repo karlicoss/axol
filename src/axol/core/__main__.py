@@ -7,9 +7,9 @@ import sys
 from typing import Any, Iterator, IO, ContextManager
 
 import click
-from loguru import logger
 from more_itertools import ilen, bucket
 
+from .logger import logger as global_logger
 from .feed import get_feeds, Feed
 from .query import compile_queries
 
@@ -70,12 +70,12 @@ def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dr
         for feed in feeds:
             for res in feed.crawl(limit=limit, dry=dry):
                 if isinstance(res, Exception):
-                    logger.opt(exception=True).exception(res)
+                    feed.logger.opt(exception=True).exception(res)
                     errors.append(res)
                     continue
                 crawl_dt, uid, o = res
                 if isinstance(o, Exception):
-                    logger.opt(exception=True).exception(o)
+                    feed.logger.opt(exception=True).exception(o)
                     errors.append(o)
                     continue
 
@@ -100,7 +100,7 @@ def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dr
                 errors.extend(f.result())
 
     if len(errors) > 0:
-        logger.error(f'got {len(errors)} errors')
+        global_logger.error(f'got {len(errors)} errors')
         sys.exit(1)
 
 
@@ -119,12 +119,12 @@ def cmd_feed(*, include: str | None, exclude: str | None) -> None:
                 # TODO ugh. loguru is not tracing exc_info properly??
                 # e.g. compare to
                 # import logging; logging.exception(o, exc_info=o)
-                logger.opt(exception=True).exception(o)
+                feed.logger.opt(exception=o).exception(o)
                 errors.append(o)
             else:
-                print(uid, o)
+                print(crawl_dt, uid, o)
     if len(errors) > 0:
-        logger.error(f'got {len(errors)} errors')
+        global_logger.error(f'got {len(errors)} errors')
         sys.exit(1)
 
 
@@ -164,25 +164,25 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
     errors: list[Exception] = []
 
     for feed in feeds:
-        logger.info(f'processing {feed}')
+        feed.logger.info('processing')
 
         ctx: ContextManager[IO[str]]
         if to is None:
             ctx = nullcontext(enter_result=sys.stdout)
         else:
             path = to / f'{feed.name}.md'
-            logger.debug(f'wiriting to {path}')
+            feed.logger.debug(f'writing to {path}')
             ctx = path.open('w')
         with ctx as sink:
             try:
                 for md in iter_markdown(feed):
                     if isinstance(md, Exception):
-                        logger.opt(exception=md).exception(md)
+                        feed.logger.opt(exception=md).exception(md)
                         errors.append(md)
                         continue
                     sink.write(md + '\n')
             except Exception as e:
-                logger.opt(exception=e).exception(e)
+                feed.logger.opt(exception=e).exception(e)
                 errors.append(e)
                 continue
 
@@ -207,11 +207,11 @@ def cmd_prune(*, include: str | None, exclude: str | None, dry: bool, do_print: 
             total += 1
             if do_print:
                 print(crawl_dt, uid, o)
-        msg = f'[{feed}]: pruned {total} items {dry=}'
+        msg = f'pruned {total} items {dry=}'
         if total > 0:
-            logger.warning(msg)
+            feed.logger.warning(msg)
         else:
-            logger.info(msg)
+            feed.logger.info(msg)
 
 
 @main.command(name='stats')

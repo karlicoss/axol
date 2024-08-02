@@ -4,10 +4,11 @@ import time
 from typing import assert_never
 
 from bs4 import BeautifulSoup
-from loguru import logger
+import loguru
 import requests
 
 from axol.core.common import SearchResults, Uid, make_uid
+from axol.core.logger import logger as main_logger
 from .common import extract_uid
 from .query import SearchQuery, Kind
 
@@ -19,9 +20,11 @@ def _search_order(
     order: str,
     limit: int | None,
     total_so_far: int,
+    logger: 'loguru.Logger',
 ) -> SearchResults:
-    qstr = f'{query=} {kind=} {order=}'
-    logger.info(f'{qstr} -- fetching...')
+    logger = logger.bind(order=order)
+
+    logger.info('fetching...')
 
     # results in bizarre matches.. not sure why
     assert '/' not in query, query
@@ -43,7 +46,7 @@ def _search_order(
                 },
             )
             if re.search('Throttled, sleep.* between hits', r.text):
-                logger.debug(f'{qstr} -- lobste.rs suggested to sleep between hits, waiting...')
+                logger.debug('lobste.rs suggested to sleep between hits, waiting...')
                 time.sleep(5)
             else:
                 break
@@ -54,13 +57,13 @@ def _search_order(
             m = re.fullmatch(r'(\d+) results? for', total_e.text.strip())
             assert m is not None, total_e
             expected_total = int(m.group(1))
-            logger.debug(f'{qstr} -- expected total {expected_total}')
+            logger.debug(f'expected total {expected_total}')
 
         if expected_total == total_so_far:
             # this is so we don't do unnecessary queries
             # lobsters only returns 20 pages of results (while displaying the correct overall total)
             # so this logic works for us
-            logger.debug(f'{qstr} -- looks like already fetched everything before, bailing early')
+            logger.debug('looks like already fetched everything before, bailing early')
             return
 
         if kind == 'stories':
@@ -87,36 +90,37 @@ def _search_order(
             item = str(item_el).encode('utf8')
             if b'Story removed by submitter' in item:
                 # doesn't have link/title, not much we can do?
-                logger.debug(f'{qstr}: skipping {uid}, story removed by submitter')
+                logger.debug(f'skipping {uid}, story removed by submitter')
                 # TODO subtract from expected total??
                 continue
 
             yield uid, item
 
         if len(item_els) == 0:
-            logger.debug(f'{qstr} -- no more results')
+            logger.debug('no more results')
             break
-        logger.debug(f'{qstr} -- fetched {len(uids)} results so far')
+        logger.debug(f'fetched {len(uids)} results so far')
         time.sleep(2)  # seems that it sometimes suggests to sleep(1), so doing 2 just in case
 
     total = len(uids)
-    logger.info(f'{qstr} -- got {total} results')
+    logger.info(f'got {total} results')
     if limit is None and expected_total > 10:
         assert total / expected_total > 0.7, (total, expected_total)  # just in case, maybe make defensive later
 
 
 def _search(query: str, *, kind: Kind, limit: int | None) -> SearchResults:
-    qstr = f'{query=} {kind=}'
-    logger.info(f'{qstr} -- fetching...')
+    logger = main_logger.bind(query=query, kind=kind)
+
+    logger.info('fetching...')
     uids: set[Uid] = set()
     for order in ['newest', 'relevance', 'score']:
         total_so_far = len(uids)
-        for uid, item in _search_order(query=query, kind=kind, order=order, limit=limit, total_so_far=total_so_far):
+        for uid, item in _search_order(query=query, kind=kind, order=order, limit=limit, total_so_far=total_so_far, logger=logger):
             if uid in uids:
                 continue
             uids.add(uid)
             yield uid, item
-    logger.info(f'{qstr} -- fetched {len(uids)} results total')
+    logger.info(f'fetched {len(uids)} results total')
 
 
 def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
