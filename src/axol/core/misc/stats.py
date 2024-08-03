@@ -42,6 +42,8 @@ def print_stats(*, feed: Feed, threshold: float) -> None:
             if kk not in EXCLUDE_KEYS:
                 count(kk, v)
 
+    print(f'stats for {feed.name}')
+
     for otype, cnt in sorted(otypes.items(), key=lambda p: p[1], reverse=True):
         print(f'{otype:<10} {cnt:<5}')
 

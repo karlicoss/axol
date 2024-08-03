@@ -144,6 +144,7 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
     def iter_markdown(feed: Feed) -> Iterator[str | Exception]:
         MdAdapter: type[MarkdownAdapterT] = feed.MarkdownAdapter
 
+        adapters = []
         for crawl_dt, uid, o in feed.feed():
             if isinstance(o, Exception):
                 yield o
@@ -151,12 +152,31 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
             try:
                 mdo = MdAdapter(o)
                 created_at = mdo.created_at
-                # TODO include uid?
-                author = mdo.author
-                content = mdo.content
             except Exception as e:
                 yield e
                 continue
+            adapters.append(mdo)
+
+        # sort items so that ones that don't have date go last
+        def key(a: MarkdownAdapterT):
+            dt = a.created_at
+            if dt is not None:
+                return (False, dt)
+            else:
+                return (True,)
+
+        adapters = sorted(adapters, key=key)
+
+        for a in adapters:
+            # TODO include uid?
+            try:
+                created_at = a.created_at
+                author = a.author
+                content = a.content
+            except Exception as e:
+                yield e
+                continue
+
             created_str = 'no timestamp' if created_at is None else created_at.strftime('%Y-%m-%d %H:%M')
             by = f'by [{author.name}]({author.url})'
             yield f'{content}\n\n`{created_str}` {by}'
@@ -225,12 +245,10 @@ def cmd_stats(*, include: str | None, exclude: str | None, threshold: float) -> 
     This is useful to quickly analyse crawled results and populate exclude filters.
     """
     feeds = get_feeds(include=include, exclude=exclude)
-    assert len(feeds) == 1, feeds  # doesn't really make sense to compute stats against multiple feeds?
-    [feed] = feeds
 
     from .misc.stats import print_stats
-
-    print_stats(feed=feed, threshold=threshold)
+    for feed in feeds:
+        print_stats(feed=feed, threshold=threshold)
 
 
 @main.command(name='feeds')

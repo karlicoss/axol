@@ -81,7 +81,7 @@ def parse(data: bytes) -> Model:
         assert url.lower().startswith('http'), url
 
         [tags_e] = soup.select('.tags')
-        tags = [x.text.strip() for x in tags_e.select('.tag')]
+        tags = tuple(x.text.strip() for x in tags_e.select('.tag'))
 
         [comments_e] = soup.select('.mobile_comments')
         comments = int(comments_e.text)
