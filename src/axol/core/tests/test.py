@@ -1,11 +1,12 @@
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterator
 
 import orjson
 
 from axol.core.common import Json, Uid
-from axol.core.feed import Feed as BaseFeed, SearchF
+from axol.core.feed import Feed as BaseFeed
+from axol.core.feed import SearchF
 
 
 @dataclass
@@ -31,7 +32,7 @@ class DummyFeed(BaseFeed[Json, Query]):
 
     @property
     def search(self) -> SearchF:
-        def _search(query: SearchQuery, *, limit: int | None):
+        def _search(query: SearchQuery, *, limit: int | None):  # noqa: ARG001
             for i in range(100):
                 uid = f'{i:03d}'
                 j = {'text': f'item {uid}'}
@@ -41,7 +42,7 @@ class DummyFeed(BaseFeed[Json, Query]):
 
     def asdict(self) -> dict[Uid, Json]:
         d: dict[Uid, Json] = {}
-        for crawl_dt, uid, o in self.feed():
+        for _crawl_dt, uid, o in self.feed():
             assert uid not in d  # just in case
             assert not isinstance(o, Exception)
             d[uid] = o
@@ -179,7 +180,7 @@ class ErrorFeed(BaseFeed):
 
     @property
     def search(self) -> SearchF:
-        def _search(query: SearchQuery, *, limit: int | None):
+        def _search(query: SearchQuery, *, limit: int | None):  # noqa: ARG001
             for i in range(1, 100):
                 uid = str(i)
                 data = uid.encode('utf8')

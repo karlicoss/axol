@@ -1,13 +1,14 @@
 # NOTE: for hn crawling same query may give different sets of results at a very short timespan
 # try querying the same thing every 5 mins to check
-import orjson
 import hn  # type: ignore[import-untyped]
+import orjson
+
+from axol.core.common import Json, SearchResults, _check, make_uid
 
 # todo don't remember what type of imports I decided is best? absolute imports in modules??
 from axol.core.logger import logger as global_logger
-from axol.core.common import Json, SearchResults, _check, make_uid
-from .query import SearchQuery
 
+from .query import SearchQuery
 
 REQUIRES = ['python-hn']
 

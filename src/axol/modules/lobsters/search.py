@@ -1,16 +1,17 @@
 import itertools
 import re
 import time
-from typing import assert_never
 
-from bs4 import BeautifulSoup
 import loguru
 import requests
+from bs4 import BeautifulSoup
+from typing_extensions import assert_never
 
 from axol.core.common import SearchResults, Uid, make_uid
 from axol.core.logger import logger as main_logger
+
 from .common import extract_uid
-from .query import SearchQuery, Kind
+from .query import Kind, SearchQuery
 
 
 def _search_order(

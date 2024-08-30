@@ -1,5 +1,6 @@
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from typing import Iterator, Protocol, Sequence, TypeVar
+from typing import Protocol, TypeVar
 
 from more_itertools import unique_everseen
 
@@ -26,15 +27,15 @@ def _check(s: str) -> str:
     return s
 
 
-Compiled = TypeVar('Compiled', covariant=True)
+Compiled_co = TypeVar('Compiled_co', covariant=True)
 
 
-class Compilable(Protocol[Compiled]):
-    def compile(self) -> Iterator[Compiled]: ...
+class Compilable(Protocol[Compiled_co]):
+    def compile(self) -> Iterator[Compiled_co]: ...
 
 
-def compile_queries(queries: Sequence[Compilable[Compiled]]) -> Iterator[Compiled]:
-    def it() -> Iterator[Compiled]:
+def compile_queries(queries: Sequence[Compilable[Compiled_co]]) -> Iterator[Compiled_co]:
+    def it() -> Iterator[Compiled_co]:
         for query in queries:
             yield from query.compile()
 

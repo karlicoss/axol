@@ -1,9 +1,11 @@
 # TODO merge commits are kinda annoying?
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from typing import assert_never, Iterator, Literal, Sequence, get_args
+from typing import Literal, get_args
 
-from axol.core.query import exact, raw, doublequote, _check, Compilable
+from typing_extensions import assert_never
 
+from axol.core.query import Compilable, _check, doublequote, exact, raw
 
 Kind = Literal[
     'repositories',

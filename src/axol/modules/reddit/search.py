@@ -1,15 +1,21 @@
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
-from loguru import logger
 import orjson
 import praw  # type: ignore[import-untyped]
-from praw.models import PollData, PollOption, Redditor, Submission, Subreddit  # type: ignore[import-untyped]
+from loguru import logger
+from praw.models import (  # type: ignore[import-untyped]
+    PollData,
+    PollOption,
+    Redditor,
+    Submission,
+    Subreddit,
+)
 
 from axol.core.common import Json, SearchResults, Uid, make_uid
 from axol.credentials import reddit_praw
 
 from .query import SearchQuery
-
 
 REQUIRES = ['praw']
 

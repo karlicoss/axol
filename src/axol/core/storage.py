@@ -1,26 +1,26 @@
+import sqlite3
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import AbstractContextManager
 from datetime import datetime, timezone
 from pathlib import Path
-import sqlite3
-from typing import Callable, Iterable, Iterator, cast
+from typing import cast
 
 import loguru
 import sqlalchemy
 from sqlalchemy import (
+    Column,
+    Table,
     event,
     func,
     select,
-    Column,
-    Table,
 )
 
 from .common import (
+    Uid,
     datetime_aware,
     make_uid,
-    Uid,
 )
 from .utils import sqlalchemy_strict_sqlite
-
 
 CrawlDt = datetime_aware
 
@@ -51,7 +51,7 @@ class Database(AbstractContextManager['Database']):
         self.metadata = sqlalchemy.MetaData()
 
         # see https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
-        def do_connect(dbapi_connection, connection_record):
+        def do_connect(dbapi_connection, connection_record):  # noqa: ARG001
             # TOOD I think th commnt below is misleading?? it still works without??
             # disable pysqlite's emitting of the BEGIN statement entirely.
             # also stops it from emitting COMMIT before any DDL.

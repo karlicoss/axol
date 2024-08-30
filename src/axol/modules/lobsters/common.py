@@ -16,5 +16,5 @@ def extract_uid(soup) -> str:
 
 
 def lobsters_link(s: str) -> str:
-    assert s.startswith('/s/') or s.startswith('/~'), s
+    assert s.startswith(('/s/', '/~')), s
     return f'https://lobste.rs{s}'

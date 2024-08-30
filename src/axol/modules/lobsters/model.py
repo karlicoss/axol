@@ -1,10 +1,13 @@
-from datetime import datetime
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence, assert_never, cast
+from datetime import datetime
+from typing import Any, cast
 
 from bs4 import BeautifulSoup, NavigableString
+from typing_extensions import assert_never
 
 from axol.core.common import datetime_aware, html
+
 from .common import extract_uid, lobsters_link
 from .query import Kind
 

@@ -2,12 +2,13 @@ import re
 import time
 from typing import Any
 
-from loguru import logger
 import orjson
 import requests
+from loguru import logger
 
-from axol.core.common import make_uid, notnone, Json, SearchResults, Uid
-from .query import SearchQuery, Kind
+from axol.core.common import Json, SearchResults, Uid, make_uid, notnone
+
+from .query import Kind, SearchQuery
 
 
 def _search(

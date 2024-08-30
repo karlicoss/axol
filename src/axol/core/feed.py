@@ -1,18 +1,22 @@
+import re
 from abc import abstractmethod
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
-import re
-from typing import Any, Callable, Generic, Iterable, Iterator, Protocol, Self, Sequence, TypeVar, ClassVar
+from typing import Any, ClassVar, Generic, Protocol, TypeVar
 
 import loguru
-from .logger import logger as main_logger
-from .common import SearchResults, Uid
-from .query import compile_queries, Compilable
-from .storage import CrawlDt, Database
-from ..renderers.markdown import MarkdownAdapterT  # todo meh, this import kinda doesn't belong here...
+from typing_extensions import Self
 
+from ..renderers.markdown import (
+    MarkdownAdapterT,  # todo meh, this import kinda doesn't belong here...
+)
+from .common import SearchResults, Uid
+from .logger import logger as main_logger
+from .query import Compilable, compile_queries
+from .storage import CrawlDt, Database
 
 # the searcher decides on the query type itself?
 # TODO make these two typed? not sure how.. maybe use Compilable protocol?
@@ -100,6 +104,7 @@ class Feed(Generic[ResultType, QueryType]):
     def _insert(
         self,
         results: Iterable[tuple[Uid, bytes]],
+        *,
         dry: bool,
     ) -> Iterator[tuple[CrawlDt, Uid, bytes]]:
         writable = not dry

@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from axol.core.feed import Feed as BaseFeed, SearchF
+from axol.core.feed import Feed as BaseFeed
+from axol.core.feed import SearchF
 
-from . import model, query, markdown
+from . import markdown, model, query
 
 
 @dataclass
@@ -24,8 +25,9 @@ class Feed(BaseFeed[model.Model, query.Query]):
 
 
 def test(tmp_path: Path) -> None:
-    from datetime import datetime, timezone
     import os
+    from datetime import datetime, timezone
+
     import pytest
 
     if 'CI' in os.environ:

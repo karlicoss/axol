@@ -1,10 +1,12 @@
 # NOTE: some info on search operators here https://lobste.rs/search
 # TODO title: could be useful?
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, Literal, assert_never
+from typing import Literal
 
-from axol.core.query import doublequote, exact, raw, _check, Compilable
+from typing_extensions import assert_never
 
+from axol.core.query import Compilable, _check, doublequote, exact, raw
 
 Kind = Literal[
     'stories',

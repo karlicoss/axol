@@ -1,7 +1,7 @@
+import re
 from abc import abstractmethod
 from dataclasses import dataclass
 from html import unescape as html_unescape
-import re
 from typing import Any
 
 from ..core.common import datetime_aware, html
