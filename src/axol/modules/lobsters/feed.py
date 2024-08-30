@@ -2,9 +2,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from axol.core.common import html
-from axol.core.feed import Feed as BaseFeed, SearchF
+from axol.core.feed import Feed as BaseFeed
+from axol.core.feed import SearchF
 
-from . import model, query, markdown
+from . import markdown, model, query
 
 
 @dataclass
@@ -28,6 +29,7 @@ def test_feed(tmp_path: Path) -> None:
     import dataclasses
     import datetime
     import os
+
     import pytest
 
     from axol.core.query import raw

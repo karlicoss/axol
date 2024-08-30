@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
 from ...core.common import datetime_aware
+from ...renderers.markdown import Author, MarkdownAdapterT, make_title
 from .common import pinboard_link
 from .model import Model
-from ...renderers.markdown import Author, MarkdownAdapterT, make_title
 
 
 @dataclass

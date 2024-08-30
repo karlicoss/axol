@@ -8,6 +8,7 @@ dependencies = [
     "orjson",
     "sqlalchemy",
     "more-itertools",
+    "typing-extensions",
     "tabulate",  # for configs listing
 ]
 

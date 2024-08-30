@@ -1,7 +1,9 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import assert_never, Iterator
 
-from axol.core.query import exact, raw, doublequote, _check, Compilable
+from typing_extensions import assert_never
+
+from axol.core.query import Compilable, _check, doublequote, exact, raw
 
 
 @dataclass

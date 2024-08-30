@@ -3,7 +3,8 @@ from datetime import datetime
 
 import orjson
 
-from axol.core.common import datetime_aware, _check, html
+from axol.core.common import _check, datetime_aware, html
+
 from .common import hn_link
 
 

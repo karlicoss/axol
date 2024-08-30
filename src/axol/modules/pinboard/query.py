@@ -1,8 +1,10 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import assert_never, Iterator, Literal
+from typing import Literal
 
-from axol.core.query import exact, raw, doublequote, _check, Compilable, compile_queries
+from typing_extensions import assert_never
 
+from axol.core.query import Compilable, _check, compile_queries, doublequote, exact, raw
 
 Kind = Literal[
     'regular',

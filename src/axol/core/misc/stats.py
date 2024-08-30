@@ -3,7 +3,6 @@ from datetime import datetime
 
 from ..feed import Feed
 
-
 Key = tuple[str, str]
 
 # todo later maybe feeds/models could define stuff to exclude?
@@ -28,7 +27,7 @@ def print_stats(*, feed: Feed, threshold: float) -> None:
         counters[key][item] += 1
 
     total = 0
-    for crawl_dt, uid, o in feed.feed():
+    for _crawl_dt, _uid, o in feed.feed():
         if isinstance(o, Exception):
             raise o
         total += 1
@@ -53,6 +52,6 @@ def print_stats(*, feed: Feed, threshold: float) -> None:
             if cnt / total < threshold:
                 continue
             printed = True
-            print(f'{str(k):<10} {cnt:<5} {repr(v)}')
+            print(f'{k!s:<10} {cnt:<5} {v!r}')
     if not printed:
         print(f"No significant outliers! Try increasing threshold from {threshold}")

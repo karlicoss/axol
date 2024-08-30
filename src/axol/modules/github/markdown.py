@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from typing import assert_never
+
+from typing_extensions import assert_never
 
 from ...core.common import datetime_aware
-from .model import Model, Code, Commit, Issue, Repository
 from ...renderers.markdown import Author, MarkdownAdapterT, make_title
+from .model import Code, Commit, Issue, Model, Repository
 
 
 @dataclass

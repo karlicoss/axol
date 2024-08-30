@@ -1,10 +1,10 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Sequence
 
 import orjson
 
-from axol.core.common import datetime_aware, _check
+from axol.core.common import _check, datetime_aware
 
 
 @dataclass(unsafe_hash=True)

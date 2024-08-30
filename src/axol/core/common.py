@@ -1,7 +1,8 @@
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
-import re
-from typing import Any, Iterator, NewType, Type, TypeVar
+from typing import Any, NewType, TypeVar
 
 Json = dict[str, Any]
 
@@ -26,7 +27,7 @@ SearchResults = Iterator[SearchResult]
 T = TypeVar('T')
 
 
-def _check(x: Any, t: Type[T]) -> T:
+def _check(x: Any, t: type[T]) -> T:
     assert isinstance(x, t), x
     return x
 

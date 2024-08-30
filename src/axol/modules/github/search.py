@@ -1,8 +1,10 @@
 from abc import abstractmethod
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Iterator, Protocol, Sequence
+from typing import Any, Protocol
 
+import orjson
 from github import (
     Auth,
     Github,
@@ -10,18 +12,15 @@ from github import (
 )
 from github.Commit import Commit
 from github.ContentFile import ContentFile
+from github.GithubObject import NotSet, Opt
 from github.Issue import Issue
 from github.Repository import Repository
-from github.GithubObject import NotSet, Opt
-
-import orjson
 from loguru import logger
 
-from axol.core.common import SearchResults, Uid, Json, make_uid
+from axol.core.common import Json, SearchResults, Uid, make_uid
 from axol.credentials import github_token
 
 from .query import Kind, SearchQuery
-
 
 REQUIRES = ['PyGithub']
 

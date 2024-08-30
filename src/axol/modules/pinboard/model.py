@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 
 import orjson
 
-from axol.core.common import datetime_aware, _check
+from axol.core.common import _check, datetime_aware
+
 from .common import pinboard_link
 
 

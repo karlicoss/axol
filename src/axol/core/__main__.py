@@ -1,16 +1,17 @@
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import nullcontext
 import dataclasses
 import importlib
-from pathlib import Path
 import sys
-from typing import Any, Iterator, IO, ContextManager
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import AbstractContextManager, nullcontext
+from pathlib import Path
+from typing import IO, Any
 
 import click
-from more_itertools import ilen, bucket
+from more_itertools import bucket, ilen
 
+from .feed import Feed, get_feeds
 from .logger import logger as global_logger
-from .feed import get_feeds, Feed
 from .query import compile_queries
 
 
@@ -145,7 +146,8 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
         MdAdapter: type[MarkdownAdapterT] = feed.MarkdownAdapter
 
         adapters = []
-        for crawl_dt, uid, o in feed.feed():
+        for _crawl_dt, _uid, o in feed.feed():
+            # TODO maybe use uid?
             if isinstance(o, Exception):
                 yield o
                 continue
@@ -186,7 +188,7 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
     for feed in feeds:
         feed.logger.info('processing')
 
-        ctx: ContextManager[IO[str]]
+        ctx: AbstractContextManager[IO[str]]
         if to is None:
             ctx = nullcontext(enter_result=sys.stdout)
         else:
@@ -247,6 +249,7 @@ def cmd_stats(*, include: str | None, exclude: str | None, threshold: float) -> 
     feeds = get_feeds(include=include, exclude=exclude)
 
     from .misc.stats import print_stats
+
     for feed in feeds:
         print_stats(feed=feed, threshold=threshold)
 
