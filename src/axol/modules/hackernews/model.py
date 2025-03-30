@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from datetime import datetime
 
 import orjson
 
 from axol.core.common import _check, datetime_aware, html
+from axol.core.compat import fromisoformat
 
 from .common import hn_link
 
@@ -84,7 +84,7 @@ def parse(data: bytes) -> Model:
     object_id = j.pop('objectID')
 
     created_at_s = j.pop('created_at')
-    created_at = datetime.fromisoformat(created_at_s)
+    created_at = fromisoformat(created_at_s)
     assert created_at.tzinfo is not None, created_at_s
 
     result: Model

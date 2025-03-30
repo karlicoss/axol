@@ -25,3 +25,20 @@ else:
         args = e.args
         if len(args) == 1 and isinstance(args[0], str):
             e.args = (e.args[0] + '\n' + note,)
+
+
+from datetime import datetime
+
+if sys.version_info[:2] >= (3, 11):
+    fromisoformat = datetime.fromisoformat
+else:
+    # fromisoformat didn't support some things (e.g Z as UTC or stuff other than +00:00) before 3.11
+    # https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat
+
+    def fromisoformat(date_string: str) -> datetime:
+        try:
+            return datetime.fromisoformat(date_string)
+        except ValueError:
+            from dateutil import parser  # type: ignore[import-untyped]
+
+            return parser.parse(date_string)

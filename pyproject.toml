@@ -10,6 +10,8 @@ dependencies = [
     "more-itertools",
     "typing-extensions",
     "tabulate",  # for configs listing
+
+    "python-dateutil; python_version < '3.11'", 
 ]
 requires-python = ">=3.10"
 

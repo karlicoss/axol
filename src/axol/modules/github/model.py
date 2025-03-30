@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
 
 import orjson
 
 from axol.core.common import _check, datetime_aware
+from axol.core.compat import fromisoformat
 
 
 @dataclass(unsafe_hash=True)
@@ -97,7 +97,7 @@ def parse(data: bytes) -> Model:
         repo = _check(j['repository']['full_name'], str)
         cmt = j.pop('commit')
         cmt_author = cmt.pop('author')
-        created_at = datetime.fromisoformat(cmt_author['date'])
+        created_at = fromisoformat(cmt_author['date'])
         message = _check(cmt.pop('message'), str)
         author = j.pop('author')
         user: User | None
@@ -126,7 +126,7 @@ def parse(data: bytes) -> Model:
 
         title = _check(j.pop('title'), str)
         body = j.pop('body')
-        created_at = datetime.fromisoformat(j.pop('created_at'))
+        created_at = fromisoformat(j.pop('created_at'))
         uu = j.pop('user')
         if uu is None:
             user = None
@@ -145,7 +145,7 @@ def parse(data: bytes) -> Model:
         )
     elif entity_type == 'repository':
         repo = _check(j['full_name'], str)
-        created_at = datetime.fromisoformat(j.pop('created_at'))
+        created_at = fromisoformat(j.pop('created_at'))
         description = j.pop('description')  # can be none if empty
         topics = tuple(sorted(j.pop('topics')))
         stars = _check(j.pop('stargazers_count'), int)
