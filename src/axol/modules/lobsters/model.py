@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup, NavigableString
 from typing_extensions import assert_never
 
 from axol.core.common import datetime_aware, html
+from axol.core.compat import fromisoformat
 
 from .common import extract_uid, lobsters_link
 from .query import Kind
@@ -69,7 +70,7 @@ def parse(data: bytes) -> Model:
     dt_es = soup.select('.byline span[title*=""], .byline a[title*=""]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
     dt_s = dt_e.attrs['title']
-    dt = datetime.fromisoformat(dt_s)
+    dt = fromisoformat(dt_s)
     assert dt.tzinfo is not None
 
     if kind == 'stories':
