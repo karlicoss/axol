@@ -50,4 +50,5 @@ def json_copy(j: Json) -> Json:
 @dataclass(unsafe_hash=True)
 class html:
     "Marker class to signal that the object contains raw html"
+
     html: str

@@ -137,4 +137,6 @@ lint.ignore = [
     "SIM",     # some if statements crap
     "RSE102",  # complains about missing parens in exceptions
     ##
+
+    "RUF001",  # complains about unicode.. but we're legit using it in tests
 ]

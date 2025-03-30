@@ -66,7 +66,7 @@ def test_feed(tmp_path: Path) -> None:
         permalink='https://lobste.rs/s/mutdyp/borrow_checking_rc_gc_eleven_other_memory',
         score=0,
         comments=0,
-        tags=['programming'],
+        tags=('programming',),
     )
 
     # just a random comment that should be present

@@ -9,6 +9,7 @@ fmt = (
     "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
 )
 
+
 def _add_exc_info(record) -> None:
     # loguru is a bit weird about exception logging
     # e.g. compare to import logging; logging.exception(o, exc_info=o)
