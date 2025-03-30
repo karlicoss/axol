@@ -71,12 +71,12 @@ def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dr
         for feed in feeds:
             for res in feed.crawl(limit=limit, dry=dry):
                 if isinstance(res, Exception):
-                    feed.logger.opt(exception=True).exception(res)
+                    feed.logger.error('', exc_info=res)
                     errors.append(res)
                     continue
                 crawl_dt, uid, o = res
                 if isinstance(o, Exception):
-                    feed.logger.opt(exception=True).exception(o)
+                    feed.logger.error('', exc_info=o)
                     errors.append(o)
                     continue
 
@@ -117,10 +117,7 @@ def cmd_feed(*, include: str | None, exclude: str | None) -> None:
     for feed in feeds:
         for crawl_dt, uid, o in feed.feed():
             if isinstance(o, Exception):
-                # TODO ugh. loguru is not tracing exc_info properly??
-                # e.g. compare to
-                # import logging; logging.exception(o, exc_info=o)
-                feed.logger.opt(exception=o).exception(o)
+                feed.logger.error("", exc_info=o)
                 errors.append(o)
             else:
                 print(crawl_dt, uid, o)
@@ -199,12 +196,12 @@ def cmd_markdown(*, include: str | None, to: Path | None) -> None:
             try:
                 for md in iter_markdown(feed):
                     if isinstance(md, Exception):
-                        feed.logger.opt(exception=md).exception(md)
+                        feed.logger.error('', exc_info=md)
                         errors.append(md)
                         continue
                     sink.write(md + '\n')
             except Exception as e:
-                feed.logger.opt(exception=e).exception(e)
+                feed.logger.error('', exc_info=e)
                 errors.append(e)
                 continue
 

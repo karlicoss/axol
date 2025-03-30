@@ -14,6 +14,7 @@ from ..renderers.markdown import (
     MarkdownAdapterT,  # todo meh, this import kinda doesn't belong here...
 )
 from .common import SearchResults, Uid
+from .compat import add_note
 from .logger import logger as main_logger
 from .query import Compilable, compile_queries
 from .storage import CrawlDt, Database
@@ -75,8 +76,11 @@ class Feed(Generic[ResultType, QueryType]):
             try:
                 return exclude_raw(data)
             except Exception as e:
-                self.logger.error(f'error while evaluating exclude function for {data!r}')
-                self.logger.exception(e)
+                msg = 'error while evaluating exclude function for {data!r}'
+                # ugh.. kinda annoying, maybe loguru isn't really for me..
+                # https://github.com/Delgan/loguru/issues/1008
+                self.logger.error(msg, exc_info=e, data=data)
+
                 # stay on the safe side
                 return False
 
@@ -160,8 +164,7 @@ class Feed(Generic[ResultType, QueryType]):
         try:
             results = sorted(self.search_all(limit=limit))
         except Exception as e:
-            self.logger.error('exception while searching; bailing')
-            self.logger.exception(e)
+            self.logger.error('exception while searching; bailing', exc_info=e)
             yield e
             return
 
@@ -180,9 +183,8 @@ class Feed(Generic[ResultType, QueryType]):
                 o = self.parse(data)
             except Exception as e:
                 # todo maybe log or something?
-                err = RuntimeError(f'while parsing {data!r}')
-                err.__cause__ = e
-                o = err
+                add_note(e, f'^ while parsing {data!r}')
+                o = e
             yield crawl_dt, uid, o
 
     @classmethod
