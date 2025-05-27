@@ -203,9 +203,7 @@ def test_parse_pre_2025() -> None:
 </div>
 </div>
 </div>
-'''.strip().encode(
-        'utf8'
-    )
+'''.strip().encode('utf8')
 
     res = parse(data)
 
@@ -217,9 +215,7 @@ def test_parse_pre_2025() -> None:
         author='roryokane',
         permalink='https://lobste.rs/s/ebn03k/future_programming#c_jmzgo0',
         score=2,
-        text=html(
-            html='\n' '<p>Link: <a href="http://vimeo.com/36579366" ' 'rel="nofollow">Bret Victor - Inventing on ' 'Principle</a></p>\n'
-        ),
+        text=html(html='\n<p>Link: <a href="http://vimeo.com/36579366" rel="nofollow">Bret Victor - Inventing on Principle</a></p>\n'),
     )
 
 
@@ -257,9 +253,7 @@ def test_parse_new() -> None:
 </div>
 </div>
 </div>
-'''.strip().encode(
-        'utf8'
-    )
+'''.strip().encode('utf8')
 
     res = parse(data)
 

@@ -69,12 +69,10 @@ class Database(AbstractContextManager['Database']):
         self.results_table = Table(
             'results',
             self.metadata,
-            # fmt: off
             Column(Columns.CRAWL_TIMESTAMP_UTC, sqlalchemy.Integer, nullable=False),
             Column(Columns.UID                , sqlalchemy.Text   , nullable=False, unique=True),
             Column(Columns.DATA               , sqlalchemy.BLOB   , nullable=False),
-            # fmt: on
-        )
+        )  # fmt: skip
 
         with sqlalchemy_strict_sqlite():
             # NOTE: checkfirst=True is default -- if false it would complain if db already exists
