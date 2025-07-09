@@ -133,6 +133,8 @@ lint.ignore = [
     "RSE102",  # complains about missing parens in exceptions
     ##
 
+    "PLC0415", # "imports should be at the top level" -- not realistic
+
     "RUF001",  # complains about unicode.. but we're legit using it in tests
 ]
 

@@ -56,7 +56,7 @@ def parse(data: bytes) -> Model:
 
     eid = extract_uid(soup)
 
-    [score_e] = soup.select('.score')
+    [score_e] = soup.select('.voters')
     score_s = score_e.text.strip()
     score: int | None = None
     try:
@@ -67,7 +67,7 @@ def parse(data: bytes) -> Model:
         # seems easiest to just be defensive
         pass
 
-    dt_es = soup.select('.byline span[title*=""], .byline a[title*=""]')
+    dt_es = soup.select('.byline span[title*=""], .byline a[title*=""], .byline time[title*=""]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
     dt_s = dt_e.attrs['title']
     dt = fromisoformat(dt_s)
@@ -115,22 +115,48 @@ def parse(data: bytes) -> Model:
 
         if len(children) == 7:
             # old style (pre 2025?)
-            pass
+            [
+                _a_name_e,
+                _comment_folder_e,
+                info_e,
+                permalink_e,
+                _flagger_e,
+                story_e,
+                _reason_e,
+            ] = children
         elif len(children) == 6:
             # new style -- seems like permalink is now in the datetime element
-            children.insert(3, dt_e)
+            [
+                _a_name_e,
+                _comment_folder_e,
+                info_e,
+                _flagger_e,
+                story_e,
+                _reason_e,
+            ] = children
+            permalink_e = dt_e
+        elif len(children) == 5:
+            # new format somewhere around may 2025?
+            [
+                _a_name_e,
+                info_e,
+                _flagger_e,
+                story_e,
+                _reason_e,
+            ] = children
+            # ugh, they removed full permalink from html.. only keeping something like https://lobste.rs/c/ie6oqd
+            # so now have to construct full one manually (below)
+            permalink_e = None
+        elif len(children) == 4:
+            [
+                info_e,
+                _flagger_e,
+                story_e,
+                _reason_e,
+            ] = children
+            permalink_e = None
         else:
             raise RuntimeError(f'Unexpected number of children: {children}')
-
-        [
-            _a_name_e,
-            _comment_folder_e,
-            info_e,
-            permalink_e,
-            _flagger_e,
-            story_e,
-            _reason_e,
-        ] = children
 
         # first link in info_e is avatar
         # then actual user link
@@ -144,11 +170,15 @@ def parse(data: bytes) -> Model:
         assert len(title) > 0
         url = story_e.attrs['href']
         assert url.startswith('/s/')
-        url = lobsters_link(url)
 
-        assert permalink_e.text == 'link' or 'ago' in permalink_e.text, permalink_e
-        permalink = permalink_e.attrs['href']
+        if permalink_e is not None:
+            assert permalink_e.text == 'link' or 'ago' in permalink_e.text, permalink_e
+            permalink = permalink_e.attrs['href']
+        else:
+            permalink = f'{url}#{eid}'
         permalink = lobsters_link(permalink)
+
+        url = lobsters_link(url)
 
         [text_e] = soup.select('.comment_text')
         assert len(text_e.text) > 0, text_e  # just in case
@@ -219,7 +249,7 @@ def test_parse_pre_2025() -> None:
     )
 
 
-def test_parse_new() -> None:
+def test_parse_new_1() -> None:
     data = '''
 <div class="comment" data-shortid="a2fpmt" id="c_a2fpmt">
 <div class="voters">
@@ -248,8 +278,6 @@ def test_parse_new() -> None:
 <blockquote>
 <p>As far as the status quo HCI paradigm goes, we’ve obviously made a lot of progress over the last 50 years.</p>
 </blockquote>
-<p>I realise that default bias plays a role in my thinking here, but I feel like we made a lot of progress over the first 20-25 of those years, and then spent the balance making things worse again. Computer UIs now are a confused mix of simulacra orphaned from their desktop metaphor antecedents, screenshot-optimised flat layouts with zero affordances ever, and functionality hidden behind random icons wherever it’ll fit in the name of decluttering.</p>
-<p>As for Bret Victor’s post… I have my doubts. Manipulating things by touch isn’t very abstract. Manipulating symbols isn’t very tactile. It sounds a bit quippy to ask “what does a monad feel like?” but if you think screens are inadequate for interacting with them the question should at least in principle be answerable.</p>
 </div>
 </div>
 </div>
@@ -272,22 +300,164 @@ def test_parse_new() -> None:
             'obviously made a lot of progress over the last 50 '
             'years.</p>\n'
             '</blockquote>\n'
-            '<p>I realise that default bias plays a role in my '
-            'thinking here, but I feel like we made a lot of '
-            'progress over the first 20-25 of those years, and then '
-            'spent the balance making things worse again. Computer '
-            'UIs now are a confused mix of simulacra orphaned from '
-            'their desktop metaphor antecedents, '
-            'screenshot-optimised flat layouts with zero '
-            'affordances ever, and functionality hidden behind '
-            'random icons wherever it’ll fit in the name of '
-            'decluttering.</p>\n'
-            '<p>As for Bret Victor’s post… I have my doubts. '
-            'Manipulating things by touch isn’t very abstract. '
-            'Manipulating symbols isn’t very tactile. It sounds a '
-            'bit quippy to ask “what does a monad feel like?” but '
-            'if you think screens are inadequate for interacting '
-            'with them the question should at least in principle be '
-            'answerable.</p>\n'
+        ),
+    )
+
+
+def test_parse_story_new_2() -> None:
+    """
+    Somewhere around 2025?
+    - class="score" is not present anymore and score is directly under "upvoter"?
+    - post datetime is now under <time> tag
+    """
+    data = '''
+<li class="story" data-shortid="r9tamc" id="story_r9tamc">
+<div class="story_liner h-entry">
+<div class="voters">
+<a class="upvoter" href="/login">3</a>
+</div>
+<div class="details">
+<span aria-level="1" class="link h-cite u-repost-of" role="heading">
+<a class="u-url" href="https://www.infocentral.org/" rel="ugc noreferrer">An Architectural Approach to Decentralization</a>
+</span>
+<span class="tags">
+<a class="tag tag_distributed" href="/t/distributed" title="Distributed systems">distributed</a>
+<a class="tag tag_ai" href="/t/ai" title="Developing artificial intelligence, machine learning. Tag AI usage only with `vibecoding`.">ai</a>
+</span>
+<a class="domain" href="/domains/infocentral.org">infocentral.org</a>
+<div class="byline">
+<a href="/~schmudde"><img alt="schmudde avatar" class="avatar" decoding="async" height="16" loading="lazy" src="/avatars/schmudde-16.png" srcset="/avatars/schmudde-16.png 1x, /avatars/schmudde-32.png 2x" width="16"/></a>
+<span> via </span>
+<a class="u-author h-card" href="/~schmudde">schmudde</a>
+<time datetime="2025-06-16 03:54:44-0500" title="2025-06-16 03:54:44 -0500">18 hours ago</time>
+<span> | </span>
+<span class="dropdown_parent">
+<input class="archive_button" id="archive_r9tamc" type="checkbox"/>
+<label for="archive_r9tamc" tabindex="0">caches</label>
+<div class="archive-dropdown">
+<a href="https://web.archive.org/web/3/https%3A%2F%2Fwww.infocentral.org%2F">Archive.org</a>
+<a href="https://archive.today/https%3A%2F%2Fwww.infocentral.org%2F">Archive.today</a>
+<a href="https://ghostarchive.org/search?term=https%3A%2F%2Fwww.infocentral.org%2F">Ghostarchive</a>
+</div>
+</span>
+<span class="comments_label">
+<span> | </span>
+<a aria-level="2" href="/s/r9tamc/architectural_approach" role="heading">
+              no comments</a>
+</span>
+</div>
+</div>
+</div>
+<a class="mobile_comments zero" href="/s/r9tamc/architectural_approach" style="display: none;">
+<span>0</span>
+</a>
+</li>
+'''.strip().encode('utf8')
+
+    res = parse(data)
+    assert res == Story(
+        dt=datetime(2025, 6, 16, 3, 54, 44, tzinfo=timezone(timedelta(days=-1, seconds=68400))),
+        id='r9tamc',
+        title='An Architectural Approach to Decentralization',
+        url='https://www.infocentral.org/',
+        author='schmudde',
+        permalink='https://lobste.rs/s/r9tamc/architectural_approach',
+        score=3,
+        comments=0,
+        tags=('distributed', 'ai'),
+    )
+
+
+def test_parse_comment_new_2() -> None:
+    data = '''
+<div class="comment" data-shortid="mtfz3s" id="c_mtfz3s">
+<div class="voters">
+<label class="comment_folder" for="comment_folder_mtfz3s"></label>
+<a class="upvoter" href="/login">3</a>
+</div>
+<div class="details">
+<div class="byline">
+<a name="c_mtfz3s"></a>
+<span class="">
+<a href="/~madhadron"><img alt="madhadron avatar" class="avatar" decoding="async" height="16" loading="lazy" src="/avatars/madhadron-16.png" srcset="/avatars/madhadron-16.png 1x, /avatars/madhadron-32.png 2x" width="16"/></a>
+<a href="/~madhadron">madhadron</a>
+<a href="/c/mtfz3s"><time datetime="2025-05-23 17:33:09-0500" title="2025-05-23 17:33:09 -0500">3 days ago</time></a>
+</span>
+<span class="flagger flagger_stub"></span>
+
+
+          | on:
+          <a href="/s/faowua/spaced_repetition_systems_have_gotten">Spaced Repetition Systems Have Gotten Way Better</a>
+<span class="reason">
+</span>
+</div>
+<div aria-level="3" class="comment_text" role="heading">
+<p>Thereâs several pieces to effective language learning, and Anki is one of them.</p>
+</div>
+</div>
+</div>
+'''.strip().encode('utf8')
+
+    res = parse(data)
+    assert res == Comment(
+        dt=datetime(2025, 5, 23, 17, 33, 9, tzinfo=timezone(timedelta(days=-1, seconds=68400))),
+        id='c_mtfz3s',
+        title='Spaced Repetition Systems Have Gotten Way Better',
+        url='https://lobste.rs/s/faowua/spaced_repetition_systems_have_gotten',
+        author='madhadron',
+        permalink='https://lobste.rs/s/faowua/spaced_repetition_systems_have_gotten#c_mtfz3s',
+        score=3,
+        text=html(html='\n<p>Thereâs several pieces to effective language learning, and Anki is one of them.</p>\n'),
+    )
+
+
+def test_parse_comment_new_3() -> None:
+    data = '''
+<div class="comment" data-shortid="6uarnf" id="c_6uarnf">
+<label class="comment_folder" for="comment_folder_6uarnf"></label>
+<div class="comment_gutter">
+<div class="voters">
+<a class="upvoter" href="/login"></a>
+</div>
+</div>
+<div class="details">
+<div class="byline">
+<span class="">
+<a href="/~andyc"><img alt="andyc avatar" class="avatar" decoding="async" height="16" loading="lazy" src="/avatars/andyc-16.png" srcset="/avatars/andyc-16.png 1x, /avatars/andyc-32.png 2x" width="16"/></a>
+<a href="/~andyc">andyc</a>
+
+
+            edited
+            <a href="/c/6uarnf" title="2025-05-08 18:17:59 -0500">3 hours ago</a>
+</span>
+<span class="flagger flagger_stub"></span>
+
+
+          | on:
+          <a href="/s/xnyrve/memory_safety_features_zig">Memory Safety Features in Zig</a>
+<span class="reason">
+</span>
+</div>
+<div aria-level="3" class="comment_text" role="heading">
+<p>Thank you for being precise about the terminology – seg faults are indeed a mechanism to <strong>enforce</strong> memory safety.</p>
+</div>
+</div>
+</div>
+'''.strip().encode('utf8')
+
+    res = parse(data)
+    assert res == Comment(
+        dt=datetime(2025, 5, 8, 18, 17, 59, tzinfo=timezone(timedelta(days=-1, seconds=68400))),
+        id='c_6uarnf',
+        title='Memory Safety Features in Zig',
+        url='https://lobste.rs/s/xnyrve/memory_safety_features_zig',
+        author='andyc',
+        permalink='https://lobste.rs/s/xnyrve/memory_safety_features_zig#c_6uarnf',
+        score=None,
+        text=html(
+            html='\n'
+            '<p>Thank you for being precise about the terminology – '
+            'seg faults are indeed a mechanism to '
+            '<strong>enforce</strong> memory safety.</p>\n'
         ),
     )
