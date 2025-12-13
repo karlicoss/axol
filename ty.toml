@@ -1,0 +1,6 @@
+[src]
+exclude = [
+   'old/',
+]
+
+[rules]

@@ -46,5 +46,5 @@ class MarkdownAdapter(MarkdownAdapterT):
 
         body = o.description or ''
 
-        content = '\n'.join([title_line, body, footer])
+        content = f'{title_line}\n{body}\n{footer}'
         return content

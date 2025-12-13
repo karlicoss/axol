@@ -22,7 +22,8 @@ if [ -n "${CI-}" ]; then
         ;;
     cygwin* | msys* | win*)
         # windows
-        :
+        # ugh. parallel stuff seems super flaky under windows, some random failures, "file used by other process" and crap like that
+        tox_cmd='run'
         ;;
     *)
         # must be linux?

@@ -40,5 +40,5 @@ class MarkdownAdapter(MarkdownAdapterT):
 
         body = o.selftext_md
 
-        content = '\n'.join([title_line, body])
+        content = f'{title_line}\n{body}'
         return content

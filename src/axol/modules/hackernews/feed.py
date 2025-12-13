@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 
 from axol.core.feed import Feed as BaseFeed
@@ -26,7 +27,7 @@ class Feed(BaseFeed[model.Model, query.Query]):
 
 def test_feed(tmp_path: Path) -> None:
     import os
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     import pytest
 
@@ -46,7 +47,7 @@ def test_feed(tmp_path: Path) -> None:
     [(c, uid)] = [(c, uid) for dt, uid, c in crawled if isinstance(c, model.Comment) and c.id == '10097990']
     assert uid == '10097990'
     assert c.author == 'barrkel'
-    assert c.created_at == datetime(2015, 8, 21, 15, 9, 54, tzinfo=timezone.utc)
+    assert c.created_at == datetime(2015, 8, 21, 15, 9, 54, tzinfo=UTC)
     assert 'interacting with the outside world' in c.text.html
 
     [(s, uid)] = [(s, uid) for dt, uid, s in crawled if isinstance(s, model.Story) and s.id == '29223181']
@@ -55,4 +56,6 @@ def test_feed(tmp_path: Path) -> None:
     assert s.points > 100
     assert s.num_comments > 200
     assert s.title == 'Corded headphones are making an unexpected return'
-    assert s.url == 'https://www.wsj.com/articles/are-airpods-out-why-cool-kids-are-wearing-wired-headphones-11636753407'
+    assert (
+        s.url == 'https://www.wsj.com/articles/are-airpods-out-why-cool-kids-are-wearing-wired-headphones-11636753407'
+    )

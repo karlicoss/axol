@@ -26,8 +26,8 @@ class Feed(BaseFeed[model.Model, query.Query]):
 
 def test_feed(tmp_path: Path) -> None:
     import dataclasses
-    import datetime
     import os
+    from datetime import UTC, datetime, timedelta, timezone
 
     import pytest
 
@@ -48,7 +48,7 @@ def test_feed(tmp_path: Path) -> None:
     # test some random objects
     [o] = [o for _, uid, o in items if uid == 'commit_52cbaf3b5063bad7456b782b4f36f12278dc70ab']
     assert o == model.Commit(
-        created_at=datetime.datetime(2024, 4, 20, 14, 57, 27, tzinfo=datetime.timezone(datetime.timedelta(seconds=32400))),
+        created_at=datetime(2024, 4, 20, 14, 57, 27, tzinfo=timezone(timedelta(seconds=32400))),
         html_url='https://github.com/dmurooka/data-wrangling/commit/52cbaf3b5063bad7456b782b4f36f12278dc70ab',
         user=model.User(login='dmurooka', url='https://github.com/dmurooka'),
         repo='dmurooka/data-wrangling',
@@ -60,7 +60,7 @@ def test_feed(tmp_path: Path) -> None:
     assert o.stars > 1  # can be flaky
     o = dataclasses.replace(o, stars=-1)
     assert o == model.Repository(
-        created_at=datetime.datetime(2019, 9, 10, 6, 42, 28, tzinfo=datetime.timezone.utc),
+        created_at=datetime(2019, 9, 10, 6, 42, 28, tzinfo=UTC),
         html_url='https://github.com/abdullahsaka/Outlier_Detection',
         user=model.User(login='abdullahsaka', url='https://github.com/abdullahsaka'),
         repo='abdullahsaka/Outlier_Detection',
@@ -75,7 +75,7 @@ def test_feed(tmp_path: Path) -> None:
     assert 'One simple method is the Hampel filtering' in o.body
     o = dataclasses.replace(o, body='')
     assert o == model.Issue(
-        created_at=datetime.datetime(2020, 9, 3, 10, 25, 1, tzinfo=datetime.timezone.utc),
+        created_at=datetime(2020, 9, 3, 10, 25, 1, tzinfo=UTC),
         html_url='https://github.com/scipy/scipy/issues/12809',
         user=model.User(login='jerabaul29', url='https://github.com/jerabaul29'),
         repo='scipy/scipy',

@@ -2,19 +2,17 @@ import re
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any, ClassVar, Generic, Protocol, TypeVar
+from typing import Any, ClassVar, Protocol, Self
 
 import loguru
-from typing_extensions import Self
 
 from ..renderers.markdown import (
     MarkdownAdapterT,  # todo meh, this import kinda doesn't belong here...
 )
 from .common import SearchResults, Uid
-from .compat import add_note
 from .logger import logger as main_logger
 from .query import Compilable, compile_queries
 from .storage import CrawlDt, Database
@@ -29,12 +27,8 @@ class SearchF(Protocol):
     def __call__(self, query: SearchQuery, *, limit: int | None) -> SearchResults: ...
 
 
-ResultType = TypeVar('ResultType')
-QueryType = TypeVar('QueryType', bound=Compilable)
-
-
 @dataclass
-class Feed(Generic[ResultType, QueryType]):
+class Feed[ResultType, QueryType: Compilable]:
     PREFIX: ClassVar[str]
     # ugh... doesn't allow generic ClassVar
     # https://github.com/python/typing/discussions/1424
@@ -130,10 +124,12 @@ class Feed(Generic[ResultType, QueryType]):
                     continue
                 # TODO crawl_dt deserialize could be inside the db bit?
                 # or the other way round.. move timestamp generation into
-                crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=timezone.utc)
+                crawl_dt = datetime.fromtimestamp(crawl_timestamp_utc, tz=UTC)
                 yield (crawl_dt, uid, blob)
         if excluded > 0:
-            self.logger.warning(f"excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db.")
+            self.logger.warning(
+                f"excluded {excluded}/{total} items based on config. Run 'prune' to purge them from the db."
+            )
 
     def prune_db(self, *, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         """
@@ -153,12 +149,14 @@ class Feed(Generic[ResultType, QueryType]):
             def it() -> Iterator[tuple[CrawlDt, Uid, bytes]]:
                 for ts, uid, data in pruned:
                     # meh.. some duplication with above
-                    crawl_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                    crawl_dt = datetime.fromtimestamp(ts, tz=UTC)
                     yield crawl_dt, uid, data
 
             yield from self._parsed(it())
 
-    def crawl(self, *, limit: int | None = None, dry: bool = False) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception] | Exception]:
+    def crawl(
+        self, *, limit: int | None = None, dry: bool = False
+    ) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception] | Exception]:
         # convert to list to make sure the connection in _insert isn't open for long
         # sort by crawl_dt and uid cause why not?
         try:
@@ -176,14 +174,16 @@ class Feed(Generic[ResultType, QueryType]):
     def feed(self) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         yield from self._parsed(self._select_all())
 
-    def _parsed(self, results: Iterable[tuple[CrawlDt, Uid, bytes]]) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
+    def _parsed(
+        self, results: Iterable[tuple[CrawlDt, Uid, bytes]]
+    ) -> Iterator[tuple[CrawlDt, Uid, ResultType | Exception]]:
         for crawl_dt, uid, data in results:
             o: ResultType | Exception
             try:
                 o = self.parse(data)
             except Exception as e:
                 # todo maybe log or something?
-                add_note(e, f'^ while parsing {data!r}')
+                e.add_note(f'^ while parsing {data!r}')
                 o = e
             yield crawl_dt, uid, o
 

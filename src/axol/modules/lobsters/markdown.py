@@ -47,5 +47,5 @@ class MarkdownAdapter(MarkdownAdapterT):
             # Story doesn't have any text snippet
             body = from_html(o.text)
 
-        content = '\n'.join([title_line, body, footer])
+        content = f'{title_line}\n{body}\n{footer}'
         return content
