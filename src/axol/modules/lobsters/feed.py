@@ -50,6 +50,10 @@ def test_feed(tmp_path: Path) -> None:
     items = list(feed.feed())
     assert len(items) == len(crawled)
 
+    for _dt, uid, s in items:
+        # check that there were no parsing errors etc
+        assert not isinstance(s, Exception), (uid, s)
+
     # just a random story that should be present
     [(_dt, uid, s)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Story) and x.author == 'jado']
     assert uid == 'mutdyp'

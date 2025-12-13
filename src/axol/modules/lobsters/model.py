@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, assert_never, cast
 
 from bs4 import BeautifulSoup, NavigableString
@@ -67,9 +67,14 @@ def parse(data: bytes) -> Model:
 
     dt_es = soup.select('.byline span[title*=""], .byline a[title*=""], .byline time[title*=""]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
-    dt_s = dt_e.attrs['title']
-    dt = datetime.fromisoformat(dt_s)
-    assert dt.tzinfo is not None
+
+    if (data_at_unix := dt_e.attrs.get('data-at-unix')) is not None:
+        # new format (around Oct 2015?)
+        dt = datetime.fromtimestamp(int(data_at_unix), tz=UTC)
+    else:
+        dt_s = dt_e.attrs['title']
+        dt = datetime.fromisoformat(dt_s)
+        assert dt.tzinfo is not None
 
     if kind == 'stories':
         [title_e] = soup.select('.u-url')
@@ -197,7 +202,7 @@ def parse(data: bytes) -> Model:
         assert_never(kind)
 
 
-def test_parse_pre_2025() -> None:
+def test_parse_comment_pre_2025() -> None:
     # older comment (pre-2025?), had slightly different format of username/date line
     data = '''
 <div class="comment" data-shortid="jmzgo0" id="c_jmzgo0">
@@ -249,7 +254,7 @@ def test_parse_pre_2025() -> None:
     )
 
 
-def test_parse_new_1() -> None:
+def test_parse_comment_new_1() -> None:
     data = '''
 <div class="comment" data-shortid="a2fpmt" id="c_a2fpmt">
 <div class="voters">
@@ -459,5 +464,52 @@ def test_parse_comment_new_3() -> None:
             '<p>Thank you for being precise about the terminology – '
             'seg faults are indeed a mechanism to '
             '<strong>enforce</strong> memory safety.</p>\n'
+        ),
+    )
+
+
+def test_parse_comment_new_4() -> None:
+    data = '''
+<div id="c_jmzgo0" data-shortid="jmzgo0" class="comment
+  ">
+  <div class="voters">
+      <label for="comment_folder_jmzgo0" class="comment_folder"></label>
+      <a class="upvoter" title="2" href="/login">2</a>
+  </div>
+  <div class="details">
+    <div class="byline">
+      <a name="c_jmzgo0"></a>
+      <span class="">
+        <a tabindex="-1" aria-hidden="true" href="/~roryokane"><img srcset="/avatars/roryokane-16.png 1x, /avatars/roryokane-32.png 2x" class="avatar" alt="roryokane avatar" loading="lazy" decoding="async" src="/avatars/roryokane-16.png" width="16" height="16"></a>
+        <a href="/~roryokane">roryokane</a>
+            <a href="/c/jmzgo0"><time title="2013-08-02 19:56:57" datetime="2013-08-02 19:56:57" data-at-unix="1375491417">12 years ago</time></a>
+      </span>
+          <span class="flagger flagger_stub"></span>
+
+
+          | on:
+          <a href="/s/ebn03k/future_programming">The Future of Programming</a>
+        <span class="reason">
+        </span>
+    </div>
+    <div role="heading" aria-level="3" class="comment_text">
+        <p>Link: <a href="http://vimeo.com/36579366" rel="ugc">Bret Victor – Inventing on Principle</a></p>
+    </div>
+  </div>
+</div>
+    '''.strip().encode()
+
+    res = parse(data)
+
+    assert res == Comment(
+        dt=datetime(2013, 8, 3, 0, 56, 57, tzinfo=UTC),
+        id='c_jmzgo0',
+        title='The Future of Programming',
+        url='https://lobste.rs/s/ebn03k/future_programming',
+        author='roryokane',
+        permalink='https://lobste.rs/s/ebn03k/future_programming#c_jmzgo0',
+        score=2,
+        text=html(
+            html='\n<p>Link: <a href="http://vimeo.com/36579366" rel="ugc">Bret Victor – Inventing on Principle</a></p>\n'
         ),
     )
