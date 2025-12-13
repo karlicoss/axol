@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 
 from axol.core.feed import Feed as BaseFeed
@@ -26,7 +27,7 @@ class Feed(BaseFeed[model.Model, query.Query]):
 
 def test(tmp_path: Path) -> None:
     import os
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     import pytest
 
@@ -47,7 +48,7 @@ def test(tmp_path: Path) -> None:
 
     [o] = [o for dt, uid, o in items if not isinstance(o, Exception) and uid == '08d0a5f0eacd']
     assert o.slug == '08d0a5f0eacd'
-    assert o.created_at == datetime(2017, 12, 29, 21, 39, 36, tzinfo=timezone.utc)
+    assert o.created_at == datetime(2017, 12, 29, 21, 39, 36, tzinfo=UTC)
     assert o.author == 'robertogreco'
     assert o.title == 'West Portal - FoundSF'
     assert o.url == 'http://www.foundsf.org/index.php?title=West_Portal'

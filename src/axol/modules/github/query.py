@@ -1,9 +1,7 @@
 # TODO merge commits are kinda annoying?
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from typing import Literal, get_args
-
-from typing_extensions import assert_never
+from typing import Literal, assert_never, get_args
 
 from axol.core.query import Compilable, _check, doublequote, exact, raw
 
@@ -33,6 +31,7 @@ class Query(Compilable[SearchQuery]):
         included = self.included
         excluded = self.excluded
         assert not (included is not None and excluded is not None)
+        kinds: list[Kind]
         if included is not None:
             kinds = [kind for kind in all_kinds if kind in included]
         elif excluded is not None:
@@ -70,12 +69,12 @@ class Query(Compilable[SearchQuery]):
 
 
 def test() -> None:
-    assert list(Query('just testing', included=['commits', 'issues']).compile()) == [
+    assert list(Query('just testing', included=['commits', 'issues']).compile()) == [  # ty: ignore[invalid-argument-type]
         SearchQuery('"just testing"', kind='issues'),
         SearchQuery('"just testing"', kind='commits'),
     ]
 
-    assert list(Query('whatever', excluded=['code']).compile()) == [
+    assert list(Query('whatever', excluded=['code']).compile()) == [  # ty: ignore[invalid-argument-type]
         SearchQuery('"whatever"', kind='repositories'),
         SearchQuery('"whatever"', kind='issues'),
         SearchQuery('"whatever"', kind='commits'),

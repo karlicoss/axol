@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import orjson
 
@@ -39,7 +39,7 @@ def parse(data: bytes) -> Model:
     j = orjson.loads(data)
 
     ts_utc = j['created_utc']
-    created_at = datetime.fromtimestamp(ts_utc, tz=timezone.utc)
+    created_at = datetime.fromtimestamp(ts_utc, tz=UTC)
 
     selftext_html: str | None = j['selftext_html']
     author_name: str | None = j['author']['name']

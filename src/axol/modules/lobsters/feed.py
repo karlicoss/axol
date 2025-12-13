@@ -27,8 +27,8 @@ class Feed(BaseFeed[model.Model, query.Query]):
 
 def test_feed(tmp_path: Path) -> None:
     import dataclasses
-    import datetime
     import os
+    from datetime import datetime, timedelta, timezone
 
     import pytest
 
@@ -51,14 +51,14 @@ def test_feed(tmp_path: Path) -> None:
     assert len(items) == len(crawled)
 
     # just a random story that should be present
-    [(dt, uid, s)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Story) and x.author == 'jado']
+    [(_dt, uid, s)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Story) and x.author == 'jado']
     assert uid == 'mutdyp'
     assert s.score > 40
     assert s.comments > 15
     # replace volatile attributes
     s = dataclasses.replace(s, score=0, comments=0)
     assert s == model.Story(
-        dt=datetime.datetime(2024, 4, 24, 11, 37, 55, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=68400))),
+        dt=datetime(2024, 4, 24, 11, 37, 55, tzinfo=timezone(timedelta(days=-1, seconds=68400))),
         id='mutdyp',
         title='Borrow checking, RC, GC, and the Eleven (!) Other Memory Safety Approaches',
         url='https://verdagon.dev/grimoire/grimoire',
@@ -70,13 +70,13 @@ def test_feed(tmp_path: Path) -> None:
     )
 
     # just a random comment that should be present
-    [(dt, uid, c)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Comment) and x.author == 'englishm']
+    [(_dt, uid, c)] = [(dt, uid, x) for dt, uid, x in items if isinstance(x, model.Comment) and x.author == 'englishm']
     assert uid == 'c_8tqeri'
     assert 'My thought process' in c.text.html
     assert 'this type of content' in c.text.html
     c = dataclasses.replace(c, text=html(''))
     assert c == model.Comment(
-        dt=datetime.datetime(2015, 1, 29, 10, 55, 39, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=64800))),
+        dt=datetime(2015, 1, 29, 10, 55, 39, tzinfo=timezone(timedelta(days=-1, seconds=64800))),
         id='c_8tqeri',
         title='They Live',
         url='https://lobste.rs/s/fm4zlm/they_live',

@@ -1,11 +1,11 @@
 import itertools
 import re
 import time
+from typing import assert_never
 
 import loguru
 import requests
 from bs4 import BeautifulSoup
-from typing_extensions import assert_never
 
 from axol.core.common import SearchResults, Uid, make_uid
 from axol.core.logger import logger as main_logger
@@ -116,7 +116,9 @@ def _search(query: str, *, kind: Kind, limit: int | None) -> SearchResults:
     uids: set[Uid] = set()
     for order in ['newest', 'relevance', 'score']:
         total_so_far = len(uids)
-        for uid, item in _search_order(query=query, kind=kind, order=order, limit=limit, total_so_far=total_so_far, logger=logger):
+        for uid, item in _search_order(
+            query=query, kind=kind, order=order, limit=limit, total_so_far=total_so_far, logger=logger
+        ):
             if uid in uids:
                 continue
             uids.add(uid)

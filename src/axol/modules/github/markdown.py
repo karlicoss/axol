@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-
-from typing_extensions import assert_never
+from typing import assert_never
 
 from ...core.common import datetime_aware
 from ...renderers.markdown import Author, MarkdownAdapterT, make_title
@@ -74,5 +73,5 @@ class MarkdownAdapter(MarkdownAdapterT):
             # NOTE: looks like it's already markdown
             body += description
 
-        content = '\n'.join([title_line, body])
+        content = f'{title_line}\n{body}'
         return content

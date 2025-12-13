@@ -60,7 +60,9 @@ def cmd_search(*, module: str, query: str, quiet: bool, limit: int | None, raw: 
 @arg_quiet
 @click.option('--parallel', is_flag=True, help='pass to run crawling in parallel, grouped by the provider type')
 @click.option('--dry', is_flag=True, help='search and print results only, do not modify storage')
-def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dry: bool, quiet: bool, parallel: bool) -> None:
+def cmd_crawl(
+    *, limit: int | None, include: str | None, exclude: str | None, dry: bool, quiet: bool, parallel: bool
+) -> None:
     """
     Search all queries in the feed and save in the databases.
     """
@@ -74,7 +76,7 @@ def cmd_crawl(*, limit: int | None, include: str | None, exclude: str | None, dr
                     feed.logger.error('', exc_info=res)
                     errors.append(res)
                     continue
-                crawl_dt, uid, o = res
+                _crawl_dt, uid, o = res
                 if isinstance(o, Exception):
                     feed.logger.error('', exc_info=o)
                     errors.append(o)

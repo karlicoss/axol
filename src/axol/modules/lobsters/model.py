@@ -1,13 +1,11 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, cast
+from typing import Any, assert_never, cast
 
 from bs4 import BeautifulSoup, NavigableString
-from typing_extensions import assert_never
 
 from axol.core.common import datetime_aware, html
-from axol.core.compat import fromisoformat
 
 from .common import extract_uid, lobsters_link
 from .query import Kind
@@ -70,7 +68,7 @@ def parse(data: bytes) -> Model:
     dt_es = soup.select('.byline span[title*=""], .byline a[title*=""], .byline time[title*=""]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
     dt_s = dt_e.attrs['title']
-    dt = fromisoformat(dt_s)
+    dt = datetime.fromisoformat(dt_s)
     assert dt.tzinfo is not None
 
     if kind == 'stories':
@@ -245,7 +243,9 @@ def test_parse_pre_2025() -> None:
         author='roryokane',
         permalink='https://lobste.rs/s/ebn03k/future_programming#c_jmzgo0',
         score=2,
-        text=html(html='\n<p>Link: <a href="http://vimeo.com/36579366" rel="nofollow">Bret Victor - Inventing on Principle</a></p>\n'),
+        text=html(
+            html='\n<p>Link: <a href="http://vimeo.com/36579366" rel="nofollow">Bret Victor - Inventing on Principle</a></p>\n'
+        ),
     )
 
 

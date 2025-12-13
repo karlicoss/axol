@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import orjson
 
@@ -65,7 +65,7 @@ def parse(data: bytes) -> Model:
     # kinda unclear which timezone is date in
     # but tried fetching page from different machines and it seems the same
     # so I assume utc?
-    created_at = datetime.strptime(created, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+    created_at = datetime.strptime(created, '%Y-%m-%d %H:%M:%S').replace(tzinfo=UTC)
 
     assert len(j) == 0, j
 

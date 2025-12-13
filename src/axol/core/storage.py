@@ -1,7 +1,7 @@
 import sqlite3
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import AbstractContextManager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -109,7 +109,7 @@ class Database(AbstractContextManager['Database']):
         # fmt: on
         with self.engine.begin() as conn:
             dbapi_connection = conn.connection  # meh
-            dbapi_connection.create_function("predicate", 1, predicate)  # type: ignore[attr-defined]
+            dbapi_connection.create_function("predicate", 1, predicate)
             to_prune = list(conn.execute(select_query))
             if not dry:
                 res = conn.execute(delete_query)
@@ -178,7 +178,7 @@ class Database(AbstractContextManager['Database']):
         """
         Yields actually inserted items, along with the crawl timestamp
         """
-        now_dt = datetime.now(tz=timezone.utc)
+        now_dt = datetime.now(tz=UTC)
         self.logger.info(f'[{self.db_path}] inserting crawled items, dt {now_dt}')
 
         items = ((now_dt, uid, jb) for uid, jb in results)

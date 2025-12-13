@@ -8,12 +8,9 @@ dependencies = [
     "orjson",
     "sqlalchemy",
     "more-itertools",
-    "typing-extensions",
     "tabulate",  # for configs listing
-
-    "python-dateutil; python_version < '3.11'", 
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
 ## these need to be set if you're planning to upload to pypi
 description = "Your personal search alerts"
@@ -40,20 +37,20 @@ optional = [
 
 [dependency-groups]
 testing = [
-    "pytest",
+    "pytest>=9",  # need version 9 for proper namespace package support
     "ruff",
+
+    "axol[optional]",
+]
+typecheck = [
+    { include-group = "testing" },
     "mypy",
-    "lxml",  # for mypy html coverage
+    "lxml", # for mypy html coverage
+    "ty>=0.0.1a34",
 
     "types-requests",
     "types-tabulate",
 ]
-
-
-# workaround for error during uv publishing
-# see https://github.com/astral-sh/uv/issues/9513#issuecomment-2519527822
-[tool.setuptools]
-license-files = []
 
 
 [build-system]

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 
 from axol.core.feed import Feed as BaseFeed
@@ -27,7 +28,7 @@ class Feed(BaseFeed[model.Model, query.Query]):
 def test_feed(tmp_path: Path) -> None:
     import dataclasses
     import os
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     import pytest
 
@@ -57,7 +58,7 @@ def test_feed(tmp_path: Path) -> None:
     )
     assert o == model.Submission(
         id='u1t237',
-        created_at=datetime(2022, 4, 12, 7, 9, 21, tzinfo=timezone.utc),
+        created_at=datetime(2022, 4, 12, 7, 9, 21, tzinfo=UTC),
         subreddit_name='haskell',
         author_name='Axman6',
         downs=-1,

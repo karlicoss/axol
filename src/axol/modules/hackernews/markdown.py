@@ -46,7 +46,7 @@ class MarkdownAdapter(MarkdownAdapterT):
 
         body = '' if o.text is None else from_html(o.text)
 
-        content = '\n'.join([title_line, body])
+        content = f'{title_line}\n{body}'
         # TODO could add emoji if it has comments/upvotes etc?
         # yeah, e.g. each provider could decorate somehow? maybe according to percentile?
         # e.g. 90+ % -- fire emoji or something
