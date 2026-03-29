@@ -69,12 +69,12 @@ class Query(Compilable[SearchQuery]):
 
 
 def test() -> None:
-    assert list(Query('just testing', included=['commits', 'issues']).compile()) == [  # ty: ignore[invalid-argument-type]
+    assert list(Query('just testing', included=['commits', 'issues']).compile()) == [
         SearchQuery('"just testing"', kind='issues'),
         SearchQuery('"just testing"', kind='commits'),
     ]
 
-    assert list(Query('whatever', excluded=['code']).compile()) == [  # ty: ignore[invalid-argument-type]
+    assert list(Query('whatever', excluded=['code']).compile()) == [
         SearchQuery('"whatever"', kind='repositories'),
         SearchQuery('"whatever"', kind='issues'),
         SearchQuery('"whatever"', kind='commits'),

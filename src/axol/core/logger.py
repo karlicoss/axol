@@ -25,4 +25,4 @@ config = {
     "patcher": _add_exc_info,
 }
 
-logger.configure(**config)  # type: ignore[arg-type]
+logger.configure(**config)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
