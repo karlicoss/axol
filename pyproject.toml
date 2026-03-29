@@ -12,16 +12,13 @@ dependencies = [
 ]
 requires-python = ">=3.12"
 
-## these need to be set if you're planning to upload to pypi
+## these are only useful for pypi
 description = "Your personal search alerts"
-license = {file = "LICENSE"}
-authors = [
-    {name = "Dima Gerasimov (@karlicoss)", email = "karlicoss@gmail.com"},
-]
-maintainers = [
-    {name = "Dima Gerasimov (@karlicoss)", email = "karlicoss@gmail.com"},
-]
-[project.urls]
+license     = {file = "LICENSE"}
+authors     = [{name = "Dima Gerasimov (@karlicoss)", email = "karlicoss@gmail.com"}]
+maintainers = [{name = "Dima Gerasimov (@karlicoss)", email = "karlicoss@gmail.com"}]
+
+[project.urls]  # pypi will fetch some github stats/link, so somewhat useful
 Homepage = "https://github.com/karlicoss/axol"
 ##
 
@@ -43,13 +40,14 @@ testing = [
     "axol[optional]",
 ]
 typecheck = [
-    { include-group = "testing" },
     "mypy",
     "lxml", # for mypy html coverage
-    "ty>=0.0.1a34",
+    "ty>=0.0.26",
 
     "types-requests",
     "types-tabulate",
+
+    { include-group = "testing" },
 ]
 
 
@@ -67,3 +65,4 @@ source = "vcs"
 [tool.hatch.version.raw-options]
 version_scheme = "python-simplified-semver"
 local_scheme = "dirty-tag"
+
