@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Sequence
+from collections.abc import Hashable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -27,7 +27,12 @@ def _check(s: str) -> str:
     return s
 
 
-class Compilable[T](Protocol):
+class Compilable[T: Hashable](Protocol):
+    """
+    NOTE: T needs to be hashable since it's used with unique_everseen
+    """
+
+    # ugh, sadly type checkers (mypy/ty) don't seem to reliably know whether a dataclass is hashable?
     def compile(self) -> Iterator[T]: ...
 
 
