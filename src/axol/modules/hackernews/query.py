@@ -5,7 +5,7 @@ from typing import assert_never
 from axol.core.query import Compilable, _check, doublequote, exact, raw
 
 
-@dataclass
+@dataclass(frozen=True)  # frozen since query needs to be hashable for unique_everseen
 class SearchQuery:
     query: str
 

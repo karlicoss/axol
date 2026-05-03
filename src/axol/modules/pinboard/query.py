@@ -10,7 +10,7 @@ Kind = Literal[
 ]
 
 
-@dataclass
+@dataclass(frozen=True)  # frozen since query needs to be hashable for unique_everseen
 class SearchQuery:
     query: str
     kind: Kind

@@ -7,15 +7,16 @@ import orjson
 from axol.core.common import Json, Uid
 from axol.core.feed import Feed as BaseFeed
 from axol.core.feed import SearchF
+from axol.core.query import Compilable
 
 
-@dataclass
+@dataclass(frozen=True)  # frozen since query needs to be hashable for unique_everseen
 class SearchQuery:
     query: str
 
 
 @dataclass
-class Query:
+class Query(Compilable[SearchQuery]):
     query: str
 
     def compile(self) -> Iterator[SearchQuery]:
