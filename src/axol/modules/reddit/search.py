@@ -2,9 +2,9 @@ from collections.abc import Iterator
 from typing import Any
 
 import orjson
-import praw  # type: ignore[import-untyped]
+import praw
 from loguru import logger
-from praw.models import (  # type: ignore[import-untyped]
+from praw.models import (
     PollData,
     PollOption,
     Redditor,
