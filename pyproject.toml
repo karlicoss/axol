@@ -27,7 +27,7 @@ Homepage = "https://github.com/karlicoss/axol"
 optional = [
     "PyGithub",        # modules.github.search
     "python-hn",       # modules.hackernews.search
-    "praw",            # modules.reddit.search
+    "praw>=8",         # modules.reddit.search; PRAW 8 ships type info
     "beautifulsoup4",  # modules.lobsters.search
     "html2text"     ,  # for rendering (e.g. to markdown)
 ]
