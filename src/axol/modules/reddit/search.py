@@ -94,7 +94,9 @@ def _search(*, query: str, limit: int | None) -> SearchResults:
 
             uid = _uid(r)
             # check uniqueness just in case
-            assert uid not in uids, (r, uids[uid])
+            if uid in uids:
+                logger.warning(f'{qstr} {sort_by=!r:<10} -- duplicate {uid}, skipping')
+                continue
             uids[uid] = r
             yield r
 
