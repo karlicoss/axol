@@ -71,8 +71,7 @@ def _search_order(
             [items_container] = soup.select('.stories.list')
             item_els = items_container.select('.story')
         elif kind == 'comments':
-            [items_container] = soup.select('.comments')
-            item_els = items_container.select('.comment')
+            item_els = soup.select('.comments .comment')
         else:
             assert_never(kind)
 
