@@ -74,13 +74,14 @@ class Search(Mixin):  # todo make it typed?
                         # casn be duplicated due to identical matched blobs
                         continue
                     else:
-                        assert uid not in uids, (uid, x, uids[uid])
+                        logger.warning(f'{qstr2}: duplicate {uid}, skipping')
+                        continue
 
                 uids[uid] = x
                 yield uid, x
 
         done_sort: set[Opt[str]] = set()
-        uids: dict[Uid, ContentFile] = {}
+        uids: dict[Uid, Any] = {}
         # todo maybe, only use additional when there is close to 100 results??
         for sort, order in sorts:
             qstr2 = f'kind={self.KIND} {query=} {sort=!r:<10} {order=!r:<5}'
