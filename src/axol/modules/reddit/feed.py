@@ -37,13 +37,15 @@ def test_feed(tmp_path: Path) -> None:
 
     feed = Feed.make(
         query_name='test',
-        queries=[query.Query('catamorphism')],
+        queries=[query.Query('The visitor pattern and catamorphisms')],
         db_path=tmp_path / 'test.sqlite',
     )
-    crawled = list(feed.crawl())
-    assert len(crawled) > 50
+    # This still exercises all Reddit sort orders, but avoids broad result drift.
+    crawled = list(feed.crawl(limit=20))
+    assert len(crawled) == 1
 
     items = list(feed.feed())
+    assert len(items) == len(crawled)
 
     [o] = [o for dt, uid, o in items if isinstance(o, model.Submission) and uid == 'u1t237']
 

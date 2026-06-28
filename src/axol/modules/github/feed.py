@@ -3,6 +3,7 @@ from pathlib import Path
 
 from axol.core.feed import Feed as BaseFeed
 from axol.core.feed import SearchF
+from axol.core.query import raw
 
 from . import markdown, model, query
 
@@ -27,7 +28,7 @@ class Feed(BaseFeed[model.Model, query.Query]):
 def test_feed(tmp_path: Path) -> None:
     import dataclasses
     import os
-    from datetime import UTC, datetime, timedelta, timezone
+    from datetime import UTC, datetime
 
     import pytest
 
@@ -36,49 +37,59 @@ def test_feed(tmp_path: Path) -> None:
 
     feed = Feed.make(
         query_name='test',
-        queries=[query.Query('statistical outlier detection')],
+        # Limit to issues: repository search is too small to exercise pagination,
+        # while commit/code search is much slower and more prone to GitHub rate limiting.
+        queries=[query.Query('statistical outlier detection', included=['issues'])],
         db_path=tmp_path / 'test.sqlite',
     )
-    crawled = list(feed.crawl())
-    assert len(crawled) > 500
+    # GitHub search pages contain 100 items, so use >2 pages to exercise pagination.
+    crawled = list(feed.crawl(limit=250))
+    assert len(crawled) >= 250
 
     items = list(feed.feed())
-    assert len(items) > 500
+    assert len(items) == len(crawled)
 
-    # test some random objects
-    [o] = [o for _, uid, o in items if uid == 'commit_52cbaf3b5063bad7456b782b4f36f12278dc70ab']
-    assert o == model.Commit(
-        created_at=datetime(2024, 4, 20, 14, 57, 27, tzinfo=timezone(timedelta(seconds=32400))),
-        html_url='https://github.com/dmurooka/data-wrangling/commit/52cbaf3b5063bad7456b782b4f36f12278dc70ab',
-        user=model.User(login='dmurooka', url='https://github.com/dmurooka'),
-        repo='dmurooka/data-wrangling',
-        message='Demonstrate Statistical Outlier Detection - IQR',
-    )
+    for _dt, uid, o in items:
+        assert not isinstance(o, Exception), (uid, o)
+        assert isinstance(o, model.Issue), (uid, o)
+        assert o.html_url.startswith('https://github.com/'), o
+        assert '/' in o.repo, o
+        assert len(o.title) > 0, o
 
-    [o] = [o for _, uid, o in items if uid == 'repo_abdullahsaka_Outlier_Detection']
-    assert isinstance(o, model.Repository)
-    assert o.stars > 1  # can be flaky
-    o = dataclasses.replace(o, stars=-1)
-    assert o == model.Repository(
-        created_at=datetime(2019, 9, 10, 6, 42, 28, tzinfo=UTC),
-        html_url='https://github.com/abdullahsaka/Outlier_Detection',
-        user=model.User(login='abdullahsaka', url='https://github.com/abdullahsaka'),
-        repo='abdullahsaka/Outlier_Detection',
-        description='Undergraduate Project - Statistical Outlier Detection Methods',
-        topics=('anomaly-detection-algorithm', 'outlier-detection', 'statistics', 'z-score'),
-        stars=-1,
-    )
-
-    [o] = [o for _, uid, o in items if uid == 'issue_691845851']
+    [o] = [o for _, uid, o in items if uid == 'issue_1193622005']
     assert isinstance(o, model.Issue)
     assert o.body is not None
-    assert 'One simple method is the Hampel filtering' in o.body
+    assert 'CRDB-13544' in o.body
     o = dataclasses.replace(o, body='')
     assert o == model.Issue(
-        created_at=datetime(2020, 9, 3, 10, 25, 1, tzinfo=UTC),
-        html_url='https://github.com/scipy/scipy/issues/12809',
-        user=model.User(login='jerabaul29', url='https://github.com/jerabaul29'),
-        repo='scipy/scipy',
-        title='ENH: ndimage/signal: add Hampel filter',
+        created_at=datetime(2022, 4, 5, 19, 27, tzinfo=UTC),
+        html_url='https://github.com/cockroachdb/cockroach/issues/79451',
+        user=model.User(login='matthewtodd', url='https://github.com/matthewtodd'),
+        repo='cockroachdb/cockroach',
+        title='outliers: configurable statistical detection per fingerprint',
         body='',
+    )
+
+    repo_feed = Feed.make(
+        query_name='test_repo',
+        # Keep repository search covered with a narrow query so it stays cheap.
+        queries=[query.Query(raw('axol user:karlicoss'), included=['repositories'])],
+        db_path=tmp_path / 'test_repo.sqlite',
+    )
+    repo_crawled = list(repo_feed.crawl(limit=5))
+    assert len(repo_crawled) == 1
+
+    repo_items = list(repo_feed.feed())
+    [repo] = [o for _, uid, o in repo_items if uid == 'repo_karlicoss_axol']
+    assert isinstance(repo, model.Repository)
+    assert repo.stars > 1  # can be flaky
+    repo = dataclasses.replace(repo, stars=-1)
+    assert repo == model.Repository(
+        created_at=datetime(2020, 3, 10, 23, 50, 25, tzinfo=UTC),
+        html_url='https://github.com/karlicoss/axol',
+        user=model.User(login='karlicoss', url='https://github.com/karlicoss'),
+        repo='karlicoss/axol',
+        description='Personal news feed: search for results on Reddit/Pinboard/Twitter/Hackernews and read as RSS',
+        topics=(),
+        stars=-1,
     )
