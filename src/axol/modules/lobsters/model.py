@@ -96,7 +96,11 @@ def parse(data: bytes) -> Model:
         permalink = comments_e['href']
         permalink = lobsters_link(permalink)
 
-        [author_e] = soup.select('.u-author')
+        author_es = soup.select('.u-author')
+        if len(author_es) == 0:
+            # Newer search results sometimes omit u-author on story bylines.
+            author_es = [x for x in soup.select('.byline a[href^="/~"]') if len(x.text.strip()) > 0]
+        [author_e] = author_es
         author = author_e.text
 
         assert score is not None  # shouldn't happen for stories
@@ -512,4 +516,116 @@ def test_parse_comment_new_4() -> None:
         text=html(
             html='\n<p>Link: <a href="http://vimeo.com/36579366" rel="ugc">Bret Victor – Inventing on Principle</a></p>\n'
         ),
+    )
+
+
+def test_parse_comment_search_2026() -> None:
+    data = '''
+<div class="comment" data-shortid="8tqeri" id="c_8tqeri">
+<div class="voters">
+<label class="comment_folder" for="comment_folder_8tqeri"></label>
+<a class="upvoter" href="/login" title="1">1</a>
+</div>
+<div class="details">
+<div class="byline">
+<a name="c_8tqeri"></a>
+<span class="">
+<a aria-hidden="true" href="/~englishm" tabindex="-1"><img alt="" class="avatar" decoding="async" height="16" loading="lazy" src="/avatars/englishm-16.png" srcset="/avatars/englishm-16.png 1x, /avatars/englishm-32.png 2x" width="16"/></a>
+<a aria-label="englishm - Submitter" class="user_is_submitter" href="/~englishm">englishm</a>
+<a href="/c/8tqeri"><time data-at-unix="1422550539" datetime="2015-01-29 10:55:39" title="2015-01-29 10:55:39">11 years ago</time></a>
+</span>
+<span class="flagger flagger_stub"></span>
+
+
+          | on:
+          <a href="/s/fm4zlm/they_live">They Live</a>
+<span class="reason">
+</span>
+</div>
+<div aria-level="3" class="comment_text" role="heading">
+<p>That's fair.
+My thought process when posting was that the content of this post applies to all these different domains, but I can see now how narrowly scoped tags would be better and cross-cutting content might better be relegated to a tag like 'culture'.
+I'll try to be more conservative in tagging this type of content in the future.</p>
+</div>
+</div>
+</div>
+    '''.strip().encode()
+
+    res = parse(data)
+
+    assert res == Comment(
+        dt=datetime(2015, 1, 29, 16, 55, 39, tzinfo=UTC),
+        id='c_8tqeri',
+        title='They Live',
+        url='https://lobste.rs/s/fm4zlm/they_live',
+        author='englishm',
+        permalink='https://lobste.rs/s/fm4zlm/they_live#c_8tqeri',
+        score=1,
+        text=html(
+            html="\n"
+            "<p>That's fair.\n"
+            "My thought process when posting was that the content of this post applies to all these different domains, "
+            "but I can see now how narrowly scoped tags would be better and cross-cutting content might better be relegated to a tag like 'culture'.\n"
+            "I'll try to be more conservative in tagging this type of content in the future.</p>\n"
+        ),
+    )
+
+
+def test_parse_story_search_2026() -> None:
+    data = '''
+<li class="story" data-shortid="107mmm" id="story_107mmm">
+<div class="story_liner h-entry">
+<div class="voters">
+<a class="upvoter" href="/login">40</a>
+</div>
+<div class="details">
+<span aria-level="1" class="link h-cite u-repost-of" role="heading">
+<a class="u-url" href="https://bevyengine.org/news/bevy-0-6/" rel="ugc noreferrer">Bevy 0.6 Released</a>
+</span>
+<span class="tags">
+<a class="tag tag_release" href="/t/release" title="Software releases and announcements">release</a>
+<a class="tag tag_games" href="/t/games" title="Game design and study">games</a>
+<a class="tag tag_rust" href="/t/rust" title="Rust programming">rust</a>
+</span>
+<a class="domain" href="/domains/bevyengine.org">bevyengine.org</a>
+<div class="byline">
+<a aria-hidden="true" href="/~werat" tabindex="-1"><img alt="" class="avatar" decoding="async" height="16" loading="lazy" src="/avatars/werat-16.png" srcset="/avatars/werat-16.png 1x, /avatars/werat-32.png 2x" width="16"/></a>
+<span> via </span>
+<a href="/~werat">werat</a>
+<time data-at-unix="1641672172" datetime="2022-01-08 14:02:52" title="2022-01-08 14:02:52">4 years ago</time>
+<span aria-hidden="true"> | </span>
+<details class="caches" name="caches">
+<summary>caches</summary>
+<ul>
+<li><a href="https://web.archive.org/web/3/https%3A%2F%2Fbevyengine.org%2Fnews%2Fbevy-0-6%2F">Archive.org</a></li>
+<li><a href="https://ghostarchive.org/search?term=https%3A%2F%2Fbevyengine.org%2Fnews%2Fbevy-0-6%2F">Ghostarchive</a></li>
+</ul>
+</details>
+<span class="comments_label">
+<span aria-hidden="true"> | </span>
+<a aria-level="2" href="/s/107mmm/bevy_0_6_released" role="heading">
+              7 comments
+            </a>
+</span>
+</div>
+</div>
+</div>
+<a class="mobile_comments" href="/s/107mmm/bevy_0_6_released" style="display: none;">
+<span>7</span>
+</a>
+</li>
+    '''.strip().encode()
+
+    res = parse(data)
+
+    assert res == Story(
+        dt=datetime(2022, 1, 8, 20, 2, 52, tzinfo=UTC),
+        id='107mmm',
+        title='Bevy 0.6 Released',
+        url='https://bevyengine.org/news/bevy-0-6/',
+        author='werat',
+        permalink='https://lobste.rs/s/107mmm/bevy_0_6_released',
+        score=40,
+        comments=7,
+        tags=('release', 'games', 'rust'),
     )
