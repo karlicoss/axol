@@ -65,7 +65,7 @@ def parse(data: bytes) -> Model:
         # seems easiest to just be defensive
         pass
 
-    dt_es = soup.select('.byline span[title*=""], .byline a[title*=""], .byline time[title*=""]')
+    dt_es = soup.select('.byline span[title], .byline a[title], .byline time[title]')
     [dt_e] = [x for x in dt_es if 'ago' in x.text]
 
     if (data_at_unix := dt_e.attrs.get('data-at-unix')) is not None:
