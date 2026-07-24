@@ -8,6 +8,7 @@ import orjson
 from github import (
     Auth,
     Github,
+    GithubRetry,
     # GithubException,  # TODO handle exceptions later?
 )
 from github.Commit import Commit
@@ -23,6 +24,15 @@ from axol.credentials import github_token
 from .query import Kind, SearchQuery
 
 REQUIRES = ['PyGithub']
+
+
+def _github_retry() -> GithubRetry:
+    return GithubRetry(
+        total=3,
+        backoff_factor=1,
+        # Search pagination has intermittently returned 404 and 408.
+        status_forcelist=[404, 408, *range(500, 600)],
+    )
 
 
 def _get_sorts(sorts: Sequence[str]) -> Sequence[tuple[Opt[str], Opt[str]]]:
@@ -199,6 +209,7 @@ def search(query: SearchQuery, *, limit: int | None) -> SearchResults:
         # if we pass value bigger than 100 it works
         # but seems to still return only 100 results per batch
         per_page=100,
+        retry=_github_retry(),
     )
 
     Searcher = SEARCHERS[query.kind]
