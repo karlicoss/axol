@@ -66,7 +66,7 @@ def parse(data: bytes) -> Model:
         pass
 
     dt_es = soup.select('.byline span[title], .byline a[title], .byline time[title]')
-    [dt_e] = [x for x in dt_es if 'ago' in x.text]
+    [dt_e] = [x for x in dt_es if x.attrs.get('data-at-unix') is not None or 'ago' in x.text]
 
     if (data_at_unix := dt_e.attrs.get('data-at-unix')) is not None:
         # new format (around Oct 2015?)
@@ -568,6 +568,50 @@ I'll try to be more conservative in tagging this type of content in the future.<
             "but I can see now how narrowly scoped tags would be better and cross-cutting content might better be relegated to a tag like 'culture'.\n"
             "I'll try to be more conservative in tagging this type of content in the future.</p>\n"
         ),
+    )
+
+
+def test_parse_comment_search_absolute_datetime_2026() -> None:
+    data = '''
+<div class="comment" data-shortid="0wvwfg" id="c_0wvwfg">
+<div class="voters">
+<label class="comment_folder" for="comment_folder_0wvwfg"></label>
+<a class="upvoter" href="/login" title="6">6</a>
+</div>
+<div class="details">
+<div class="byline">
+<a name="c_0wvwfg"></a>
+<span class="">
+<a aria-hidden="true" href="/~ssokolow" tabindex="-1"><img alt="" src="/avatars/ssokolow-16.png"/></a>
+<a href="/~ssokolow">ssokolow</a>
+<a href="/c/0wvwfg"><time data-at-unix="1785104171" datetime="2026-07-26 17:16:11" title="2026-07-26 17:16:11">2026-07-26 17:16:11</time></a>
+</span>
+<span class="flagger flagger_stub"></span>
+
+
+          | on:
+          <a href="/s/x7jtkt/memory_safety_absolutists">Memory Safety Absolutists</a>
+<span class="reason">
+</span>
+</div>
+<div aria-level="3" class="comment_text" role="heading">
+<p>Test comment.</p>
+</div>
+</div>
+</div>
+    '''.strip().encode()
+
+    res = parse(data)
+
+    assert res == Comment(
+        dt=datetime(2026, 7, 26, 22, 16, 11, tzinfo=UTC),
+        id='c_0wvwfg',
+        title='Memory Safety Absolutists',
+        url='https://lobste.rs/s/x7jtkt/memory_safety_absolutists',
+        author='ssokolow',
+        permalink='https://lobste.rs/s/x7jtkt/memory_safety_absolutists#c_0wvwfg',
+        score=6,
+        text=html(html='\n<p>Test comment.</p>\n'),
     )
 
 
