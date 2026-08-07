@@ -36,7 +36,7 @@ class Compilable[T: Hashable](Protocol):
     def compile(self) -> Iterator[T]: ...
 
 
-def compile_queries[Compiled](queries: Sequence[Compilable[Compiled]]) -> Iterator[Compiled]:
+def compile_queries[Compiled: Hashable](queries: Sequence[Compilable[Compiled]]) -> Iterator[Compiled]:
     def it() -> Iterator[Compiled]:
         for query in queries:
             yield from query.compile()
