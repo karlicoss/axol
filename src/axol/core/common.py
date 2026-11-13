@@ -38,7 +38,7 @@ def json_copy(j: Json) -> Json:
     if isinstance(j, (int, bool, str, float, type(None))):
         return j
     if isinstance(j, list):
-        return [json_copy(x) for x in j]  # ty: ignore[invalid-return-type]
+        return [json_copy(x) for x in j]  # ty: ignore[invalid-explicit-return]
     if isinstance(j, dict):
         return {k: json_copy(v) for k, v in j.items()}
     raise RuntimeError(j, type(j))
