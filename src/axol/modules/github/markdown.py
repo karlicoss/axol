@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import assert_never
 
@@ -23,7 +24,13 @@ class MarkdownAdapter(MarkdownAdapterT):
         else:
             name = user.login
             url = user.url
-        name = name.replace('[bot]', '_bot')  # meh
+        # Some logins have a bracketed suffix, e.g. 'dependabot[bot]' (GitHub apps), or '<hash>[api]' (ProgrammaticAccessBot).
+        # Author names can't contain brackets, so turn the suffix into '_bot'/'_api'.
+        # Regular GitHub logins can't contain underscores, so this won't clash with real users.
+        # Matching the login rather than the user 'type' field, since many older crawled items don't have 'type'.
+        # Also some bots don't have a suffix (e.g. 'Copilot' is type 'Bot'), so renaming by type would change existing names.
+        if (m := re.fullmatch(r'(.+)\[(\w+)\]', name)) is not None:
+            name = f'{m[1]}_{m[2]}'
         return Author(
             domain='github.com',
             kind='Github',
@@ -75,3 +82,30 @@ class MarkdownAdapter(MarkdownAdapterT):
 
         content = f'{title_line}\n{body}'
         return content
+
+
+def test_author_bracketed_login() -> None:
+    from datetime import UTC, datetime
+
+    from .model import User
+
+    def author(*, login: str, url: str) -> Author:
+        commit = Commit(
+            created_at=datetime(2026, 1, 20, 22, 18, tzinfo=UTC),
+            html_url='https://github.com/example/repo/commit/916c86db6538d938f6e94375591b356cfdd76e5c',
+            user=User(login=login, url=url),
+            repo='example/repo',
+            message='Update README.md',
+        )
+        return MarkdownAdapter(commit).author
+
+    # ProgrammaticAccessBot: GitHub reports this html_url for it, even though the page 404s
+    api_login = '8a3ce807f6da8ef32e8f5c408e949bd2b5[api]'
+    # fmt: off
+    for login, url, expected_name in [
+        ('karlicoss'      , 'https://github.com/karlicoss'      , 'karlicoss'                             ),
+        ('dependabot[bot]', 'https://github.com/apps/dependabot', 'dependabot_bot'                        ),
+        (api_login        , f'https://github.com/{api_login}'   , '8a3ce807f6da8ef32e8f5c408e949bd2b5_api'),
+    ]:
+        assert author(login=login, url=url) == Author(domain='github.com', kind='Github', name=expected_name, url=url)
+    # fmt: on
